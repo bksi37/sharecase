@@ -1,132 +1,226 @@
-/* Grey-Modern Theme */
+/* General styles for ShareCase */
+* {
+    box-sizing: border-box;
+}
+
 body {
-    font-family: 'Roboto', sans-serif;
+    font-family: 'Roboto', 'Arial', sans-serif;
+    background-color: #f9f9f9; /* Very light grey background */
     margin: 0;
-    padding: 0;
-    background: #f8f9fa; /* Light grey background */
-    color: #333; /* Dark grey text */
+    padding-top: 70px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 
 header {
-    background: #343a40; /* Dark grey header */
-    color: #fff;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: #ffffff; /* White header */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* Softer shadow */
+    z-index: 1000;
     padding: 10px 20px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    height: 60px;
+    display: flex;
+    align-items: center;
+}
+
+.logo {
+    font-size: 20px;
+    font-weight: bold;
+    line-height: 1;
 }
 
 .logo a {
-    color: #fff;
     text-decoration: none;
-    font-size: 24px;
-    font-weight: 700;
+    color: #555555; /* Soft grey logo text */
 }
 
 .search-bar {
-    width: 40%;
+    flex-grow: 1;
+    max-width: 500px;
+    margin: 0 20px;
 }
 
 .search-bar input {
-    padding-right: 40px;
-    border: 1px solid #ced4da;
+    height: 35px;
+    font-size: 14px;
+    border: 1px solid #e0e0e0; /* Very light grey border */
     border-radius: 5px;
-    background: #fff;
+    background: #ffffff; /* White background */
 }
 
 .search-bar .btn {
     background: transparent;
     border: none;
-    color: #6c757d; /* Medium grey icon */
+    color: #9e9e9e; /* Medium soft grey icon */
 }
 
 .user-menu {
-    position: relative;
+    display: flex;
+    align-items: center;
 }
 
-.profile-container {
+.user-menu .profile-container {
     display: flex;
     align-items: center;
     cursor: pointer;
+    position: relative;
+    justify-content: center;
 }
 
-.profile-container img {
-    width: 40px;
-    height: 40px;
+.user-menu img {
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
+    object-fit: cover;
     margin-right: 10px;
 }
 
-.dropdown-menu {
+.user-menu .dropdown-menu {
+    display: none;
     position: absolute;
     top: 100%;
     right: 0;
-    background: #fff;
-    border: 1px solid #dee2e6;
-    border-radius: 5px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    display: none;
+    background: #ffffff; /* White dropdown background */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* Softer shadow */
+    border-radius: 4px;
+    padding: 10px 0;
     z-index: 1000;
-    min-width: 150px;
 }
 
-.dropdown-menu a {
+.user-menu .dropdown-menu a {
     display: block;
-    padding: 10px 15px;
-    color: #333;
+    padding: 8px 20px;
+    color: #666666; /* Soft grey text */
     text-decoration: none;
+    font-size: 14px;
 }
 
-.dropdown-menu a:hover {
-    background: #e9ecef; /* Light grey hover */
+.user-menu .dropdown-menu a:hover {
+    background: #f5f5f5; /* Very light grey hover */
 }
 
-main {
-    padding: 20px;
-}
-
-.upload-container, .auth-container {
-    max-width: 600px;
+.container {
+    max-width: 1200px;
     margin: 0 auto;
-    background: #fff;
     padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    flex: 1;
 }
 
-.upload-container h2, .auth-container h2 {
-    margin-bottom: 20px;
-    color: #343a40; /* Dark grey headings */
+/* Button Styles */
+.btn-primary {
+    background-color: #007bff; /* Blue button */
+    border-color: #007bff; /* Blue border */
+    color: #fff;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3; /* Darker blue hover */
+    border-color: #0056b3; /* Darker blue border */
+}
+
+.btn-secondary {
+    background: #cccccc; /* Light soft grey button */
+    border: none;
+    color: #333; /* Darker text for contrast */
+}
+
+.btn-secondary:hover {
+    background: #bbbbbb; /* Slightly darker soft grey hover */
+}
+
+.btn-outline-primary {
+    border-color: #007bff; /* Blue border */
+    color: #007bff; /* Blue text */
+}
+
+.btn-outline-primary:hover {
+    background: #007bff; /* Blue background */
+    color: #fff;
 }
 
 footer {
+    background: #ffffff; /* White footer */
+    padding: 20px;
     text-align: center;
-    padding: 10px;
-    background: #343a40; /* Dark grey footer */
-    color: #fff;
-    position: relative;
-    bottom: 0;
-    width: 100%;
+    border-top: 1px solid #f0f0f0; /* Very light grey border */
+    margin-top: auto;
+}
+
+footer p {
+    margin: 0;
+    color: #888888; /* Soft grey text */
+}
+
+/* Comment styles */
+.comment-section {
+    margin-top: 30px;
+}
+
+.comment-list {
+    list-style: none;
+    padding: 0;
+}
+
+.comment-list li {
+    background: #ffffff; /* White comment background */
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* Softer shadow */
+}
+
+.comment-list .comment-meta {
+    font-size: 0.9em;
+    color: #888888; /* Soft grey text */
+}
+
+/* Upload project styles */
+.upload-container {
+    max-width: 800px;
+    margin: 100px auto;
+    padding: 30px;
+    background: #ffffff; /* White upload container background */
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); /* Softer shadow */
+}
+
+.upload-container h2 {
+    color: #666666; /* Soft grey heading */
+    text-align: center;
 }
 
 .drop-zone {
-    border: 2px dashed #ced4da; /* Grey dashed border */
+    border: 2px dashed #e0e0e0; /* Very light grey dashed border */
     padding: 20px;
     text-align: center;
     cursor: pointer;
-    background: #fff;
     border-radius: 8px;
-    transition: border-color 0.3s, background 0.3s;
+    margin-bottom: 20px;
+    background: #ffffff; /* White drop zone background */
 }
 
 .drop-zone.dragover {
-    border-color: #6c757d; /* Medium grey on drag */
-    background: #e9ecef; /* Light grey background */
+    background: #f5f5f5; /* Very light grey on drag */
 }
 
-.drop-zone p {
-    margin: 0;
-    color: #6c757d; /* Medium grey text */
+.image-preview img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
 }
 
+/* View counter styles */
+.view-count {
+    font-size: 0.9em;
+    color: #888888; /* Soft grey text */
+    margin-left: 10px;
+}
+
+/* Project Grid Styles */
 .project-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
@@ -135,9 +229,9 @@ footer {
 }
 
 .card {
-    background: #fff;
+    background: #ffffff; /* White card background */
     border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* Softer shadow */
     overflow: hidden;
     transition: transform 0.2s, box-shadow 0.2s;
     cursor: pointer;
@@ -145,33 +239,34 @@ footer {
 
 .card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); /* From index.html inline style */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Slightly more prominent hover shadow */
 }
 
 .card-img-top {
     height: 200px;
-    object-fit: cover; /* From index.html inline style */
+    object-fit: cover;
 }
 
 .card-body h5 {
     font-size: 18px;
     margin: 10px;
-    color: #343a40; /* Dark grey title */
+    color: #555555; /* Soft grey title */
 }
 
 .card-body p {
     font-size: 14px;
-    color: #6c757d; /* Medium grey text */
+    color: #888888; /* Soft grey text */
     margin: 0 10px 10px;
 }
 
+/* Filter Form Styles */
 .filter-form {
     max-width: 600px;
     margin: 20px auto;
-    background: #f8f9fa; /* Light grey from index.html inline style */
+    background: #f9f9f9; /* Very light grey background */
     padding: 20px;
     border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* Softer shadow */
     display: none;
 }
 
@@ -179,49 +274,18 @@ footer {
     display: block;
 }
 
-/* Button Styles */
-.btn-primary {
-    background: #495057; /* Darker grey button */
-    border: none;
-    color: #fff;
-}
-
-.btn-primary:hover {
-    background: #6c757d; /* Medium grey hover */
-}
-
-.btn-secondary {
-    background: #6c757d; /* Medium grey button */
-    border: none;
-    color: #fff;
-}
-
-.btn-secondary:hover {
-    background: #5a6268; /* Slightly darker grey hover */
-}
-
-.btn-outline-primary {
-    border-color: #495057; /* Darker grey border */
-    color: #495057;
-}
-
-.btn-outline-primary:hover {
-    background: #495057;
-    color: #fff;
-}
-
 /* Settings Page Styles */
 .settings-form {
     max-width: 600px;
     margin: 70px auto;
-    background: #fff;
+    background: #ffffff; /* White settings form background */
     padding: 30px;
     border-radius: 10px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); /* Softer shadow */
 }
 
 .settings-form h2 {
-    color: #343a40; /* Dark grey heading */
+    color: #555555; /* Soft grey heading */
 }
 
 .password-section {
@@ -241,68 +305,201 @@ footer {
 
 .activity-log li {
     padding: 10px 0;
-    border-bottom: 1px solid #dee2e6; /* Light grey border */
+    border-bottom: 1px solid #f0f0f0; /* Very light grey border */
 }
 
 /* About Page Styles */
 .about-container {
     max-width: 900px;
     margin: 100px auto 50px;
-    background: #fff;
+    background: #ffffff; /* White about container background */
     padding: 40px;
     border-radius: 10px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); /* Softer shadow */
 }
 
 .about-container h1 {
     font-size: 36px;
-    color: #343a40; /* Dark grey heading */
+    color: #555555; /* Soft grey heading */
     margin-bottom: 15px;
 }
 
 .about-container .lead {
     font-size: 20px;
-    color: #6c757d; /* Medium grey text */
+    color: #888888; /* Soft grey text */
 }
 
 .about-container p {
     font-size: 16px;
     line-height: 1.6;
-    color: #495057; /* Darker grey text */
+    color: #666666; /* Soft grey text */
 }
 
 .about-container h3 {
     font-size: 24px;
     margin-top: 40px;
     margin-bottom: 20px;
-    color: #343a40; /* Dark grey heading */
+    color: #555555; /* Soft grey heading */
 }
 
 .accordion-button {
     font-size: 18px;
-    color: #495057; /* Darker grey text */
+    color: #666666; /* Soft grey text */
 }
 
 .accordion-button:not(.collapsed) {
-    color: #343a40; /* Dark grey text */
-    background-color: #e9ecef; /* Light grey background */
+    color: #555555; /* Soft grey text */
+    background-color: #f5f5f5; /* Very light grey background */
 }
 
 .team-section {
-    background: #fff;
+    background: #ffffff; /* White team section background */
     padding: 40px 20px;
     text-align: center;
-    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.05); /* Softer shadow */
     margin-bottom: 20px;
 }
 
 .team-section h3 {
     font-size: 28px;
     margin-bottom: 20px;
-    color: #343a40; /* Dark grey heading */
+    color: #555555; /* Soft grey heading */
 }
 
 .team-section p {
     font-size: 16px;
-    color: #6c757d; /* Medium grey text */
+    color: #888888; /* Soft grey text */
+}
+
+/* Profile Page Styles */
+.profile-container {
+    margin-top: 20px;
+}
+
+.profile-sidebar {
+    background: #ffffff; /* White sidebar background */
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* Softer shadow */
+}
+
+.profile-sidebar img {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin: 0 auto 10px;
+    display: block;
+}
+
+.profile-sidebar h2 {
+    font-size: 24px;
+    text-align: center;
+    color: #555555; /* Soft grey text */
+    margin-bottom: 15px;
+}
+
+.profile-main {
+    background: #ffffff; /* White main content background */
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* Softer shadow */
+}
+
+.project-list {
+    list-style: none;
+    padding: 0;
+}
+
+.project-list a {
+    color: #007bff; /* Blue link */
+    text-decoration: none;
+    font-size: 14px;
+    display: block;
+    padding: 5px 0;
+}
+
+.project-list a:hover {
+    text-decoration: underline;
+}
+
+.add-project {
+    font-size: 50px;
+    cursor: pointer;
+    color: #007bff; /* Blue plus sign */
+    text-align: center;
+    background: #f5f5f5; /* Very light grey background */
+    width: 80px;
+    height: 80px;
+    line-height: 80px;
+    border-radius: 50%;
+    margin: 20px auto;
+}
+
+.card-buttons {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    gap: 8px;
+}
+
+.delete-btn, .edit-btn {
+    background: #dc3545; /* Red delete button */
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.edit-btn {
+    background: #007bff; /* Blue edit button */
+}
+
+/* Project Page Styles */
+.project-container {
+    max-width: 800px;
+    margin: 100px auto;
+    background: #ffffff; /* White project container */
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); /* Softer shadow */
+}
+
+.project-container h1 {
+    font-size: 28px;
+    color: #555555; /* Soft grey title */
+    margin-bottom: 20px;
+}
+
+.project-container img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.project-container p, .project-container .tag {
+    font-size: 16px;
+    color: #666666; /* Soft grey text */
+}
+
+.tag {
+    display: inline-block;
+    background: #f5f5f5; /* Very light grey background */
+    padding: 5px 10px;
+    border-radius: 5px;
+    margin: 5px;
+}
+
+.project-meta {
+    font-size: 14px;
+    color: #888888; /* Soft grey text */
+    margin-bottom: 20px;
 }

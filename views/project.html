@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShareCase - Project Details</title>
+    <title>ShareCase - Project</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -15,28 +15,46 @@
         <div class="logo">
             <a href="/index.html">ShareCase</a>
         </div>
+        <div class="search-bar position-relative">
+            <input type="text" class="form-control" id="searchInput" placeholder="Search projects...">
+            <button class="btn position-absolute" style="right: 5px; top: 50%; transform: translateY(-50%);" onclick="window.location.href='/index.html'"><i class="fas fa-filter"></i></button>
+        </div>
         <div class="user-menu">
-            <div class="profile-container">
+            <div class="profile-container" id="userMenuToggle">
                 <img id="headerProfilePic" src="https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg" alt="Profile Picture">
                 <span id="headerProfileName">Guest</span>
-                <div class="dropdown-menu">
+                <div class="dropdown-menu" id="userDropdown">
+                    <a href="/profile.html">Profile</a>
+                    <a href="/settings.html">Settings</a>
                     <a href="/upload-project.html">Upload Project</a>
-                    <a href="/logout">Logout</a>
+                    <a id="authLink" href="/logout">Logout</a>
+                    <a href="/about.html">About</a>
                 </div>
             </div>
         </div>
     </header>
     <main>
-        <div class="container">
-            <div class="card my-4">
-                <img id="projectImage" class="card-img-top" src="https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg" alt="Project Image">
-                <div class="card-body">
-                    <h2 id="projectTitle" class="card-title"></h2>
-                    <p id="projectDescription" class="card-text"></p>
-                    <div class="d-flex align-items-center">
-                        <small id="projectViews" class="view-count">Views: 0</small>
+        <div class="container project-container">
+            <h1 id="projectTitle">Project Title</h1>
+            <img id="projectImage" src="https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg" alt="Project Image">
+            <p><strong>Description:</strong> <span id="projectDescription">N/A</span></p>
+            <p><strong>Problem Statement:</strong> <span id="projectProblemStatement">N/A</span></p>
+            <p><strong>Collaborators:</strong> <span id="projectCollaborators">None</span></p>
+            <p><strong>Tags:</strong> <span id="projectTags">None</span></p>
+            <p><strong>Resources:</strong> <span id="projectResources">None</span></p>
+            <p class="project-meta">
+                <span><i class="fas fa-heart"></i> <span id="projectLikes">0</span></span>
+                <span class="view-count"><i class="fas fa-eye"></i> <span id="projectViews">0</span></span>
+            </p>
+            <div class="comment-section">
+                <h3>Comments</h3>
+                <ul class="comment-list" id="commentList"></ul>
+                <form id="commentForm">
+                    <div class="mb-3">
+                        <textarea class="form-control" id="commentText" rows="4" placeholder="Add a comment..." required></textarea>
                     </div>
-                </div>
+                    <button type="submit" class="btn btn-primary">Post Comment</button>
+                </form>
             </div>
         </div>
     </main>
@@ -45,6 +63,7 @@
     </footer>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="/js/scripts.js"></script>
     <script>
         async function loadUserProfile() {
             try {
@@ -53,49 +72,111 @@
                     const user = await response.json();
                     document.getElementById('headerProfileName').textContent = user.name || 'Guest';
                     document.getElementById('headerProfilePic').src = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
+                    const authLink = document.getElementById('authLink');
+                    authLink.textContent = 'Logout';
+                    authLink.href = '/logout';
                 } else {
-                    Toastify({
-                        text: 'Please log in to view this page',
-                        duration: 1000,
-                        style: { background: '#e74c3c' },
-                    }).showToast();
-                    setTimeout(() => window.location.href = '/login.html', 1000);
+                    document.getElementById('authLink').textContent = 'Login';
+                    document.getElementById('authLink').href = '/login.html';
                 }
             } catch (error) {
                 console.error('Error loading user profile:', error);
-                Toastify({
-                    text: 'Error loading user profile',
-                    duration: 1000,
-                    style: { background: '#e74c3c' },
-                }).showToast();
-                setTimeout(() => window.location.href = '/login.html', 1000);
             }
         }
 
         async function loadProject() {
             try {
                 const urlParams = new URLSearchParams(window.location.search);
-                const projectId = urlParams.get('id');
-                if (!projectId) throw new Error('No project ID provided');
-                const response = await fetch(`/projects/${projectId}`);
+                const id = urlParams.get('id');
+                if (!id) {
+                    throw new Error('No project ID provided');
+                }
+                const response = await fetch(`/project/${id}`);
                 if (!response.ok) {
-                    throw new Error(response.status === 401 ? 'Please log in to view this project' : 'Project not found');
+                    throw new Error(response.status === 401 ? 'Please log in to view this project' : response.status === 404 ? 'Project not found' : 'Server error, please try again later');
                 }
                 const project = await response.json();
-                document.getElementById('projectTitle').textContent = project.title;
-                document.getElementById('projectDescription').textContent = project.description || 'No description';
+                document.getElementById('projectTitle').textContent = project.title || 'Untitled Project';
                 document.getElementById('projectImage').src = project.image || 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg';
-                document.getElementById('projectViews').textContent = `Views: ${project.views || 0}`;
+                document.getElementById('projectDescription').textContent = project.description || 'N/A';
+                document.getElementById('projectProblemStatement').textContent = project.problemStatement || 'N/A';
+                document.getElementById('projectCollaborators').textContent = project.collaborators?.join(', ') || 'None';
+                document.getElementById('projectTags').innerHTML = project.tags?.map(t => `<span class="tag">${t}</span>`).join(' ') || 'None';
+                document.getElementById('projectResources').innerHTML = project.resources?.map(r => `<p><a href="${r}" target="_blank">${r.split('/').pop()}</a></p>`).join('') || 'None';
+                document.getElementById('projectLikes').textContent = project.likes || 0;
+                document.getElementById('projectViews').textContent = project.views || 0;
+
+                const commentList = document.getElementById('commentList');
+                commentList.innerHTML = project.comments?.length
+                    ? project.comments.map(c => `
+                        <li>
+                            <p><strong>${c.userName || 'User ' + c.userId}</strong>: ${c.text}</p>
+                            <p class="comment-meta">${new Date(c.timestamp).toLocaleString()}</p>
+                        </li>
+                    `).join('')
+                    : '<li>No comments yet.</li>';
             } catch (error) {
                 console.error('Error loading project:', error);
                 Toastify({
                     text: error.message,
-                    duration: 1000,
+                    duration: 3000,
                     style: { background: '#e74c3c' },
                 }).showToast();
-                setTimeout(() => window.location.href = '/index.html', 1000);
+                setTimeout(() => window.location.href = '/index.html', 3000);
             }
         }
+
+        document.getElementById('commentForm').addEventListener('submit', async e => {
+            e.preventDefault();
+            const urlParams = new URLSearchParams(window.location.search);
+            const id = urlParams.get('id');
+            if (!id) {
+                Toastify({
+                    text: 'No project ID provided',
+                    duration: 3000,
+                    style: { background: '#e74c3c' },
+                }).showToast();
+                return;
+            }
+            const text = document.getElementById('commentText').value.trim();
+            if (!text) {
+                Toastify({
+                    text: 'Comment cannot be empty',
+                    duration: 3000,
+                    style: { background: '#e74c3c' },
+                }).showToast();
+                return;
+            }
+            try {
+                const response = await fetch(`/project/${id}/comment`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text }),
+                });
+                if (!response.ok) {
+                    throw new Error(response.status === 401 ? 'Please log in to post comments' : 'Server error, please try again later');
+                }
+                const result = await response.json();
+                if (result.success) {
+                    Toastify({
+                        text: 'Comment posted',
+                        duration: 3000,
+                        style: { background: '#2ecc71' },
+                    }).showToast();
+                    document.getElementById('commentText').value = '';
+                    loadProject();
+                } else {
+                    throw new Error(result.error || 'Failed to post comment');
+                }
+            } catch (error) {
+                console.error('Error posting comment:', error);
+                Toastify({
+                    text: error.message,
+                    duration: 3000,
+                    style: { background: '#e74c3c' },
+                }).showToast();
+            }
+        });
 
         window.onload = () => {
             loadUserProfile();

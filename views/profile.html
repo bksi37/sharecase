@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShareCase - My Profile</title>
+    <title>ShareCase - Profile</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -17,13 +17,13 @@
         </div>
         <div class="search-bar position-relative">
             <input type="text" class="form-control" id="searchInput" placeholder="Search projects...">
-            <button class="btn position-absolute" style="right: 5px; top: 50%; transform: translateY(-50%);" id="filterBtn"><i class="fas fa-filter"></i></button>
+            <button class="btn position-absolute" style="right: 5px; top: 50%; transform: translateY(-50%);" onclick="window.location.href='/index.html'"><i class="fas fa-filter"></i></button>
         </div>
         <div class="user-menu">
-            <div class="profile-container">
+            <div class="profile-container" id="userMenuToggle">
                 <img id="headerProfilePic" src="https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg" alt="Profile Picture">
                 <span id="headerProfileName">Guest</span>
-                <div class="dropdown-menu">
+                <div class="dropdown-menu" id="userDropdown">
                     <a href="/profile.html">Profile</a>
                     <a href="/settings.html">Settings</a>
                     <a href="/upload-project.html">Upload Project</a>
@@ -34,20 +34,30 @@
         </div>
     </header>
     <main>
-        <div class="container">
+        <div class="container profile-container">
             <div class="row">
-                <div class="col-md-4">
-                    <div class="card">
-                        <img id="profilePic" src="https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg" class="card-img-top" alt="Profile Picture">
-                        <div class="card-body">
-                            <h5 class="card-title" id="profileName">Loading...</h5>
-                            <p class="card-text" id="profileEmail">Loading...</p>
-                        </div>
+                <div class="col-md-3">
+                    <div class="profile-sidebar">
+                        <img id="profilePic" src="https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg" alt="Profile">
+                        <h2 id="profileName">Your Name</h2>
+                        <button class="btn btn-primary w-100 mb-3" id="generatePortfolioBtn">Generate Portfolio</button>
+                        <ul class="project-list" id="project-list"></ul>
                     </div>
                 </div>
-                <div class="col-md-8">
-                    <h3>My Projects</h3>
-                    <div class="row row-cols-1 row-cols-md-2 g-4" id="projectGrid"></div>
+                <div class="col-md-9">
+                    <div class="profile-main">
+                        <ul class="nav nav-tabs">
+                            <li class="nav-item">
+                                <a class="nav-link active" href="#" id="work-tab">Work</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#" id="drafts-tab">Drafts</a>
+                            </li>
+                        </ul>
+                        <div class="add-project" onclick="window.location.href='/upload-project.html'">+</div>
+                        <div class="row row-cols-1 row-cols-md-3 g-4" id="work-projects"></div>
+                        <div class="row row-cols-1 row-cols-md-3 g-4" id="drafts-projects" style="display: none;"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -57,6 +67,7 @@
     </footer>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="/js/scripts.js"></script>
     <script>
         async function loadUserProfile() {
             try {
@@ -65,15 +76,22 @@
                     const user = await response.json();
                     document.getElementById('headerProfileName').textContent = user.name || 'Guest';
                     document.getElementById('headerProfilePic').src = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
-                    document.getElementById('profileName').textContent = user.name || 'Unknown';
-                    document.getElementById('profileEmail').textContent = user.email || 'No email';
+                    document.getElementById('profileName').textContent = user.name || 'Your Name';
                     document.getElementById('profilePic').src = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
                     const authLink = document.getElementById('authLink');
                     authLink.textContent = 'Logout';
                     authLink.href = '/logout';
+                    if (!user.isProfileComplete) {
+                        Toastify({
+                            text: 'Please complete your profile',
+                            duration: 3000,
+                            style: { background: '#e74c3c' },
+                        }).showToast();
+                        setTimeout(() => window.location.href = '/create-profile.html', 3000);
+                    }
                 } else {
                     Toastify({
-                        text: 'Please log in to view this page',
+                        text: response.status === 401 ? 'Please log in to view profile' : 'Server error, please try again later',
                         duration: 3000,
                         style: { background: '#e74c3c' },
                     }).showToast();
@@ -90,32 +108,66 @@
             }
         }
 
-        async function loadUserProjects() {
+        async function loadProjects() {
             try {
-                const response = await fetch('/my-projects');
+                const response = await fetch('/user-projects');
                 if (!response.ok) {
                     throw new Error(response.status === 401 ? 'Please log in to view projects' : 'Server error, please try again later');
                 }
                 const projects = await response.json();
-                const projectGrid = document.getElementById('projectGrid');
-                projectGrid.innerHTML = projects.length
-                    ? projects.map(project => `
-                        <div class="col" data-id="${project.id}">
+                const workProjects = document.getElementById('work-projects');
+                const draftsProjects = document.getElementById('drafts-projects');
+                const projectList = document.getElementById('project-list');
+
+                const published = projects.filter(p => p.isPublished);
+                const drafts = projects.filter(p => !p.isPublished);
+
+                projectList.innerHTML = projects.length
+                    ? projects.map(p => `<li><a href="/project.html?id=${p.id}">${p.title}</a></li>`).join('')
+                    : '<li>No projects yet.</li>';
+
+                workProjects.innerHTML = published.length
+                    ? published.map(p => `
+                        <div class="col" data-id="${p.id}">
                             <div class="card h-100">
-                                <img src="${project.image}" class="card-img-top" alt="${project.title}" onerror="this.src='https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'">
+                                <img src="${p.image}" class="card-img-top" alt="${p.title}" onerror="this.src='https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'">
                                 <div class="card-body">
-                                    <h5 class="card-title">${project.title}</h5>
-                                    <p class="card-text">${project.description ? project.description.substring(0, 100) + '...' : 'No description'}</p>
+                                    <h5 class="card-title">${p.title}</h5>
+                                    <p class="card-text">${p.description ? p.description.substring(0, 100) + '...' : 'No description'}</p>
+                                </div>
+                                <div class="card-buttons">
+                                    <button class="edit-btn" onclick="editProject('${p.id}')"><i class="fas fa-edit"></i></button>
+                                    <button class="delete-btn" onclick="deleteProject('${p.id}')"><i class="fas fa-trash"></i></button>
                                 </div>
                             </div>
                         </div>
                     `).join('')
-                    : '<p>No projects found.</p>';
+                    : '<p>No published projects.</p>';
+
+                draftsProjects.innerHTML = drafts.length
+                    ? drafts.map(p => `
+                        <div class="col" data-id="${p.id}">
+                            <div class="card h-100">
+                                <img src="${p.image}" class="card-img-top" alt="${p.title}" onerror="this.src='https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'">
+                                <div class="card-body">
+                                    <h5 class="card-title">${p.title}</h5>
+                                    <p class="card-text">${p.description ? p.description.substring(0, 100) + '...' : 'No description'}</p>
+                                </div>
+                                <div class="card-buttons">
+                                    <button class="edit-btn" onclick="editProject('${p.id}')"><i class="fas fa-edit"></i></button>
+                                    <button class="delete-btn" onclick="deleteProject('${p.id}')"><i class="fas fa-trash"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')
+                    : '<p>No drafts.</p>';
 
                 document.querySelectorAll('.card').forEach(card => {
-                    card.addEventListener('click', () => {
-                        const projectId = card.parentElement.getAttribute('data-id');
-                        window.location.href = `/project.html?id=${projectId}`;
+                    card.addEventListener('click', (e) => {
+                        if (!e.target.closest('.card-buttons')) {
+                            const projectId = card.parentElement.getAttribute('data-id');
+                            window.location.href = `/project.html?id=${projectId}`;
+                        }
                     });
                 });
             } catch (error) {
@@ -128,9 +180,86 @@
             }
         }
 
+        function editProject(projectId) {
+            window.location.href = `/edit-project.html?id=${projectId}`;
+        }
+
+        async function deleteProject(projectId) {
+            if (!confirm('Are you sure you want to delete this project?')) return;
+            try {
+                const response = await fetch(`/project/${projectId}`, {
+                    method: 'DELETE',
+                });
+                if (response.ok) {
+                    Toastify({
+                        text: 'Project deleted successfully',
+                        duration: 3000,
+                        style: { background: '#2ecc71' },
+                    }).showToast();
+                    loadProjects();
+                } else {
+                    throw new Error('Failed to delete project');
+                }
+            } catch (error) {
+                console.error('Error deleting project:', error);
+                Toastify({
+                    text: error.message,
+                    duration: 3000,
+                    style: { background: '#e74c3c' },
+                }).showToast();
+            }
+        }
+
+        document.getElementById('work-tab').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.getElementById('work-tab').classList.add('active');
+            document.getElementById('drafts-tab').classList.remove('active');
+            document.getElementById('work-projects').style.display = 'flex';
+            document.getElementById('drafts-projects').style.display = 'none';
+        });
+
+        document.getElementById('drafts-tab').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.getElementById('drafts-tab').classList.add('active');
+            document.getElementById('work-tab').classList.remove('active');
+            document.getElementById('drafts-projects').style.display = 'flex';
+            document.getElementById('work-projects').style.display = 'none';
+        });
+
+        document.getElementById('generatePortfolioBtn').addEventListener('click', async () => {
+            try {
+                const response = await fetch('/generate-portfolio', {
+                    method: 'POST',
+                });
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'portfolio.pdf';
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    Toastify({
+                        text: 'Portfolio generated successfully',
+                        duration: 3000,
+                        style: { background: '#2ecc71' },
+                    }).showToast();
+                } else {
+                    throw new Error('Failed to generate portfolio');
+                }
+            } catch (error) {
+                console.error('Error generating portfolio:', error);
+                Toastify({
+                    text: error.message,
+                    duration: 3000,
+                    style: { background: '#e74c3c' },
+                }).showToast();
+            }
+        });
+
         window.onload = () => {
             loadUserProfile();
-            loadUserProjects();
+            loadProjects();
         };
     </script>
 </body>
