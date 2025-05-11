@@ -11,6 +11,9 @@ require('dotenv').config();
 // Initialize Express app
 const app = express();
 
+// Set Mongoose strictQuery to suppress deprecation warning
+mongoose.set('strictQuery', true);
+
 // MongoDB Connection
 mongoose.connect(process.env.MONGO_URL, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => console.log('MongoDB connected successfully'))
@@ -18,7 +21,7 @@ mongoose.connect(process.env.MONGO_URL, { useNewUrlParser: true, useUnifiedTopol
         console.error('MongoDB connection error:', err);
         process.exit(1); // Exit if MongoDB fails to connect
     });
-
+    
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
