@@ -6,7 +6,8 @@ const UserSchema = new mongoose.Schema({
     name: String,
     schoolEmail: String,
     profilePic: String,
-    isProfileComplete: { type: Boolean, default: false }
+    isProfileComplete: { type: Boolean, default: false },
+    createdAt: { type: Date, default: Date.now }
 });
 
 module.exports = mongoose.model('User', UserSchema);

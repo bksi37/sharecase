@@ -7,6 +7,7 @@ const fileUpload = require('express-fileupload');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 require('dotenv').config();
+const { isAuthenticated, isProfileComplete } = require('./middleware/auth'); // Add this import
 
 // Initialize Express app
 const app = express();
@@ -61,6 +62,7 @@ app.get('/create-profile.html', (req, res) => res.sendFile(path.join(__dirname, 
 app.get('/index.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'index.html')));
 app.get('/upload-project.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'upload-project.html')));
 app.get('/project.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'project.html')));
+app.get('/profile.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'profile.html')));
 
 // Error Handling
 app.use((err, req, res, next) => {
