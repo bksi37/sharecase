@@ -9,12 +9,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/styles.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
-    <style>
-        .card-img-top { height: 200px; object-fit: cover; }
-        .card { cursor: pointer; }
-        .card:hover { box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); }
-        #filterForm { background: #f8f9fa; padding: 20px; border-radius: 8px; }
-    </style>
 </head>
 <body>
     <header class="d-flex justify-content-between align-items-center">
@@ -26,10 +20,10 @@
             <button class="btn position-absolute" style="right: 5px; top: 50%; transform: translateY(-50%);" id="filterBtn"><i class="fas fa-filter"></i></button>
         </div>
         <div class="user-menu">
-            <div class="profile-container">
+            <div class="profile-container" id="userMenuToggle">
                 <img id="headerProfilePic" src="https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg" alt="Profile Picture">
                 <span id="headerProfileName">Guest</span>
-                <div class="dropdown-menu">
+                <div class="dropdown-menu" id="userDropdown">
                     <a href="/profile.html">Profile</a>
                     <a href="/settings.html">Settings</a>
                     <a href="/upload-project.html">Upload Project</a>
@@ -41,7 +35,7 @@
     </header>
     <main>
         <div class="container">
-            <div id="filterForm" class="mb-4" style="display: none;">
+            <div id="filterForm" class="filter-form mb-4">
                 <div class="row g-3">
                     <div class="col-md-4">
                         <select class="form-select" id="courseFilter">
@@ -72,6 +66,7 @@
     </footer>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="/js/scripts.js"></script>
     <script>
         async function loadUserProfileInHeader() {
             try {
@@ -172,7 +167,7 @@
 
         document.getElementById('filterBtn').addEventListener('click', () => {
             const filterForm = document.getElementById('filterForm');
-            filterForm.style.display = filterForm.style.display === 'none' ? 'block' : 'none';
+            filterForm.classList.toggle('active');
         });
 
         document.getElementById('applyFilters').addEventListener('click', () => {
