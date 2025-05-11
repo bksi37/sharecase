@@ -7,6 +7,11 @@ const UserSchema = new mongoose.Schema({
     schoolEmail: String,
     profilePic: String,
     isProfileComplete: { type: Boolean, default: false },
+    notifications: { type: String, default: 'all', enum: ['all', 'important', 'none'] },
+    theme: { type: String, default: 'light', enum: ['light', 'dark', 'system'] },
+    privacy: { type: String, default: 'public', enum: ['public', 'private'] },
+    twoFactorAuth: { type: Boolean, default: false },
+    activityLog: [{ action: String, timestamp: Date }],
     createdAt: { type: Date, default: Date.now }
 });
 

@@ -7,7 +7,7 @@ const fileUpload = require('express-fileupload');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 require('dotenv').config();
-const { isAuthenticated, isProfileComplete } = require('./middleware/auth'); // Add this import
+const { isAuthenticated, isProfileComplete } = require('./middleware/auth');
 
 // Initialize Express app
 const app = express();
@@ -20,7 +20,7 @@ mongoose.connect(process.env.MONGO_URL, { useNewUrlParser: true, useUnifiedTopol
     .then(() => console.log('MongoDB connected successfully'))
     .catch(err => {
         console.error('MongoDB connection error:', err);
-        process.exit(1); // Exit if MongoDB fails to connect
+        process.exit(1);
     });
 
 // Middleware
@@ -63,6 +63,8 @@ app.get('/index.html', isAuthenticated, isProfileComplete, (req, res) => res.sen
 app.get('/upload-project.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'upload-project.html')));
 app.get('/project.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'project.html')));
 app.get('/profile.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'profile.html')));
+app.get('/settings.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'settings.html')));
+app.get('/about.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'about.html')));
 
 // Error Handling
 app.use((err, req, res, next) => {
