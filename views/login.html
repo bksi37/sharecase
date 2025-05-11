@@ -3,23 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShareCase - Log In</title>
+    <title>ShareCase - Login</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
 </head>
 <body>
     <header class="d-flex justify-content-between align-items-center">
         <div class="logo">
-            <a href="/landing.html">ShareCase</a>
+            <a href="/">ShareCase</a>
         </div>
     </header>
     <main>
         <div class="container">
-            <div class="upload-container">
-                <h2>Log In</h2>
-                <form id="loginForm" action="/login" method="POST">
+            <div class="auth-container">
+                <h2>Login</h2>
+                <form id="loginForm">
                     <div class="mb-3">
                         <label for="email" class="form-label">Email</label>
                         <input type="email" class="form-control" id="email" name="email" required>
@@ -28,9 +29,9 @@
                         <label for="password" class="form-label">Password</label>
                         <input type="password" class="form-control" id="password" name="password" required>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100">Log In</button>
+                    <button type="submit" class="btn btn-primary">Login</button>
                 </form>
-                <p class="mt-3 text-center">Don't have an account? <a href="/signup.html">Sign Up</a></p>
+                <p class="mt-3">Don't have an account? <a href="/signup.html">Sign up</a></p>
             </div>
         </div>
     </main>
@@ -38,5 +39,43 @@
         <p>© 2025 ShareCase. All rights reserved.</p>
     </footer>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            try {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await response.json();
+                if (response.ok && data.success) {
+                    Toastify({
+                        text: 'Login successful!',
+                        duration: 3000,
+                        style: { background: '#28a745' },
+                    }).showToast();
+                    // Redirect based on profile completion
+                    if (data.isProfileComplete) {
+                        setTimeout(() => window.location.href = '/index.html', 3000);
+                    } else {
+                        setTimeout(() => window.location.href = '/create-profile.html', 3000);
+                    }
+                } else {
+                    throw new Error(data.error || 'Login failed');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                Toastify({
+                    text: error.message,
+                    duration: 3000,
+                    style: { background: '#e74c3c' },
+                }).showToast();
+            }
+        });
+    </script>
 </body>
 </html>
