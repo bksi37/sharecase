@@ -47,8 +47,27 @@
                         <textarea class="form-control" id="description" name="description" rows="4"></textarea>
                     </div>
                     <div class="mb-3">
+                        <label for="problemStatement" class="form-label">Problem Statement</label>
+                        <textarea class="form-control" id="problemStatement" name="problemStatement" rows="4"></textarea>
+                    </div>
+                    <div class="mb-3">
                         <label for="tags" class="form-label">Tags (e.g., MECH101,2023,Robotics)</label>
                         <input type="text" class="form-control" id="tags" name="tags" placeholder="Comma-separated tags">
+                    </div>
+                    <div class="mb-3">
+                        <label for="collaborators" class="form-label">Collaborators (e.g., John Doe,Jane Smith)</label>
+                        <input type="text" class="form-control" id="collaborators" name="collaborators" placeholder="Comma-separated names">
+                    </div>
+                    <div class="mb-3">
+                        <label for="resources" class="form-label">Resources (e.g., http://example.com/doc.pdf)</label>
+                        <input type="text" class="form-control" id="resources" name="resources" placeholder="Comma-separated URLs">
+                    </div>
+                    <div class="mb-3">
+                        <label for="isPublished" class="form-label">Publish Status</label>
+                        <select class="form-select" id="isPublished" name="isPublished">
+                            <option value="true">Published</option>
+                            <option value="false">Draft</option>
+                        </select>
                     </div>
                     <div class="mb-3">
                         <label for="image" class="form-label">Project Image</label>
@@ -138,7 +157,11 @@
             const formData = new FormData();
             formData.append('title', document.getElementById('title').value);
             formData.append('description', document.getElementById('description').value);
+            formData.append('problemStatement', document.getElementById('problemStatement').value);
             formData.append('tags', document.getElementById('tags').value);
+            formData.append('collaborators', document.getElementById('collaborators').value);
+            formData.append('resources', document.getElementById('resources').value);
+            formData.append('isPublished', document.getElementById('isPublished').value);
             const imageFile = document.getElementById('image').files[0];
             if (imageFile) {
                 formData.append('image', imageFile);
