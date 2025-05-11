@@ -1,13 +1,14 @@
-/* Existing styles (from previous responses) */
+/* Grey-Modern Theme */
 body {
     font-family: 'Roboto', sans-serif;
     margin: 0;
     padding: 0;
-    background: #f4f4f4;
+    background: #f8f9fa; /* Light grey background */
+    color: #333; /* Dark grey text */
 }
 
 header {
-    background: #007bff;
+    background: #343a40; /* Dark grey header */
     color: #fff;
     padding: 10px 20px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
@@ -26,6 +27,15 @@ header {
 
 .search-bar input {
     padding-right: 40px;
+    border: 1px solid #ced4da;
+    border-radius: 5px;
+    background: #fff;
+}
+
+.search-bar .btn {
+    background: transparent;
+    border: none;
+    color: #6c757d; /* Medium grey icon */
 }
 
 .user-menu {
@@ -50,7 +60,7 @@ header {
     top: 100%;
     right: 0;
     background: #fff;
-    border: 1px solid #ddd;
+    border: 1px solid #dee2e6;
     border-radius: 5px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     display: none;
@@ -66,7 +76,7 @@ header {
 }
 
 .dropdown-menu a:hover {
-    background: #f0f0f0;
+    background: #e9ecef; /* Light grey hover */
 }
 
 main {
@@ -84,13 +94,13 @@ main {
 
 .upload-container h2, .auth-container h2 {
     margin-bottom: 20px;
-    color: #333;
+    color: #343a40; /* Dark grey headings */
 }
 
 footer {
     text-align: center;
     padding: 10px;
-    background: #007bff;
+    background: #343a40; /* Dark grey footer */
     color: #fff;
     position: relative;
     bottom: 0;
@@ -98,23 +108,23 @@ footer {
 }
 
 .drop-zone {
-    border: 2px dashed #ccc;
+    border: 2px dashed #ced4da; /* Grey dashed border */
     padding: 20px;
     text-align: center;
     cursor: pointer;
-    background: #f8f9fa;
+    background: #fff;
     border-radius: 8px;
     transition: border-color 0.3s, background 0.3s;
 }
 
 .drop-zone.dragover {
-    border-color: #007bff;
-    background: #e7f1ff;
+    border-color: #6c757d; /* Medium grey on drag */
+    background: #e9ecef; /* Light grey background */
 }
 
 .drop-zone p {
     margin: 0;
-    color: #555;
+    color: #6c757d; /* Medium grey text */
 }
 
 .project-grid {
@@ -124,39 +134,41 @@ footer {
     padding: 20px;
 }
 
-.project-card {
+.card {
     background: #fff;
     border-radius: 8px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     overflow: hidden;
-    transition: transform 0.2s;
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
 }
 
-.project-card:hover {
+.card:hover {
     transform: translateY(-5px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); /* From index.html inline style */
 }
 
-.project-card img {
-    width: 100%;
-    height: 150px;
-    object-fit: cover;
+.card-img-top {
+    height: 200px;
+    object-fit: cover; /* From index.html inline style */
 }
 
-.project-card h3 {
+.card-body h5 {
     font-size: 18px;
     margin: 10px;
+    color: #343a40; /* Dark grey title */
 }
 
-.project-card p {
+.card-body p {
     font-size: 14px;
-    color: #666;
+    color: #6c757d; /* Medium grey text */
     margin: 0 10px 10px;
 }
 
 .filter-form {
     max-width: 600px;
     margin: 20px auto;
-    background: #fff;
+    background: #f8f9fa; /* Light grey from index.html inline style */
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
@@ -167,7 +179,38 @@ footer {
     display: block;
 }
 
-/* Settings Page Styles (from settings.html) */
+/* Button Styles */
+.btn-primary {
+    background: #495057; /* Darker grey button */
+    border: none;
+    color: #fff;
+}
+
+.btn-primary:hover {
+    background: #6c757d; /* Medium grey hover */
+}
+
+.btn-secondary {
+    background: #6c757d; /* Medium grey button */
+    border: none;
+    color: #fff;
+}
+
+.btn-secondary:hover {
+    background: #5a6268; /* Slightly darker grey hover */
+}
+
+.btn-outline-primary {
+    border-color: #495057; /* Darker grey border */
+    color: #495057;
+}
+
+.btn-outline-primary:hover {
+    background: #495057;
+    color: #fff;
+}
+
+/* Settings Page Styles */
 .settings-form {
     max-width: 600px;
     margin: 70px auto;
@@ -178,7 +221,7 @@ footer {
 }
 
 .settings-form h2 {
-    color: #007bff;
+    color: #343a40; /* Dark grey heading */
 }
 
 .password-section {
@@ -186,7 +229,7 @@ footer {
 }
 
 .danger-zone {
-    border: 1px solid #dc3545;
+    border: 1px solid #dc3545; /* Keep red for danger */
     padding: 20px;
     border-radius: 8px;
 }
@@ -198,10 +241,10 @@ footer {
 
 .activity-log li {
     padding: 10px 0;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #dee2e6; /* Light grey border */
 }
 
-/* About Page Styles (from about.html) */
+/* About Page Styles */
 .about-container {
     max-width: 900px;
     margin: 100px auto 50px;
@@ -213,35 +256,36 @@ footer {
 
 .about-container h1 {
     font-size: 36px;
-    color: #007bff;
+    color: #343a40; /* Dark grey heading */
     margin-bottom: 15px;
 }
 
 .about-container .lead {
     font-size: 20px;
-    color: #555;
+    color: #6c757d; /* Medium grey text */
 }
 
 .about-container p {
     font-size: 16px;
     line-height: 1.6;
+    color: #495057; /* Darker grey text */
 }
 
 .about-container h3 {
     font-size: 24px;
     margin-top: 40px;
     margin-bottom: 20px;
-    color: #333;
+    color: #343a40; /* Dark grey heading */
 }
 
 .accordion-button {
     font-size: 18px;
-    color: #007bff;
+    color: #495057; /* Darker grey text */
 }
 
 .accordion-button:not(.collapsed) {
-    color: #0056b3;
-    background-color: #f0f8ff;
+    color: #343a40; /* Dark grey text */
+    background-color: #e9ecef; /* Light grey background */
 }
 
 .team-section {
@@ -255,10 +299,10 @@ footer {
 .team-section h3 {
     font-size: 28px;
     margin-bottom: 20px;
-    color: #007bff;
+    color: #343a40; /* Dark grey heading */
 }
 
 .team-section p {
     font-size: 16px;
-    color: #555;
+    color: #6c757d; /* Medium grey text */
 }
