@@ -21,7 +21,7 @@ mongoose.connect(process.env.MONGO_URL, { useNewUrlParser: true, useUnifiedTopol
         console.error('MongoDB connection error:', err);
         process.exit(1); // Exit if MongoDB fails to connect
     });
-    
+
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -58,9 +58,9 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'views', 'landing.h
 app.get('/signup.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'signup.html')));
 app.get('/login.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'login.html')));
 app.get('/create-profile.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'create-profile.html')));
-app.get('/index.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'index.html')));
-app.get('/upload-project.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'upload-project.html')));
-app.get('/project.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'project.html')));
+app.get('/index.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'index.html')));
+app.get('/upload-project.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'upload-project.html')));
+app.get('/project.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'project.html')));
 
 // Error Handling
 app.use((err, req, res, next) => {

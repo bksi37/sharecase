@@ -7,7 +7,7 @@ const router = express.Router();
 // Add Project
 router.post('/add-project', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
-        const { title, description } = req.body;
+        const { title, description, tags } = req.body; // Added tags
         if (!title) {
             return res.status(400).json({ error: 'Title is required' });
         }
@@ -23,6 +23,7 @@ router.post('/add-project', isAuthenticated, isProfileComplete, async (req, res)
         const project = new Project({
             title,
             description,
+            tags: tags ? tags.split(',').map(t => t.trim()) : [], // Added tags
             image: imageUrl,
             userId: req.session.userId
         });
@@ -54,8 +55,12 @@ router.get('/projects', isAuthenticated, isProfileComplete, async (req, res) => 
 // Search Projects
 router.get('/search', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
-        const { q } = req.query;
-        const query = q ? { title: { $regex: q, $options: 'i' } } : {};
+        const { q, course, year, type } = req.query;
+        const query = {};
+        if (q) query.title = { $regex: q, $options: 'i' };
+        if (course || year || type) {
+            query.tags = { $all: [course, year, type].filter(t => t) };
+        }
         const projects = await Project.find(query).populate('userId', 'name');
         res.json(projects.map(p => ({
             id: p._id,
@@ -66,6 +71,20 @@ router.get('/search', isAuthenticated, isProfileComplete, async (req, res) => {
         })));
     } catch (error) {
         console.error('Search projects error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Filter Options
+router.get('/filter-options', isAuthenticated, isProfileComplete, async (req, res) => {
+    try {
+        const projects = await Project.find();
+        const courses = [...new Set(projects.flatMap(p => p.tags.filter(t => t.startsWith('MECH') || t.startsWith('CS'))))];
+        const years = [...new Set(projects.flatMap(p => p.tags.filter(t => /^\d{4}$/.test(t))))];
+        const types = [...new Set(projects.flatMap(p => p.tags.filter(t => ['Robotics', 'Software', 'Hardware'].includes(t))))];
+        res.json({ courses, years, types });
+    } catch (error) {
+        console.error('Filter options error:', error);
         res.status(500).json({ error: 'Server error' });
     }
 });
