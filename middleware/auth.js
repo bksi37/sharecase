@@ -1,10 +1,10 @@
 const User = require('../models/User');
 
 const isAuthenticated = (req, res, next) => {
-    if (!req.session.userId) {
-        return res.status(401).json({ error: 'Please log in' });
+    if (req.session.userId) {
+        return next();
     }
-    next();
+    res.status(401).json({ error: 'Please log in to access this resource' });
 };
 
 const isProfileComplete = async (req, res, next) => {
@@ -13,12 +13,12 @@ const isProfileComplete = async (req, res, next) => {
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
-        if (!user.isProfileComplete) {
-            return res.status(403).json({ error: 'Please complete your profile' });
+        if (user.profileComplete) {
+            return next();
         }
-        next();
+        res.redirect('/create-profile.html');
     } catch (error) {
-        console.error('isProfileComplete error:', error);
+        console.error('Profile check error:', error);
         res.status(500).json({ error: 'Server error' });
     }
 };

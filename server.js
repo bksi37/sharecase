@@ -24,6 +24,10 @@ mongoose.connect(process.env.MONGO_URL, { useNewUrlParser: true, useUnifiedTopol
     });
 
 // Middleware
+app.use((req, res, next) => {
+    console.log(`Request: ${req.method} ${req.url} ${JSON.stringify(req.body)}`);
+    next();
+});
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(fileUpload());
@@ -70,7 +74,7 @@ app.get('/edit-project.html', isAuthenticated, isProfileComplete, (req, res) => 
 // Error Handling
 app.use((err, req, res, next) => {
     console.error('Server error:', err.stack);
-    res.status(500).send('Something went wrong!');
+    res.status(500).json({ error: 'Internal server error' });
 });
 
 // Start Server

@@ -37,7 +37,7 @@ router.post('/signup', async (req, res) => {
         await user.save();
         req.session.userId = user._id;
         req.session.userName = user.name;
-        res.redirect('/create-profile.html');
+        res.json({ success: true, redirect: '/create-profile.html' });
     } catch (error) {
         console.error('Signup error:', error);
         res.status(500).json({ error: 'Server error' });
@@ -48,17 +48,20 @@ router.post('/signup', async (req, res) => {
 router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
+        if (!email || !password) {
+            return res.status(400).json({ error: 'Email and password are required' });
+        }
         const user = await User.findOne({ email });
         if (!user || !await bcrypt.compare(password, user.password)) {
             return res.status(400).json({ error: 'Invalid email or password' });
         }
         req.session.userId = user._id;
         req.session.userName = user.name;
-        if (user.profileComplete) {
-            res.redirect('/index.html');
-        } else {
-            res.redirect('/create-profile.html');
-        }
+        res.json({
+            success: true,
+            isProfileComplete: user.profileComplete,
+            redirect: user.profileComplete ? '/index.html' : '/create-profile.html'
+        });
     } catch (error) {
         console.error('Login error:', error);
         res.status(500).json({ error: 'Server error' });
@@ -89,7 +92,7 @@ router.post('/complete-profile', isAuthenticated, async (req, res) => {
         user.profilePic = profilePic;
         user.profileComplete = true;
         await user.save();
-        res.redirect('/index.html');
+        res.json({ success: true, redirect: '/index.html' });
     } catch (error) {
         console.error('Complete profile error:', error);
         res.status(500).json({ error: 'Server error' });
@@ -103,7 +106,7 @@ router.get('/logout', (req, res) => {
             console.error('Logout error:', err);
             return res.status(500).json({ error: 'Server error' });
         }
-        res.redirect('/login.html');
+        res.json({ success: true, redirect: '/login.html' });
     });
 });
 
