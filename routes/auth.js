@@ -26,12 +26,14 @@ router.get('/current-user', isAuthenticated, async (req, res) => {
 router.post('/signup', async (req, res) => {
     try {
         const { email, password, name } = req.body;
-        console.log('Signup attempt:', { email });
+        console.log('Signup attempt:', { email, name, password: password ? '[provided]' : '[missing]' });
         if (!email || !password || !name) {
+            console.log('Missing fields:', { email, name, password: password ? '[provided]' : '[missing]' });
             return res.status(400).json({ error: 'All fields are required' });
         }
         const existingUser = await User.findOne({ email });
         if (existingUser) {
+            console.log('Email already exists:', { email });
             return res.status(400).json({ error: 'Email already exists' });
         }
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -40,7 +42,7 @@ router.post('/signup', async (req, res) => {
         req.session.userId = user._id.toString();
         req.session.userName = user.name;
         await req.session.save();
-        console.log('Signup successful:', { userId: user._id });
+        console.log('Signup successful:', { userId: user._id, profileComplete: user.profileComplete });
         res.json({ success: true, redirect: '/create-profile.html' });
     } catch (error) {
         console.error('Signup error:', error);
