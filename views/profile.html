@@ -40,7 +40,6 @@
                     <div class="profile-sidebar">
                         <img id="profilePic" src="https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg" alt="Profile">
                         <h2 id="profileName">Your Name</h2>
-                        <button class="btn btn-primary w-100 mb-3" id="generatePortfolioBtn">Generate Portfolio</button>
                         <ul class="project-list" id="project-list"></ul>
                     </div>
                 </div>
@@ -57,7 +56,11 @@
                         <div class="add-project" onclick="window.location.href='/upload-project.html'">+</div>
                         <div class="row row-cols-1 row-cols-md-3 g-4" id="work-projects"></div>
                         <div class="row row-cols-1 row-cols-md-3 g-4" id="drafts-projects" style="display: none;"></div>
-                    </div>
+
+                        <div class="mt-4">
+                            <button class="btn btn-primary" onclick="generatePortfolio()">Generate Portfolio</button>
+                        </div>
+                        </div>
                 </div>
             </div>
         </div>
@@ -228,36 +231,38 @@
             document.getElementById('work-projects').style.display = 'none';
         });
 
-        document.getElementById('generatePortfolioBtn').addEventListener('click', async () => {
+        // **Updated generatePortfolio function**
+        async function generatePortfolio() {
             try {
-                const response = await fetch('/generate-portfolio', {
-                    method: 'POST',
-                });
+                const response = await fetch('/generate-portfolio', { method: 'POST' });
                 if (response.ok) {
                     const blob = await response.blob();
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
                     a.download = 'portfolio.pdf';
+                    document.body.appendChild(a);
                     a.click();
+                    a.remove();
                     window.URL.revokeObjectURL(url);
                     Toastify({
-                        text: 'Portfolio generated successfully',
+                        text: 'Portfolio generated successfully!',
                         duration: 3000,
-                        style: { background: '#2ecc71' },
+                        style: { background: '#28a745' },
                     }).showToast();
                 } else {
                     throw new Error('Failed to generate portfolio');
                 }
             } catch (error) {
-                console.error('Error generating portfolio:', error);
+                console.error('Generate portfolio error:', error);
                 Toastify({
-                    text: error.message,
+                    text: 'Error generating portfolio',
                     duration: 3000,
                     style: { background: '#e74c3c' },
                 }).showToast();
             }
-        });
+        }
+        // **End Updated generatePortfolio function**
 
         window.onload = loadUserProfile;
     </script>
