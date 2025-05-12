@@ -23,22 +23,6 @@ mongoose.connect(process.env.MONGO_URL, { useNewUrlParser: true, useUnifiedTopol
         process.exit(1);
     });
 
-// Middleware
-app.use((req, res, next) => {
-    const originalJson = res.json;
-    res.json = function (body) {
-        console.log(`Response: ${req.method} ${req.url} ${res.statusCode} ${JSON.stringify(body)}`);
-        return originalJson.call(this, body);
-    };
-    console.log(`Request: ${req.method} ${req.url} ${JSON.stringify(req.body)} Session: ${req.session.userId || 'none'}`);
-    next();
-});
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(fileUpload());
-app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
-
 // Session Configuration
 app.use(session({
     secret: process.env.SESSION_SECRET,
@@ -47,6 +31,22 @@ app.use(session({
     store: MongoStore.create({ mongoUrl: process.env.MONGO_URL }),
     cookie: { maxAge: 24 * 60 * 60 * 1000 } // 1 day
 }));
+
+// Middleware
+app.use((req, res, next) => {
+    const originalJson = res.json;
+    res.json = function (body) {
+        console.log(`Response: ${req.method} ${req.url} ${res.statusCode} ${JSON.stringify(body)}`);
+        return originalJson.call(this, body);
+    };
+    console.log(`Request: ${req.method} ${req.url} ${JSON.stringify(req.body)} Session: ${(req.session && req.session.userId) || 'none'}`);
+    next();
+});
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(fileUpload());
+app.use(cookieParser());
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Cloudinary Configuration
 cloudinary.config({

@@ -1,5 +1,6 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const cloudinary = require('cloudinary').v2;
 const User = require('../models/User');
 const { isAuthenticated, isProfileComplete } = require('../middleware/auth');
 const router = express.Router();
@@ -25,6 +26,7 @@ router.get('/current-user', isAuthenticated, async (req, res) => {
 router.post('/signup', async (req, res) => {
     try {
         const { email, password, name } = req.body;
+        console.log('Signup attempt:', { email });
         if (!email || !password || !name) {
             return res.status(400).json({ error: 'All fields are required' });
         }
@@ -33,10 +35,12 @@ router.post('/signup', async (req, res) => {
             return res.status(400).json({ error: 'Email already exists' });
         }
         const hashedPassword = await bcrypt.hash(password, 10);
-        const user = new User({ email, password: hashedPassword, name });
+        const user = new User({ email, password: hashedPassword, name, profileComplete: false });
         await user.save();
-        req.session.userId = user._id;
+        req.session.userId = user._id.toString();
         req.session.userName = user.name;
+        await req.session.save();
+        console.log('Signup successful:', { userId: user._id });
         res.json({ success: true, redirect: '/create-profile.html' });
     } catch (error) {
         console.error('Signup error:', error);
@@ -59,12 +63,18 @@ router.post('/login', async (req, res) => {
         }
         req.session.userId = user._id.toString();
         req.session.userName = user.name;
-        await req.session.save(); // Ensure session is saved
-        console.log('Login successful:', { userId: user._id, profileComplete: user.profileComplete });
-        res.json({
-            success: true,
-            isProfileComplete: user.profileComplete,
-            redirect: user.profileComplete ? '/index.html' : '/create-profile.html'
+        await req.session.save(err => {
+            if (err) {
+                console.error('Session save error:', err);
+                return res.status(500).json({ error: 'Session error' });
+            }
+            console.log('Login successful:', { userId: user._id, profileComplete: user.profileComplete });
+            const redirect = user.profileComplete === true ? '/index.html' : '/create-profile.html';
+            res.json({
+                success: true,
+                isProfileComplete: user.profileComplete,
+                redirect
+            });
         });
     } catch (error) {
         console.error('Login error:', error);
@@ -72,13 +82,14 @@ router.post('/login', async (req, res) => {
     }
 });
 
-
 // Complete Profile
 router.post('/complete-profile', isAuthenticated, async (req, res) => {
     try {
-        const { bio, skills, github, linkedin } = req.body;
+        const { name, linkedin } = req.body;
+        console.log('Complete profile attempt:', { userId: req.session.userId, name, linkedin });
         const user = await User.findById(req.session.userId);
         if (!user) {
+            console.log('User not found:', req.session.userId);
             return res.status(404).json({ error: 'User not found' });
         }
         let profilePic = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
@@ -90,13 +101,13 @@ router.post('/complete-profile', isAuthenticated, async (req, res) => {
             });
             profilePic = result.secure_url;
         }
-        user.bio = bio || '';
-        user.skills = skills ? skills.split(',').map(s => s.trim()) : [];
-        user.github = github || '';
+        user.name = name || user.name;
         user.linkedin = linkedin || '';
         user.profilePic = profilePic;
         user.profileComplete = true;
         await user.save();
+        await req.session.save();
+        console.log('Profile completed:', { userId: user._id, profileComplete: user.profileComplete });
         res.json({ success: true, redirect: '/index.html' });
     } catch (error) {
         console.error('Complete profile error:', error);
@@ -111,6 +122,7 @@ router.get('/logout', (req, res) => {
             console.error('Logout error:', err);
             return res.status(500).json({ error: 'Server error' });
         }
+        console.log('Logout successful');
         res.json({ success: true, redirect: '/login.html' });
     });
 });

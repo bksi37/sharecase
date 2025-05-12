@@ -16,12 +16,11 @@ const isProfileComplete = async (req, res, next) => {
             console.log('User not found:', req.session.userId);
             return res.status(404).json({ error: 'User not found' });
         }
-        if (user.profileComplete) {
-            console.log('Profile complete for user:', user._id);
+        console.log('User profile state:', { userId: user._id, profileComplete: user.profileComplete });
+        if (user.profileComplete === true) {
             return next();
         }
-        console.log('Profile incomplete for user:', user._id);
-        res.status(403).json({ error: 'Profile incomplete', redirect: '/create-profile.html' });
+        res.status(403).json({ error: 'Profile incomplete', redirect: '/create-profile.html?redirected=true' });
     } catch (error) {
         console.error('Profile check error:', error);
         res.status(500).json({ error: 'Server error' });
