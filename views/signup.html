@@ -16,25 +16,23 @@
         </div>
     </header>
     <main>
-        <div class="container">
-            <div class="upload-container">
-                <h2>Sign Up</h2>
-                <form id="signupForm" action="/signup" method="POST">
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email (.edu only)</label>
-                        <input type="email" class="form-control" id="email" name="email" required>
+        <div class="container py-5"> <div class="row justify-content-center"> <div class="col-md-6 col-lg-5"> <div class="upload-container p-4 shadow-lg rounded"> <h2 class="text-center mb-4">Sign Up</h2> <form id="signupForm" action="/signup" method="POST">
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email (.edu only)</label>
+                                <input type="email" class="form-control" id="email" name="email" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Password</label>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="confirmPassword" class="form-label">Confirm Password</label>
+                                <input type="password" class="form-control" id="confirmPassword" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100 mt-3">Sign Up</button> </form>
+                        <p class="mt-3 text-center">Already have an account? <a href="/login.html">Log In</a></p>
                     </div>
-                    <div class="mb-3">
-                        <label for="password" class="form-label">Password</label>
-                        <input type="password" class="form-control" id="password" name="password" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="confirmPassword" class="form-label">Confirm Password</label>
-                        <input type="password" class="form-control" id="confirmPassword" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100">Sign Up</button>
-                </form>
-                <p class="mt-3 text-center">Already have an account? <a href="/login.html">Log In</a></p>
+                </div>
             </div>
         </div>
     </main>
@@ -47,7 +45,7 @@
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
-            
+
             if (!email.endsWith('.edu')) {
                 e.preventDefault();
                 alert('Please use a .edu email address.');
