@@ -30,7 +30,7 @@ router.post('/add-project', isAuthenticated, isProfileComplete, async (req, res)
             problemStatement: problemStatement || '',
             collaborators: collaborators ? collaborators.split(',').map(c => c.trim()) : [],
             resources: resources ? resources.split(',').map(r => r.trim()) : [],
-            isPublished: isPublished === 'true' // Convert string to boolean
+            isPublished: isPublished === 'true'
         });
         await project.save();
         res.redirect('/index.html');
@@ -49,7 +49,9 @@ router.get('/projects', isAuthenticated, isProfileComplete, async (req, res) => 
             title: p.title,
             description: p.description,
             image: p.image || 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg',
-            userId: p.userId._id
+            userId: p.userId._id,
+            likes: p.likes || 0,
+            views: p.views || 0
         })));
     } catch (error) {
         console.error('Fetch projects error:', error);
@@ -60,11 +62,11 @@ router.get('/projects', isAuthenticated, isProfileComplete, async (req, res) => 
 // Search Projects
 router.get('/search', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
-        const { q, course, year, type } = req.query;
+        const { q, course, year, type, department, category } = req.query;
         const query = {};
         if (q) query.title = { $regex: q, $options: 'i' };
-        if (course || year || type) {
-            query.tags = { $all: [course, year, type].filter(t => t) };
+        if (course || year || type || department || category) {
+            query.tags = { $all: [course, year, type, department, category].filter(t => t) };
         }
         const projects = await Project.find(query).populate('userId', 'name');
         res.json(projects.map(p => ({
@@ -72,7 +74,9 @@ router.get('/search', isAuthenticated, isProfileComplete, async (req, res) => {
             title: p.title,
             description: p.description,
             image: p.image || 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg',
-            userId: p.userId._id
+            userId: p.userId._id,
+            likes: p.likes || 0,
+            views: p.views || 0
         })));
     } catch (error) {
         console.error('Search projects error:', error);
@@ -87,7 +91,9 @@ router.get('/filter-options', isAuthenticated, isProfileComplete, async (req, re
         const courses = [...new Set(projects.flatMap(p => p.tags.filter(t => t.startsWith('MECH') || t.startsWith('CS'))))];
         const years = [...new Set(projects.flatMap(p => p.tags.filter(t => /^\d{4}$/.test(t))))];
         const types = [...new Set(projects.flatMap(p => p.tags.filter(t => ['Robotics', 'Software', 'Hardware'].includes(t))))];
-        res.json({ courses, years, types });
+        const departments = [...new Set(projects.flatMap(p => p.tags.filter(t => ['CS', 'MECH', 'EE'].includes(t))))];
+        const projectCategories = [...new Set(projects.flatMap(p => p.tags.filter(t => ['AI', 'IoT', 'Mechanics'].includes(t))))];
+        res.json({ courses, years, types, departments, projectCategories });
     } catch (error) {
         console.error('Filter options error:', error);
         res.status(500).json({ error: 'Server error' });
@@ -103,7 +109,9 @@ router.get('/user-projects', isAuthenticated, isProfileComplete, async (req, res
             title: p.title,
             image: p.image || 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg',
             description: p.description,
-            isPublished: p.isPublished
+            isPublished: p.isPublished,
+            likes: p.likes || 0,
+            views: p.views || 0
         })));
     } catch (error) {
         console.error('Fetch user projects error:', error);
@@ -118,7 +126,6 @@ router.get('/project/:id', isAuthenticated, isProfileComplete, async (req, res) 
         if (!project) {
             return res.status(404).json({ error: 'Project not found' });
         }
-        // Increment views
         project.views = (project.views || 0) + 1;
         await project.save();
         res.json({
@@ -127,13 +134,15 @@ router.get('/project/:id', isAuthenticated, isProfileComplete, async (req, res) 
             description: project.description,
             image: project.image || 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg',
             userId: project.userId._id,
+            userName: project.userId.name,
             problemStatement: project.problemStatement || '',
             collaborators: project.collaborators || [],
             tags: project.tags || [],
             resources: project.resources || [],
             likes: project.likes || 0,
             views: project.views || 0,
-            comments: project.comments || []
+            comments: project.comments || [],
+            likedBy: project.likedBy || []
         });
     } catch (error) {
         console.error('Fetch project error:', error);
@@ -173,7 +182,6 @@ router.delete('/project/:id', isAuthenticated, isProfileComplete, async (req, re
         if (project.userId.toString() !== req.session.userId) {
             return res.status(403).json({ error: 'Unauthorized' });
         }
-        // Delete image from Cloudinary if not default
         if (project.image && !project.image.includes('default-project.jpg')) {
             const publicId = project.image.split('/').pop().split('.')[0];
             await cloudinary.uploader.destroy(`sharecase/projects/${publicId}`);
@@ -182,6 +190,72 @@ router.delete('/project/:id', isAuthenticated, isProfileComplete, async (req, re
         res.status(200).json({ success: true });
     } catch (error) {
         console.error('Delete project error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Edit Project
+router.put('/project/:id', isAuthenticated, isProfileComplete, async (req, res) => {
+    try {
+        const project = await Project.findById(req.params.id);
+        if (!project) {
+            return res.status(404).json({ error: 'Project not found' });
+        }
+        if (project.userId.toString() !== req.session.userId) {
+            return res.status(403).json({ error: 'Unauthorized' });
+        }
+        const { title, description, tags, problemStatement, collaborators, resources, isPublished } = req.body;
+        if (!title) {
+            return res.status(400).json({ error: 'Title is required' });
+        }
+        let imageUrl = project.image;
+        if (req.files && req.files.image) {
+            if (imageUrl && !imageUrl.includes('default-project.jpg')) {
+                const publicId = imageUrl.split('/').pop().split('.')[0];
+                await cloudinary.uploader.destroy(`sharecase/projects/${publicId}`);
+            }
+            const file = req.files.image;
+            const result = await cloudinary.uploader.upload(`data:${file.mimetype};base64,${file.data.toString('base64')}`, {
+                folder: 'sharecase/projects',
+                format: 'jpg'
+            });
+            imageUrl = result.secure_url;
+        }
+        project.title = title;
+        project.description = description || '';
+        project.problemStatement = problemStatement || '';
+        project.tags = tags ? tags.split(',').map(t => t.trim()) : [];
+        project.collaborators = collaborators ? collaborators.split(',').map(c => c.trim()) : [];
+        project.resources = resources ? resources.split(',').map(r => r.trim()) : [];
+        project.isPublished = isPublished === 'true';
+        project.image = imageUrl;
+        await project.save();
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Edit project error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Like/Unlike Project
+router.post('/project/:id/like', isAuthenticated, isProfileComplete, async (req, res) => {
+    try {
+        const project = await Project.findById(req.params.id);
+        if (!project) {
+            return res.status(404).json({ error: 'Project not found' });
+        }
+        const userId = req.session.userId;
+        const hasLiked = project.likedBy.includes(userId);
+        if (hasLiked) {
+            project.likedBy = project.likedBy.filter(id => id.toString() !== userId);
+        } else {
+            project.likedBy.push(userId);
+        }
+        project.likes = project.likedBy.length;
+        await project.save();
+        res.json({ success: true, likes: project.likes, hasLiked: !hasLiked });
+    } catch (error) {
+        console.error('Like project error:', error);
         res.status(500).json({ error: 'Server error' });
     }
 });
