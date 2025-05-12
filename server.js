@@ -65,6 +65,7 @@ app.get('/project.html', isAuthenticated, isProfileComplete, (req, res) => res.s
 app.get('/profile.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'profile.html')));
 app.get('/settings.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'settings.html')));
 app.get('/about.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'about.html')));
+app.get('/edit-project.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'edit-project.html')));
 
 // Error Handling
 app.use((err, req, res, next) => {
