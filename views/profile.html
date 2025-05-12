@@ -81,13 +81,15 @@
                     const authLink = document.getElementById('authLink');
                     authLink.textContent = 'Logout';
                     authLink.href = '/logout';
-                    if (!user.isProfileComplete) {
+                    if (user.isProfileComplete === false) { // Explicit check
                         Toastify({
                             text: 'Please complete your profile',
                             duration: 3000,
                             style: { background: '#e74c3c' },
                         }).showToast();
                         setTimeout(() => window.location.href = '/create-profile.html', 3000);
+                    } else {
+                        loadProjects(); // Load projects only if profile is complete
                     }
                 } else {
                     Toastify({
@@ -257,10 +259,7 @@
             }
         });
 
-        window.onload = () => {
-            loadUserProfile();
-            loadProjects();
-        };
+        window.onload = loadUserProfile;
     </script>
 </body>
 </html>
