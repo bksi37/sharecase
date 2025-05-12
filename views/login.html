@@ -75,6 +75,16 @@
                 }).showToast();
             }
         });
+
+        // Prevent redirect loop
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('redirected') === 'true') {
+            Toastify({
+                text: 'Please complete your profile to continue',
+                duration: 3000,
+                style: { background: '#e74c3c' },
+            }).showToast();
+        }
     </script>
 </body>
 </html>

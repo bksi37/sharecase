@@ -48,15 +48,19 @@ router.post('/signup', async (req, res) => {
 router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
+        console.log('Login attempt:', { email });
         if (!email || !password) {
             return res.status(400).json({ error: 'Email and password are required' });
         }
         const user = await User.findOne({ email });
         if (!user || !await bcrypt.compare(password, user.password)) {
+            console.log('Invalid credentials:', { email });
             return res.status(400).json({ error: 'Invalid email or password' });
         }
-        req.session.userId = user._id;
+        req.session.userId = user._id.toString();
         req.session.userName = user.name;
+        await req.session.save(); // Ensure session is saved
+        console.log('Login successful:', { userId: user._id, profileComplete: user.profileComplete });
         res.json({
             success: true,
             isProfileComplete: user.profileComplete,
@@ -67,6 +71,7 @@ router.post('/login', async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 });
+
 
 // Complete Profile
 router.post('/complete-profile', isAuthenticated, async (req, res) => {

@@ -25,7 +25,12 @@ mongoose.connect(process.env.MONGO_URL, { useNewUrlParser: true, useUnifiedTopol
 
 // Middleware
 app.use((req, res, next) => {
-    console.log(`Request: ${req.method} ${req.url} ${JSON.stringify(req.body)}`);
+    const originalJson = res.json;
+    res.json = function (body) {
+        console.log(`Response: ${req.method} ${req.url} ${res.statusCode} ${JSON.stringify(body)}`);
+        return originalJson.call(this, body);
+    };
+    console.log(`Request: ${req.method} ${req.url} ${JSON.stringify(req.body)} Session: ${req.session.userId || 'none'}`);
     next();
 });
 app.use(express.json());

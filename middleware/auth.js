@@ -1,6 +1,7 @@
 const User = require('../models/User');
 
 const isAuthenticated = (req, res, next) => {
+    console.log('isAuthenticated:', { sessionId: req.session.userId });
     if (req.session.userId) {
         return next();
     }
@@ -9,14 +10,18 @@ const isAuthenticated = (req, res, next) => {
 
 const isProfileComplete = async (req, res, next) => {
     try {
+        console.log('isProfileComplete:', { userId: req.session.userId });
         const user = await User.findById(req.session.userId);
         if (!user) {
+            console.log('User not found:', req.session.userId);
             return res.status(404).json({ error: 'User not found' });
         }
         if (user.profileComplete) {
+            console.log('Profile complete for user:', user._id);
             return next();
         }
-        res.redirect('/create-profile.html');
+        console.log('Profile incomplete for user:', user._id);
+        res.status(403).json({ error: 'Profile incomplete', redirect: '/create-profile.html' });
     } catch (error) {
         console.error('Profile check error:', error);
         res.status(500).json({ error: 'Server error' });
