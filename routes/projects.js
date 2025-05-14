@@ -1,3 +1,5 @@
+// routes/projects.js
+
 const express = require('express');
 const cloudinary = require('cloudinary').v2;
 const Project = require('../models/Project');
@@ -7,7 +9,7 @@ const fetch = require('node-fetch'); // Ensure this is also here
 const User = require('../models/User'); // Add this line
 const router = express.Router();
 
-// Add Project
+// Add Project (Keeping your existing code for this route)
 router.post('/add-project', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
         const { title, description, tags, problemStatement, collaborators, resources, isPublished } = req.body;
@@ -43,7 +45,7 @@ router.post('/add-project', isAuthenticated, isProfileComplete, async (req, res)
     }
 });
 
-// Fetch All Projects
+// Fetch All Projects (Keeping your existing code for this route)
 router.get('/projects', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
         const projects = await Project.find().populate('userId', 'name');
@@ -63,7 +65,7 @@ router.get('/projects', isAuthenticated, isProfileComplete, async (req, res) => 
     }
 });
 
-// Search Projects
+// Search Projects (Keeping your existing code for this route, but ensuring userName is included)
 router.get('/search', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
         const { q, course, year, type, department, category } = req.query;
@@ -79,7 +81,7 @@ router.get('/search', isAuthenticated, isProfileComplete, async (req, res) => {
             description: p.description,
             image: p.image || 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg',
             userId: p.userId._id,
-            userName: p.userId.name,
+            userName: p.userId.name, // Ensure userName is here for search results as well
             likes: p.likes || 0,
             views: p.views || 0
         })));
@@ -89,7 +91,7 @@ router.get('/search', isAuthenticated, isProfileComplete, async (req, res) => {
     }
 });
 
-// Filter Options
+// Filter Options (Keeping your existing code for this route)
 router.get('/filter-options', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
         const projects = await Project.find();
@@ -105,7 +107,7 @@ router.get('/filter-options', isAuthenticated, isProfileComplete, async (req, re
     }
 });
 
-// Fetch User Projects
+// Fetch User Projects (Keeping your existing code for this route)
 router.get('/user-projects', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
         const projects = await Project.find({ userId: req.session.userId });
@@ -124,7 +126,7 @@ router.get('/user-projects', isAuthenticated, isProfileComplete, async (req, res
     }
 });
 
-// Fetch Single Project
+// Fetch Single Project (Keeping your existing code for this route)
 router.get('/project/:id', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
         const project = await Project.findById(req.params.id).populate('userId', 'name');
@@ -155,7 +157,7 @@ router.get('/project/:id', isAuthenticated, isProfileComplete, async (req, res) 
     }
 });
 
-// Post Comment
+// Post Comment (Keeping your existing code for this route)
 router.post('/project/:id/comment', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
         const project = await Project.findById(req.params.id);
@@ -177,7 +179,7 @@ router.post('/project/:id/comment', isAuthenticated, isProfileComplete, async (r
     }
 });
 
-// Delete Project
+// Delete Project (Keeping your existing code for this route)
 router.delete('/project/:id', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
         const project = await Project.findById(req.params.id);
@@ -199,7 +201,7 @@ router.delete('/project/:id', isAuthenticated, isProfileComplete, async (req, re
     }
 });
 
-// Edit Project
+// Edit Project (Keeping your existing code for this route)
 router.put('/project/:id', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
         const project = await Project.findById(req.params.id);
@@ -242,7 +244,7 @@ router.put('/project/:id', isAuthenticated, isProfileComplete, async (req, res) 
     }
 });
 
-// Like/Unlike Project
+// Like/Unlike Project (Keeping your existing code for this route)
 router.post('/project/:id/like', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
         const project = await Project.findById(req.params.id);
@@ -265,7 +267,7 @@ router.post('/project/:id/like', isAuthenticated, isProfileComplete, async (req,
     }
 });
 
-// Generate Portfolio
+// Generate Portfolio (UPDATED to use for...of for async image fetching)
 router.post('/generate-portfolio', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
         const user = await User.findById(req.session.userId);
@@ -280,16 +282,27 @@ router.post('/generate-portfolio', isAuthenticated, isProfileComplete, async (re
         doc.registerFont('Roboto-Bold', 'public/fonts/Roboto-Bold.ttf');
 
         // Header
-        doc.fillColor('#007bff').font('Roboto-Bold').fontSize(24).text('ShareCase Portfolio', { align: 'center' });
-        doc.fillColor('#000000').font('Roboto').fontSize(16).text(user.name, { align: 'center' });
+        // Displaying name from the User object, also adding email and LinkedIn from User model
+        doc.fillColor('#007bff').font('Roboto-Bold').fontSize(28).text(user.name, { align: 'center' });
+        doc.moveDown(0.2);
+        doc.fillColor('#000000').font('Roboto').fontSize(12).text(user.email || '', { align: 'center' }); // Display email
+        if (user.linkedin) { // Assuming 'linkedin' field exists on your User model
+            doc.moveDown(0.2);
+            doc.fillColor('#000000').font('Roboto').fontSize(12).text(`LinkedIn: ${user.linkedin}`, { align: 'center', link: user.linkedin });
+        }
         doc.moveDown(1);
         doc.lineWidth(2).strokeColor('#007bff').moveTo(40, doc.y).lineTo(552, doc.y).stroke();
         doc.moveDown(1);
 
+        // Projects Section Title
+        doc.fillColor('#007bff').font('Roboto-Bold').fontSize(22).text('My Projects', { align: 'left' });
+        doc.moveDown(1);
+
         if (projects.length === 0) {
-            doc.fontSize(12).text('No projects available.', { align: 'center' });
+            doc.font('Roboto').fontSize(12).text('No projects available to display.', { align: 'center' });
         } else {
-            projects.forEach(async (p, index) => {
+            // *** CRITICAL FIX: Use for...of loop for asynchronous operations ***
+            for (const [index, p] of projects.entries()) {
                 if (index > 0) doc.addPage();
 
                 // Project Title
@@ -299,9 +312,9 @@ router.post('/generate-portfolio', isAuthenticated, isProfileComplete, async (re
                 // Image
                 if (p.image && !p.image.includes('default-project.jpg')) {
                     try {
-                        const response = await fetch(`${p.image}?w=200&h=150`);
+                        const response = await fetch(`${p.image}?w=400&h=300`); // Request a larger image for PDF
                         const buffer = await response.buffer();
-                        doc.image(buffer, { width: 200, height: 150 });
+                        doc.image(buffer, { width: 400, fit: [512, 300], align: 'center', valign: 'center' }); // Use fit for better scaling
                         doc.moveDown(0.5);
                     } catch (error) {
                         console.error('Image fetch error:', error);
@@ -322,14 +335,14 @@ router.post('/generate-portfolio', isAuthenticated, isProfileComplete, async (re
 
                 // Tags
                 doc.font('Roboto-Bold').fontSize(12).text('Tags:', { align: 'left' });
-                doc.font('Roboto').fontSize(10).text(p.tags.length ? p.tags.join(', ') : 'None', { align: 'left', indent: 10 });
+                doc.font('Roboto').fontSize(10).text(p.tags && p.tags.length ? p.tags.join(', ') : 'None', { align: 'left', indent: 10 });
                 doc.moveDown(0.5);
 
                 // Collaborators
                 doc.font('Roboto-Bold').fontSize(12).text('Collaborators:', { align: 'left' });
-                doc.font('Roboto').fontSize(10).text(p.collaborators.length ? p.collaborators.join(', ') : 'None', { align: 'left', indent: 10 });
+                doc.font('Roboto').fontSize(10).text(p.collaborators && p.collaborators.length ? p.collaborators.join(', ') : 'None', { align: 'left', indent: 10 });
                 doc.moveDown(1);
-            });
+            }
         }
 
         // Footer
@@ -340,5 +353,25 @@ router.post('/generate-portfolio', isAuthenticated, isProfileComplete, async (re
         res.status(500).json({ error: 'Server error' });
     }
 });
+
+// NEW ROUTE: Fetch Projects by Specific User (for public profile)
+router.get('/projects-by-user/:userId', async (req, res) => {
+    try {
+        // Only fetch published projects for public view
+        const projects = await Project.find({ userId: req.params.userId, isPublished: true });
+        res.json(projects.map(p => ({
+            id: p._id,
+            title: p.title,
+            description: p.description,
+            image: p.image || 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg',
+            likes: p.likes || 0,
+            views: p.views || 0
+        })));
+    } catch (error) {
+        console.error('Error fetching projects by user:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 
 module.exports = router;

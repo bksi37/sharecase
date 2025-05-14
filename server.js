@@ -76,6 +76,9 @@ app.get('/settings.html', isAuthenticated, isProfileComplete, (req, res) => res.
 app.get('/about.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'about.html')));
 app.get('/edit-project.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'edit-project.html')));
 
+// NEW: Serve the public-profile.html page
+app.get('/public-profile.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'public-profile.html'))); // No authentication needed here
+
 // Error Handling
 app.use((err, req, res, next) => {
     console.error('Server error:', err.stack);

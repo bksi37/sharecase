@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Profile - ShareCase</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+</head>
+<body>
+    <header class="d-flex justify-content-between align-items-center">
+        <div class="logo">
+            <a href="/index.html">ShareCase</a>
+        </div>
+        <div class="user-menu">
+            <div class="profile-container" id="userMenuToggle">
+                <img id="headerProfilePic" src="https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg" alt="Profile Picture">
+                <span id="headerProfileName">Guest</span>
+                <div class="dropdown-menu" id="userDropdown">
+                    <a href="/profile.html">My Profile</a> <a href="/settings.html">Settings</a>
+                    <a href="/upload-project.html">Upload Project</a>
+                    <a id="authLink" href="/login.html">Login</a>
+                    <a href="/about.html">About</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mt-5">
+        <div class="row">
+            <div class="col-md-4 text-center">
+                <img id="publicProfilePic" src="https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg" alt="Profile Picture" class="img-fluid rounded-circle mb-3" style="width: 150px; height: 150px; object-fit: cover;">
+                <h2 id="publicUserName" class="mb-2"></h2>
+                <p id="publicUserEmail" class="text-muted"></p>
+                <p id="publicUserBio" class="text-secondary"></p>
+                <p id="publicUserLinkedIn"></p>
+            </div>
+            <div class="col-md-8">
+                <h3 class="mb-4">Projects by <span id="publicUserNameProjects"></span></h3>
+                <div class="row row-cols-1 row-cols-md-2 g-4" id="publicUserProjectsGrid">
+                    </div>
+                <p id="noPublicProjectsMessage" class="text-muted mt-3" style="display: none;">No projects found for this user.</p>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>© 2025 ShareCase. All rights reserved.</p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="/js/scripts.js"></script>
+    <script>
+        // Assumes loadUserProfile is in scripts.js or copied here
+        async function loadUserProfile() {
+            try {
+                const response = await fetch('/current-user');
+                if (response.ok) {
+                    const user = await response.json();
+                    document.getElementById('headerProfileName').textContent = user.name || 'Guest';
+                    document.getElementById('headerProfilePic').src = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
+                    const authLink = document.getElementById('authLink');
+                    authLink.textContent = 'Logout';
+                    authLink.href = '/logout';
+                }
+            } catch (error) {
+                console.error('Error loading user profile:', error);
+            }
+        }
+
+        async function loadPublicUserProfileAndProjects() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get('userId');
+
+            if (!userId) {
+                document.getElementById('publicUserName').textContent = 'User Not Found';
+                document.getElementById('publicUserProjectsGrid').innerHTML = '<p class="text-center">No user ID provided.</p>';
+                document.getElementById('publicUserNameProjects').textContent = 'User';
+                return;
+            }
+
+            try {
+                // Fetch user details for the public profile
+                // You'll need to create a new route for this in your user-related backend routes (e.g., routes/users.js)
+                const userResponse = await fetch(`/user-details/${userId}`);
+                if (userResponse.ok) {
+                    const user = await userResponse.json();
+                    document.getElementById('publicProfilePic').src = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
+                    document.getElementById('publicUserName').textContent = user.name || 'N/A';
+                    document.getElementById('publicUserNameProjects').textContent = user.name || 'N/A';
+                    document.getElementById('publicUserEmail').textContent = user.email || 'N/A'; // Decide if email should be public
+                    document.getElementById('publicUserBio').textContent = user.bio || ''; // Assuming 'bio' field on User model
+                    const linkedInElement = document.getElementById('publicUserLinkedIn');
+                    if (user.linkedin) {
+                        linkedInElement.innerHTML = `<a href="${user.linkedin}" target="_blank"><i class="fab fa-linkedin"></i> LinkedIn</a>`;
+                        linkedInElement.style.display = 'block';
+                    } else {
+                        linkedInElement.style.display = 'none';
+                    }
+
+                } else {
+                    throw new Error('Failed to load user details');
+                }
+
+                // Fetch projects for the public profile
+                // This will use the new route we added in projects.js
+                const projectsResponse = await fetch(`/projects-by-user/${userId}`);
+                if (projectsResponse.ok) {
+                    const projects = await projectsResponse.json();
+                    const publicUserProjectsGrid = document.getElementById('publicUserProjectsGrid');
+                    if (projects.length > 0) {
+                        publicUserProjectsGrid.innerHTML = projects.map(p => `
+                            <div class="col">
+                                <div class="card h-100" onclick="window.location.href='/project.html?id=${p.id}'">
+                                    <img src="${p.image}" class="card-img-top" alt="${p.title}" onerror="this.src='https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'">
+                                    <div class="card-body">
+                                        <h5 class="card-title">${p.title}</h5>
+                                        <p class="card-text">${p.description ? p.description.substring(0, 100) + '...' : 'No description'}</p>
+                                        <div class="project-stats">
+                                            <span><i class="fas fa-heart"></i> ${p.likes} Likes</span>
+                                            <span><i class="fas fa-eye"></i> ${p.views} Views</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('');
+                        document.getElementById('noPublicProjectsMessage').style.display = 'none';
+                    } else {
+                        document.getElementById('noPublicProjectsMessage').style.display = 'block';
+                        publicUserProjectsGrid.innerHTML = '';
+                    }
+                } else {
+                    throw new Error('Failed to load user projects');
+                }
+            } catch (error) {
+                console.error('Error loading public profile or projects:', error);
+                Toastify({
+                    text: 'Error loading public profile',
+                    duration: 3000,
+                    style: { background: '#e74c3c' },
+                }).showToast();
+                document.getElementById('publicUserName').textContent = 'Error Loading Profile';
+                document.getElementById('publicUserNameProjects').textContent = 'Error Loading Profile';
+            }
+        }
+
+        window.onload = () => {
+            loadUserProfile(); // Still load current user for header
+            loadPublicUserProfileAndProjects(); // Load the specific user's public profile
+        };
+    </script>
+</body>
+</html>

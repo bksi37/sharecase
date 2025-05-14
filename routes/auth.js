@@ -129,4 +129,19 @@ router.get('/logout', (req, res) => {
     });
 });
 
+// NEW ROUTE: Fetch Public User Details
+router.get('/user-details/:id', async (req, res) => {
+    try {
+        // Select only fields that are safe to expose publicly
+        const user = await User.findById(req.params.id).select('name email profilePic bio linkedin');
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.json(user);
+    } catch (error) {
+        console.error('Error fetching public user details:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 module.exports = router;
