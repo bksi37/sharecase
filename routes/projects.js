@@ -3,6 +3,8 @@ const cloudinary = require('cloudinary').v2;
 const Project = require('../models/Project');
 const { isAuthenticated, isProfileComplete } = require('../middleware/auth');
 const PDFDocument = require('pdfkit');
+const fetch = require('node-fetch'); // Ensure this is also here
+const User = require('../models/User'); // Add this line
 const router = express.Router();
 
 // Add Project

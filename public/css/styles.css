@@ -465,32 +465,34 @@ footer p {
 /* Project Page Styles */
 .project-container {
     max-width: 800px;
-    margin: 100px auto;
+    margin: 20px auto; /* Adjusted top margin */
     background: #ffffff; /* White project container */
-    padding: 30px;
+    padding: 20px; /* Adjusted padding */
     border-radius: 8px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); /* Softer shadow */
 }
 
-.project-container h1 {
+.project-container h1, #projectTitle {
     font-size: 28px;
     color: #555555; /* Soft grey title */
-    margin-bottom: 20px;
+    margin-bottom: 15px;
 }
 
-.project-container img {
+.project-container img, #projectImage {
     max-width: 100%;
     height: auto;
     border-radius: 8px;
     margin-bottom: 20px;
+    max-height: 300px; /* Limit image height */
+    object-fit: cover; /* Ensure image covers area */
 }
 
-.project-container p, .project-container .tag {
+.project-container p, #projectDescription, #problemStatement, .project-container .tag {
     font-size: 16px;
     color: #666666; /* Soft grey text */
 }
 
-.tag {
+.tag, .tags .badge { /* Apply styles to both if you use both */
     display: inline-block;
     background: #f5f5f5; /* Very light grey background */
     padding: 5px 10px;
@@ -498,8 +500,46 @@ footer p {
     margin: 5px;
 }
 
-.project-meta {
+h3 {
+    margin-top: 20px;
+    margin-bottom: 10px;
+    color: #007bff; /* Primary color for subheadings */
+}
+
+#collaborators li,
+#resources li {
+    padding: 5px 0;
+}
+
+.project-stats {
     font-size: 14px;
     color: #888888; /* Soft grey text */
+    margin-top: 15px;
+    margin-bottom: 15px;
+}
+.project-stats span {
+    margin-right: 10px;
+}
+
+#likeBtn {
     margin-bottom: 20px;
+}
+
+#comments .comment {
+    padding: 15px;
+    margin-bottom: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: #fff;
+}
+#comments .comment strong {
+    color: #28a745;
+}
+#comments .comment small {
+    color: #6c757d;
+    margin-left: 10px;
+}
+
+#commentForm textarea {
+    margin-bottom: 10px;
 }
