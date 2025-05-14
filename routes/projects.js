@@ -263,9 +263,6 @@ router.post('/project/:id/like', isAuthenticated, isProfileComplete, async (req,
 });
 
 // Generate Portfolio
-const fetch = require('node-fetch'); // Add this for image fetching
-
-// Generate Portfolio
 router.post('/generate-portfolio', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
         const user = await User.findById(req.session.userId);
