@@ -29,6 +29,7 @@ router.post('/add-project', isAuthenticated, isProfileComplete, async (req, res)
             tags: tags ? tags.split(',').map(t => t.trim()) : [],
             image: imageUrl,
             userId: req.session.userId,
+            userName: req.session.userName || 'Anonymous',
             problemStatement: problemStatement || '',
             collaborators: collaborators ? collaborators.split(',').map(c => c.trim()) : [],
             resources: resources ? resources.split(',').map(r => r.trim()) : [],
@@ -52,6 +53,7 @@ router.get('/projects', isAuthenticated, isProfileComplete, async (req, res) => 
             description: p.description,
             image: p.image || 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg',
             userId: p.userId._id,
+            userName: p.userId.name,
             likes: p.likes || 0,
             views: p.views || 0
         })));
@@ -77,6 +79,7 @@ router.get('/search', isAuthenticated, isProfileComplete, async (req, res) => {
             description: p.description,
             image: p.image || 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg',
             userId: p.userId._id,
+            userName: p.userId.name,
             likes: p.likes || 0,
             views: p.views || 0
         })));

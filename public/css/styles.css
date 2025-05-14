@@ -543,3 +543,20 @@ h3 {
 #commentForm textarea {
     margin-bottom: 10px;
 }
+
+/*author styles*/
+.project-author {
+    font-size: 0.9em; /* Slightly smaller font size */
+    color: #6c757d;   /* A subtle grey color */
+    margin-top: 10px; /* Space above the author name */
+}
+
+.project-author a {
+    color: #007bff;          /* Bootstrap primary blue for links */
+    text-decoration: none;   /* Remove underline by default */
+    font-weight: 500;        /* Slightly bolder for prominence */
+}
+
+.project-author a:hover {
+    text-decoration: underline; /* Add underline on hover for better UX */
+}

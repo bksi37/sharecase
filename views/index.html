@@ -142,13 +142,13 @@
         }
 
         async function loadProjects() {
-            try {
-                const response = await fetch('/projects');
-                if (response.ok) {
-                    const projects = await response.json();
-                    const projectGrid = document.getElementById('projectGrid');
-                    projectGrid.innerHTML = projects.length
-                        ? projects.map(p => `
+        try {
+            const response = await fetch('/projects');
+            if (response.ok) {
+                const projects = await response.json();
+                const projectGrid = document.getElementById('projectGrid');
+                projectGrid.innerHTML = projects.length
+                    ? projects.map(p => `
                             <div class="col">
                                 <div class="card h-100" onclick="window.location.href='/project.html?id=${p.id}'">
                                     <img src="${p.image}" class="card-img-top" alt="${p.title}" onerror="this.src='https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'">
@@ -159,38 +159,40 @@
                                             <span><i class="fas fa-heart"></i> ${p.likes} Likes</span>
                                             <span><i class="fas fa-eye"></i> ${p.views} Views</span>
                                         </div>
+                                        <div class="project-author"> By: <a href="/profile.html?userId=${p.userId}">${p.userName}</a>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         `).join('')
-                        : '<p>No projects found.</p>';
-                } else {
-                    throw new Error('Failed to load projects');
-                }
-            } catch (error) {
-                console.error('Error loading projects:', error);
-                Toastify({
-                    text: 'Error loading projects',
-                    duration: 3000,
-                    style: { background: '#e74c3c' },
-                }).showToast();
+                    : '<p>No projects found.</p>';
+            } else {
+                throw new Error('Failed to load projects');
             }
+        } catch (error) {
+            console.error('Error loading projects:', error);
+            Toastify({
+                text: 'Error loading projects',
+                duration: 3000,
+                style: { background: '#e74c3c' },
+            }).showToast();
         }
+    }
 
-        async function searchProjects() {
-            const query = document.getElementById('searchInput').value;
-            const course = document.getElementById('courseFilter').value;
-            const year = document.getElementById('yearFilter').value;
-            const type = document.getElementById('typeFilter').value;
-            const department = document.getElementById('departmentFilter').value;
-            const category = document.getElementById('categoryFilter').value;
-            try {
-                const response = await fetch(`/search?q=${encodeURIComponent(query)}&course=${encodeURIComponent(course)}&year=${encodeURIComponent(year)}&type=${encodeURIComponent(type)}&department=${encodeURIComponent(department)}&category=${encodeURIComponent(category)}`);
-                if (response.ok) {
-                    const projects = await response.json();
-                    const projectGrid = document.getElementById('projectGrid');
-                    projectGrid.innerHTML = projects.length
-                        ? projects.map(p => `
+    async function searchProjects() {
+        const query = document.getElementById('searchInput').value;
+        const course = document.getElementById('courseFilter').value;
+        const year = document.getElementById('yearFilter').value;
+        const type = document.getElementById('typeFilter').value;
+        const department = document.getElementById('departmentFilter').value;
+        const category = document.getElementById('categoryFilter').value;
+        try {
+            const response = await fetch(`/search?q=${encodeURIComponent(query)}&course=${encodeURIComponent(course)}&year=${encodeURIComponent(year)}&type=${encodeURIComponent(type)}&department=${encodeURIComponent(department)}&category=${encodeURIComponent(category)}`);
+            if (response.ok) {
+                const projects = await response.json();
+                const projectGrid = document.getElementById('projectGrid');
+                projectGrid.innerHTML = projects.length
+                    ? projects.map(p => `
                             <div class="col">
                                 <div class="card h-100" onclick="window.location.href='/project.html?id=${p.id}'">
                                     <img src="${p.image}" class="card-img-top" alt="${p.title}" onerror="this.src='https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'">
@@ -201,36 +203,38 @@
                                             <span><i class="fas fa-heart"></i> ${p.likes} Likes</span>
                                             <span><i class="fas fa-eye"></i> ${p.views} Views</span>
                                         </div>
+                                        <div class="project-author"> By: <a href="/profile.html?userId=${p.userId}">${p.userName}</a>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         `).join('')
-                        : '<p>No projects found.</p>';
-                } else {
-                    throw new Error('Failed to search projects');
-                }
-            } catch (error) {
-                console.error('Error searching projects:', error);
-                Toastify({
-                    text: 'Error searching projects',
-                    duration: 3000,
-                    style: { background: '#e74c3c' },
-                }).showToast();
+                    : '<p>No projects found.</p>';
+            } else {
+                throw new Error('Failed to search projects');
             }
+        } catch (error) {
+            console.error('Error searching projects:', error);
+            Toastify({
+                text: 'Error searching projects',
+                duration: 3000,
+                style: { background: '#e74c3c' },
+            }).showToast();
         }
+    }
 
-        document.getElementById('searchInput').addEventListener('input', searchProjects);
+    document.getElementById('searchInput').addEventListener('input', searchProjects);
 
-        document.getElementById('applyFilters').addEventListener('click', () => {
-            searchProjects();
-            bootstrap.Modal.getInstance(document.getElementById('filterModal')).hide();
-        });
+    document.getElementById('applyFilters').addEventListener('click', () => {
+        searchProjects();
+        bootstrap.Modal.getInstance(document.getElementById('filterModal')).hide();
+    });
 
-        window.onload = () => {
-            loadUserProfile();
-            loadFilterOptions();
-            loadProjects();
-        };
-    </script>
+    window.onload = () => {
+        loadUserProfile();
+        loadFilterOptions();
+        loadProjects();
+    };
+</script>
 </body>
 </html>
