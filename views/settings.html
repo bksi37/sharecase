@@ -38,27 +38,34 @@
             <h2>Settings</h2>
             <form id="settingsForm" enctype="multipart/form-data">
                 <h3>Profile</h3>
-                <div class="mb-3">
-                    <label for="name" class="form-label">Name</label>
-                    <input type="text" class="form-control" id="name" name="name" required>
-                </div>
-                <div class="mb-3">
-                    <label for="email" class="form-label">Email</label>
-                    <input type="email" class="form-control" id="email" name="email" readonly>
-                </div>
-                <div class="mb-3">
-                    <label for="schoolEmail" class="form-label">School Email</label>
-                    <input type="email" class="form-control" id="schoolEmail" name="schoolEmail">
-                </div>
-                <div class="mb-3">
-                    <label for="profilePic" class="form-label">Profile Picture</label>
-                    <input type="file" class="form-control" id="profilePic" name="profilePic" accept="image/*">
-                </div>
-                <div class="d-flex gap-2 mb-4">
-                    <button type="submit" class="btn btn-primary">Save Profile</button>
-                    <button type="button" class="btn btn-secondary" id="cancelProfileBtn">Cancel</button>
-                </div>
-
+<div class="mb-3">
+    <label for="name" class="form-label">Name</label>
+    <input type="text" class="form-control" id="name" name="name" required>
+</div>
+<div class="mb-3">
+    <label for="email" class="form-label">Email</label>
+    <input type="email" class="form-control" id="email" name="email" readonly>
+</div>
+<div class="mb-3">
+    <label for="schoolEmail" class="form-label">School Email</label>
+    <input type="email" class="form-control" id="schoolEmail" name="schoolEmail">
+</div>
+<div class="mb-3">
+    <label for="bio" class="form-label">Bio</label>
+    <textarea class="form-control" id="bio" name="bio" rows="4"></textarea>
+</div>
+<div class="mb-3">
+    <label for="linkedin" class="form-label">LinkedIn Profile URL</label>
+    <input type="url" class="form-control" id="linkedin" name="linkedin" placeholder="e.g., https://linkedin.com/in/yourprofile">
+</div>
+<div class="mb-3">
+    <label for="profilePic" class="form-label">Profile Picture</label>
+    <input type="file" class="form-control" id="profilePic" name="profilePic" accept="image/*">
+</div>
+<div class="d-flex gap-2 mb-4">
+    <button type="submit" class="btn btn-primary">Save Profile</button>
+    <button type="button" class="btn btn-secondary" id="cancelProfileBtn">Cancel</button>
+</div>
                 <h3>Security</h3>
                 <div class="mb-3">
                     <button type="button" class="btn btn-outline-primary" id="changePasswordBtn">Change Password</button>
@@ -123,7 +130,7 @@
                 <h3 class="text-danger">Danger Zone</h3>
                 <div class="danger-zone">
                     <p>Delete your account and all associated data.</p>
-                    <button type="button" class="btn btn-danger" id="deleteAccountBtn">Delete Account</button>
+                    <button type="button" class="btn btn-danger btn-sm" id="deleteAccountBtn">Delete Account</button>
                 </div>
             </form>
         </div>
@@ -165,28 +172,29 @@
         }
 
         async function loadSettings() {
-            try {
-                const response = await fetch('/current-user');
-                if (!response.ok) throw new Error('Please log in to view settings');
-                const user = await response.json();
-                document.getElementById('name').value = user.name || '';
-                document.getElementById('email').value = user.email || '';
-                document.getElementById('schoolEmail').value = user.schoolEmail || '';
-                document.getElementById('notifications').value = user.notifications || 'all';
-                document.getElementById('theme').value = user.theme || 'light';
-                document.getElementById('privacy').value = user.privacy || 'public';
-                document.getElementById('twoFactorAuth').checked = user.twoFactorAuth || false;
-            } catch (error) {
-                console.error('Error loading settings:', error);
-                Toastify({
-                    text: error.message,
-                    duration: 3000,
-                    style: { background: '#e74c3c' },
-                }).showToast();
-                setTimeout(() => window.location.href = '/login.html', 3000);
-            }
+        try {
+            const response = await fetch('/current-user');
+            if (!response.ok) throw new Error('Please log in to view settings');
+            const user = await response.json();
+            document.getElementById('name').value = user.name || '';
+            document.getElementById('email').value = user.email || '';
+            document.getElementById('schoolEmail').value = user.schoolEmail || '';
+            document.getElementById('bio').value = user.bio || ''; // Add this line
+            document.getElementById('linkedin').value = user.linkedin || ''; // Add this line
+            document.getElementById('notifications').value = user.notifications || 'all';
+            document.getElementById('theme').value = user.theme || 'light';
+            document.getElementById('privacy').value = user.privacy || 'public';
+            document.getElementById('twoFactorAuth').checked = user.twoFactorAuth || false;
+        } catch (error) {
+            console.error('Error loading settings:', error);
+            Toastify({
+                text: error.message,
+                duration: 3000,
+                style: { background: '#e74c3c' },
+            }).showToast();
+            setTimeout(() => window.location.href = '/login.html', 3000);
         }
-
+    }
         async function loadActivityLog() {
             try {
                 const response = await fetch('/activity-log');
