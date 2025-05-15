@@ -38,19 +38,16 @@
             <div class="col-lg-10 col-md-11"> <div class="project-detail-card card p-4 shadow-sm mb-4">
                     <h1 id="projectTitle" class="card-title text-center mb-4">Loading Project...</h1>
 
-                    <div class="row align-items-center mb-4">
-                        <div class="col-md-6 text-center mb-3 mb-md-0">
-                            <img id="projectImage" src="https://via.placeholder.com/600x400?text=Project+Image" class="img-fluid rounded shadow-sm" alt="Project Image">
-                        </div>
-                        <div class="col-md-6">
-                            <h4 class="mb-3">Project Overview</h4>
-                            <p id="projectDescription" class="mb-3"></p>
-                            <p><strong><i class="fas fa-user-circle me-2"></i>Uploaded By:</strong> <span id="projectUploader"></span></p>
-                            <p><strong><i class="fas fa-chart-line me-2"></i>Problem Statement:</strong> <span id="problemStatement"></span></p>
-                            <p><strong><i class="fas fa-users me-2"></i>Collaborators:</strong> <ul id="collaborators" class="list-unstyled d-inline"></ul></p>
-                            <p><strong><i class="fas fa-tags me-2"></i>Tags:</strong> <span id="tags" class="tags"></span></p>
-                            <p><strong><i class="fas fa-external-link-alt me-2"></i>Resources:</strong> <ul id="resources" class="list-unstyled d-inline"></ul></p>
-                        </div>
+                    <div class="mb-4 text-center"> <img id="projectImage" src="https://via.placeholder.com/800x500?text=Project+Image" class="img-fluid rounded shadow-sm" alt="Project Image" style="max-height: 500px; width: auto; object-fit: contain;"> </div>
+
+                    <div class="project-details-content">
+                        <h4 class="mb-3">Project Overview</h4>
+                        <p id="projectDescription" class="mb-3"></p>
+                        <p><strong><i class="fas fa-user-circle me-2"></i>Uploaded By:</strong> <span id="projectUploader"></span></p>
+                        <p><strong><i class="fas fa-chart-line me-2"></i>Problem Statement:</strong> <span id="problemStatement"></span></p>
+                        <p><strong><i class="fas fa-users me-2"></i>Collaborators:</strong> <ul id="collaborators" class="list-unstyled d-inline"></ul></p>
+                        <p><strong><i class="fas fa-tags me-2"></i>Tags:</strong> <span id="tags" class="tags"></span></p>
+                        <p><strong><i class="fas fa-external-link-alt me-2"></i>Resources:</strong> <ul id="resources" class="list-unstyled d-inline"></ul></p>
                     </div>
 
                     <hr class="my-4">
@@ -140,8 +137,8 @@
                     document.getElementById('projectImage').src = project.image;
                     document.getElementById('projectDescription').textContent = project.description || 'No description provided.';
                     document.getElementById('problemStatement').textContent = project.problemStatement || 'Not specified.';
-                    document.getElementById('projectUploader').textContent = project.uploader.name || 'Unknown User';
-
+                    document.getElementById('projectUploader').textContent = project.userName || 'Unknown User';
+                    
                     // Collaborators
                     const collaboratorsList = document.getElementById('collaborators');
                     if (project.collaborators && project.collaborators.length > 0) {
