@@ -463,54 +463,68 @@ footer p {
 }
 
 /* Project Page Styles */
-.project-container {
-    max-width: 800px;
-    margin: 20px auto; /* Adjusted top margin */
+
+/* Main content wrapper (replaces .project-container's role for width) */
+main.container-fluid {
+    padding-top: 20px;
+    padding-bottom: 20px;
+}
+
+/* Styles for the main project detail card */
+.project-detail-card { /* Renamed from .project-container to match new HTML */
+    margin: 0 auto; /* Centering for good measure, though col-lg-10 does it */
     background: #ffffff; /* White project container */
     padding: 20px; /* Adjusted padding */
     border-radius: 8px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); /* Softer shadow */
 }
 
-.project-container h1, #projectTitle {
+.project-detail-card h1, #projectTitle {
     font-size: 28px;
     color: #555555; /* Soft grey title */
     margin-bottom: 15px;
 }
 
-.project-container img, #projectImage {
-    max-width: 100%;
-    height: auto;
+/* Project Image styles */
+#projectImage { /* Specific ID for the main project image */
+    width: 100%; /* Ensure it fills its column */
+    height: 400px; /* Fixed height for consistency, adjust as needed */
+    object-fit: cover; /* Crops image to fit without distortion */
     border-radius: 8px;
     margin-bottom: 20px;
-    max-height: 300px; /* Limit image height */
-    object-fit: cover; /* Ensure image covers area */
 }
 
-.project-container p, #projectDescription, #problemStatement, .project-container .tag {
+.project-detail-card p, #projectDescription, #problemStatement {
     font-size: 16px;
     color: #666666; /* Soft grey text */
 }
 
-.tag, .tags .badge { /* Apply styles to both if you use both */
-    display: inline-block;
-    background: #f5f5f5; /* Very light grey background */
-    padding: 5px 10px;
-    border-radius: 5px;
-    margin: 5px;
-}
-
+/* General h3 styling */
 h3 {
     margin-top: 20px;
     margin-bottom: 10px;
     color: #007bff; /* Primary color for subheadings */
 }
 
-#collaborators li,
-#resources li {
-    padding: 5px 0;
+/* Tag styling */
+.tags .badge { /* Targeting the new Bootstrap badge structure */
+    display: inline-block;
+    background-color: #f5f5f5; /* Very light grey background - override Bootstrap default if needed */
+    color: #333; /* Darker text for contrast */
+    padding: 5px 10px;
+    border-radius: 5px;
+    margin-right: 5px; /* Space between tags */
+    margin-bottom: 5px; /* Space for wrapping tags */
 }
 
+/* Collaborators and Resources list items */
+#collaborators li,
+#resources li {
+    padding: 2px 0; /* Reduced padding for inline display */
+    margin-bottom: 5px; /* Spacing for potential wrapping */
+}
+
+/* Project Stats */
 .project-stats {
     font-size: 14px;
     color: #888888; /* Soft grey text */
@@ -518,45 +532,145 @@ h3 {
     margin-bottom: 15px;
 }
 .project-stats span {
-    margin-right: 10px;
+    margin-right: 15px; /* Increased margin for better separation */
 }
 
+/* Like Button */
 #likeBtn {
     margin-bottom: 20px;
 }
 
-#comments .comment {
+/* Comments Section Styles */
+.comments-section {
+    padding-top: 20px;
+    margin-top: 20px;
+    border-top: 1px solid #eeeeee; /* Subtle separator line */
+}
+
+#commentsList {
+    max-height: 400px; /* Limits the height of the comments list */
+    overflow-y: auto; /* Adds scrollbar if comments exceed max-height */
+    padding-right: 10px; /* Space for scrollbar if present */
+    margin-bottom: 20px; /* Space between comments list and input box */
+}
+
+.comment-item { /* New class for individual comments */
+    background-color: #f9f9f9; /* Slightly off-white for comment background */
+    border: 1px solid #e0e0e0; /* Lighter border */
+    border-radius: 5px;
     padding: 15px;
     margin-bottom: 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    background-color: #fff;
-}
-#comments .comment strong {
-    color: #28a745;
-}
-#comments .comment small {
-    color: #6c757d;
-    margin-left: 10px;
 }
 
-#commentForm textarea {
-    margin-bottom: 10px;
+.comment-item strong {
+    color: #28a745; /* Green color for username */
 }
 
-/*author styles*/
+.comment-item small {
+    color: #6c757d; /* Muted color for timestamp */
+    margin-left: 8px; /* Adjusted spacing */
+}
+
+/* Comment Input Box Styles */
+.comment-input-box { /* New class for the form container */
+    background-color: #ffffff; /* White background for the input box */
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); /* Lighter shadow for the input box */
+}
+
+#commentText {
+    min-height: 80px; /* Minimum height for the textarea */
+    max-height: 150px; /* Maximum height to prevent it from growing too large */
+    resize: vertical; /* Allow vertical resizing only */
+    font-size: 15px;
+    border-color: #ced4da; /* Default border color */
+}
+
+#commentText:focus {
+    border-color: #80bdff; /* Bootstrap focus blue */
+    box-shadow: 0 0 0 0.25rem rgba(0, 123, 255, 0.25); /* Bootstrap focus shadow */
+}
+
+
+/* Author styles - kept as is, but ensure its HTML element exists and has this class */
 .project-author {
     font-size: 0.9em; /* Slightly smaller font size */
-    color: #6c757d;   /* A subtle grey color */
+    color: #6c757d;    /* A subtle grey color */
     margin-top: 10px; /* Space above the author name */
 }
 
 .project-author a {
-    color: #007bff;          /* Bootstrap primary blue for links */
-    text-decoration: none;   /* Remove underline by default */
-    font-weight: 500;        /* Slightly bolder for prominence */
+    color: #007bff;            /* Bootstrap primary blue for links */
+    text-decoration: none;    /* Remove underline by default */
+    font-weight: 500;         /* Slightly bolder for prominence */
 }
 
 .project-author a:hover {
     text-decoration: underline; /* Add underline on hover for better UX */
+}
+
+/* Ensure footer is pushed down */
+footer {
+    margin-top: 50px;
+    padding: 20px;
+    text-align: center;
+    background-color: #f8f9fa; /* Light background for footer */
+    color: #6c757d;
+    border-top: 1px solid #e9ecef;
+}
+
+/* Basic header search and user menu dropdown styling */
+.search-bar .form-control {
+    padding-right: 40px; /* Make space for the filter button */
+}
+
+.user-menu .profile-container {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+
+.user-menu #headerProfilePic {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-right: 10px;
+    border: 2px solid #007bff;
+}
+
+.user-menu #headerProfileName {
+    font-weight: 500;
+    color: #333;
+}
+
+.user-menu .dropdown-menu {
+    position: absolute;
+    top: 100%; /* Below the profile container */
+    right: 0;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    z-index: 1000;
+    min-width: 160px;
+    display: none; /* Hidden by default */
+    flex-direction: column;
+    padding: 10px 0;
+}
+
+.user-menu .dropdown-menu a {
+    padding: 8px 15px;
+    text-decoration: none;
+    color: #333;
+    display: block;
+}
+
+.user-menu .dropdown-menu a:hover {
+    background-color: #f2f2f2;
+}
+
+.user-menu .profile-container.active .dropdown-menu {
+    display: flex; /* Show when active */
 }

@@ -33,35 +33,58 @@
             </div>
         </div>
     </header>
-    <main>
-        <div class="container project-container">
-            <img id="projectImage" src="" alt="Project Image" class="img-fluid mb-3">
-            <h1 id="projectTitle"></h1>
-            <p id="projectDescription"></p>
-            <h3>Problem Statement</h3>
-            <p id="problemStatement"></p>
-            <h3>Collaborators</h3>
-            <ul id="collaborators"></ul>
-            <h3>Tags</h3>
-            <div id="tags" class="tags"></div>
-            <h3>Resources</h3>
-            <ul id="resources"></ul>
-            <div class="project-stats">
-                <span id="likes"><i class="fas fa-heart"></i> 0 Likes</span>
-                <span id="views"><i class="fas fa-eye"></i> 0 Views</span>
+
+    <main class="container-fluid py-4"> <div class="row justify-content-center">
+            <div class="col-lg-10 col-md-11"> <div class="project-detail-card card p-4 shadow-sm mb-4">
+                    <h1 id="projectTitle" class="card-title text-center mb-4">Loading Project...</h1>
+
+                    <div class="row align-items-center mb-4">
+                        <div class="col-md-6 text-center mb-3 mb-md-0">
+                            <img id="projectImage" src="https://via.placeholder.com/600x400?text=Project+Image" class="img-fluid rounded shadow-sm" alt="Project Image">
+                        </div>
+                        <div class="col-md-6">
+                            <h4 class="mb-3">Project Overview</h4>
+                            <p id="projectDescription" class="mb-3"></p>
+                            <p><strong><i class="fas fa-chart-line me-2"></i>Problem Statement:</strong> <span id="problemStatement"></span></p>
+                            <p><strong><i class="fas fa-users me-2"></i>Collaborators:</strong> <ul id="collaborators" class="list-unstyled d-inline"></ul></p>
+                            <p><strong><i class="fas fa-tags me-2"></i>Tags:</strong> <span id="tags" class="tags"></span></p>
+                            <p><strong><i class="fas fa-external-link-alt me-2"></i>Resources:</strong> <ul id="resources" class="list-unstyled d-inline"></ul></p>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div class="project-stats d-flex gap-3">
+                            <span id="likes" class="text-muted"><i class="fas fa-heart me-1"></i> 0 Likes</span>
+                            <span id="views" class="text-muted"><i class="fas fa-eye me-1"></i> 0 Views</span>
+                        </div>
+                        <button id="likeBtn" class="btn btn-outline-primary"><i class="fas fa-heart me-1"></i> Like</button>
+                    </div>
+
+                    <div class="comments-section mt-4 pt-4 border-top">
+                        <h4 class="mb-3"><i class="fas fa-comments me-2"></i>Comments (<span id="commentCount">0</span>)</h4>
+                        <div id="commentsList" class="mb-4">
+                            <p class="text-muted text-center" id="noCommentsMessage">No comments yet. Be the first to comment!</p>
+                        </div>
+
+                        <div class="comment-input-box card p-3 shadow-sm">
+                            <h5 class="mb-3">Leave a Comment</h5>
+                            <form id="commentForm">
+                                <textarea id="commentText" class="form-control mb-3" rows="3" placeholder="Write your comment here..."></textarea>
+                                <button type="submit" class="btn btn-primary">Post Comment</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <button id="likeBtn" class="btn btn-outline-primary"><i class="fas fa-heart"></i> Like</button>
-            <h3>Comments</h3>
-            <form id="commentForm" class="mb-3">
-                <textarea class="form-control mb-2" id="commentText" rows="4" placeholder="Add a comment..."></textarea>
-                <button type="submit" class="btn btn-primary">Post Comment</button>
-            </form>
-            <div id="comments"></div>
         </div>
     </main>
+
     <footer>
         <p>© 2025 ShareCase. All rights reserved.</p>
     </footer>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="/js/scripts.js"></script>
@@ -114,43 +137,94 @@
                     const project = await response.json();
                     document.getElementById('projectTitle').textContent = project.title;
                     document.getElementById('projectImage').src = project.image;
-                    document.getElementById('projectDescription').textContent = project.description || 'No description';
-                    document.getElementById('problemStatement').textContent = project.problemStatement || 'No problem statement';
-                    document.getElementById('collaborators').innerHTML = project.collaborators.length
-                        ? project.collaborators.map(c => `<li>${c}</li>`).join('')
-                        : '<li>No collaborators</li>';
-                    document.getElementById('tags').innerHTML = project.tags.length
-                        ? project.tags.map(t => `<span class="badge bg-primary me-1">${t}</span>`).join('')
-                        : '<span>No tags</span>';
-                    document.getElementById('resources').innerHTML = project.resources.length
-                        ? project.resources.map(r => `<li><a href="${r}" target="_blank">${r}</a></li>`).join('')
-                        : '<li>No resources</li>';
+                    document.getElementById('projectDescription').textContent = project.description || 'No description provided.';
+                    document.getElementById('problemStatement').textContent = project.problemStatement || 'Not specified.';
+
+                    // Collaborators
+                    const collaboratorsList = document.getElementById('collaborators');
+                    if (project.collaborators && project.collaborators.length > 0) {
+                        collaboratorsList.innerHTML = project.collaborators.map(c => `<li class="d-inline-block me-2"><span class="badge bg-info">${c}</span></li>`).join('');
+                    } else {
+                        collaboratorsList.innerHTML = '<li class="d-inline-block text-muted">None specified.</li>';
+                    }
+
+                    // Tags
+                    const tagsDiv = document.getElementById('tags');
+                    if (project.tags && project.tags.length > 0) {
+                        tagsDiv.innerHTML = project.tags.map(t => `<span class="badge bg-primary me-1">${t}</span>`).join('');
+                    } else {
+                        tagsDiv.innerHTML = '<span class="text-muted">No tags.</span>';
+                    }
+
+                    // Resources
+                    const resourcesList = document.getElementById('resources');
+                    if (project.resources && project.resources.length > 0) {
+                        resourcesList.innerHTML = project.resources.map(r => `<li class="d-inline-block me-2"><a href="${r}" target="_blank" class="badge bg-secondary text-decoration-none">${r.split('/').pop()}</a></li>`).join('');
+                    } else {
+                        resourcesList.innerHTML = '<li class="d-inline-block text-muted">No resources.</li>';
+                    }
+
                     document.getElementById('likes').innerHTML = `<i class="fas fa-heart"></i> ${project.likes} Likes`;
                     document.getElementById('views').innerHTML = `<i class="fas fa-eye"></i> ${project.views} Views`;
+                    
                     const likeBtn = document.getElementById('likeBtn');
-                    const hasLiked = project.likedBy.includes(project.userId);
+                    // Assuming project.userId is the ID of the currently logged-in user
+                    // and project.likedBy is an array of user IDs who liked the project
+                    const currentUserResponse = await fetch('/current-user');
+                    let currentUserId = null;
+                    if (currentUserResponse.ok) {
+                        const currentUser = await currentUserResponse.json();
+                        currentUserId = currentUser._id; 
+                    }
+
+                    const hasLiked = currentUserId && project.likedBy.includes(currentUserId);
                     likeBtn.textContent = hasLiked ? 'Unlike' : 'Like';
                     likeBtn.className = hasLiked ? 'btn btn-primary' : 'btn btn-outline-primary';
                     likeBtn.onclick = () => toggleLike(projectId);
-                    document.getElementById('comments').innerHTML = project.comments.length
-                        ? project.comments.map(c => `
-                            <div class="comment mb-3">
-                                <p><strong>${c.userName}</strong> <small>${new Date(c.timestamp).toLocaleString()}</small></p>
-                                <p>${c.text}</p>
-                            </div>
-                        `).join('')
-                        : '<p>No comments yet.</p>';
+
+                    // Load comments (now using the dedicated loadComments function)
+                    await loadComments(projectId, project.comments);
+
                 } else {
-                    throw new Error('Failed to load project');
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Failed to load project');
                 }
             } catch (error) {
                 console.error('Error loading project:', error);
                 Toastify({
-                    text: 'Error loading project',
+                    text: error.message || 'Error loading project',
                     duration: 3000,
                     style: { background: '#e74c3c' },
                 }).showToast();
                 setTimeout(() => window.location.href = '/index.html', 3000);
+            }
+        }
+
+        async function loadComments(projectId, commentsData) {
+            const commentsListDiv = document.getElementById('commentsList');
+            const commentCountSpan = document.getElementById('commentCount');
+            const noCommentsMessage = document.getElementById('noCommentsMessage');
+
+            commentsListDiv.innerHTML = ''; // Clear existing comments
+
+            if (commentsData && commentsData.length > 0) {
+                noCommentsMessage.style.display = 'none'; // Hide "no comments" message
+                commentsData.forEach(c => {
+                    const commentElement = document.createElement('div');
+                    commentElement.classList.add('comment-item', 'card', 'p-3', 'mb-2', 'shadow-sm'); // Added shadow-sm for subtle lift
+                    commentElement.innerHTML = `
+                        <div class="d-flex align-items-center mb-2">
+                            <img src="${c.userProfilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'}" alt="User Profile" class="rounded-circle me-2" style="width: 30px; height: 30px; object-fit: cover;">
+                            <small class="text-muted"><strong>${c.userName}</strong> on ${new Date(c.timestamp).toLocaleString()}</small>
+                        </div>
+                        <p class="mb-0">${c.text}</p>
+                    `;
+                    commentsListDiv.appendChild(commentElement);
+                });
+                commentCountSpan.textContent = commentsData.length;
+            } else {
+                noCommentsMessage.style.display = 'block'; // Show "no comments" message
+                commentCountSpan.textContent = '0';
             }
         }
 
@@ -172,12 +246,13 @@
                         style: { background: '#28a745' },
                     }).showToast();
                 } else {
-                    throw new Error('Failed to toggle like');
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Failed to toggle like');
                 }
             } catch (error) {
                 console.error('Error toggling like:', error);
                 Toastify({
-                    text: 'Error toggling like',
+                    text: error.message || 'Error toggling like',
                     duration: 3000,
                     style: { background: '#e74c3c' },
                 }).showToast();
@@ -188,8 +263,8 @@
             e.preventDefault();
             const urlParams = new URLSearchParams(window.location.search);
             const projectId = urlParams.get('id');
-            const commentText = document.getElementById('commentText').value;
-            if (!commentText.trim()) {
+            const commentText = document.getElementById('commentText').value.trim();
+            if (!commentText) {
                 Toastify({
                     text: 'Comment cannot be empty',
                     duration: 3000,
@@ -204,20 +279,22 @@
                     body: JSON.stringify({ text: commentText })
                 });
                 if (response.ok) {
-                    document.getElementById('commentText').value = '';
+                    document.getElementById('commentText').value = ''; // Clear the input
                     Toastify({
                         text: 'Comment posted successfully!',
                         duration: 3000,
                         style: { background: '#28a745' },
                     }).showToast();
+                    // Reload the project to get updated comments
                     loadProject();
                 } else {
-                    throw new Error('Failed to post comment');
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Failed to post comment');
                 }
             } catch (error) {
                 console.error('Error posting comment:', error);
                 Toastify({
-                    text: 'Error posting comment',
+                    text: error.message || 'Error posting comment',
                     duration: 3000,
                     style: { background: '#e74c3c' },
                 }).showToast();
