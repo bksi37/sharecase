@@ -330,7 +330,7 @@ router.post('/generate-portfolio', isAuthenticated, isProfileComplete, async (re
                             request.end(); // Important to end the request
                         });
 
-                        doc.image(imageBuffer, { width: 400, fit: [512, 300], align: 'center', valign: 'center' });
+                        doc.image(imageBuffer, { width: 400, align: 'center', valign: 'center' });
                         doc.moveDown(0.5);
                     } catch (error) {
                         console.error('Image download error:', error);
