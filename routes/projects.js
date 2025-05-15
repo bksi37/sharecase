@@ -267,9 +267,16 @@ router.post('/project/:id/like', isAuthenticated, isProfileComplete, async (req,
     }
 });
 
-// Generate Portfolio (UPDATED to use for...of for async image fetching)
+// Generate Portfolio (RE-UPDATED for fetch error)
 router.post('/generate-portfolio', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
+        // --- ADD THIS LINE HERE ---
+        // Re-declaring fetch within this scope to ensure it's definitively available
+        // This is a workaround for the 'fetch is not a function' error you're getting,
+        // suggesting a scope or initialization issue even with 'require' at the top.
+        const localFetch = require('node-fetch'); 
+        // --- END ADDITION ---
+
         const user = await User.findById(req.session.userId);
         const projects = await Project.find({ userId: req.session.userId });
         const doc = new PDFDocument({ size: 'A4', margin: 40 });
@@ -282,11 +289,10 @@ router.post('/generate-portfolio', isAuthenticated, isProfileComplete, async (re
         doc.registerFont('Roboto-Bold', 'public/fonts/Roboto-Bold.ttf');
 
         // Header
-        // Displaying name from the User object, also adding email and LinkedIn from User model
         doc.fillColor('#007bff').font('Roboto-Bold').fontSize(28).text(user.name, { align: 'center' });
         doc.moveDown(0.2);
-        doc.fillColor('#000000').font('Roboto').fontSize(12).text(user.email || '', { align: 'center' }); // Display email
-        if (user.linkedin) { // Assuming 'linkedin' field exists on your User model
+        doc.fillColor('#000000').font('Roboto').fontSize(12).text(user.email || '', { align: 'center' });
+        if (user.linkedin) {
             doc.moveDown(0.2);
             doc.fillColor('#000000').font('Roboto').fontSize(12).text(`LinkedIn: ${user.linkedin}`, { align: 'center', link: user.linkedin });
         }
@@ -301,7 +307,6 @@ router.post('/generate-portfolio', isAuthenticated, isProfileComplete, async (re
         if (projects.length === 0) {
             doc.font('Roboto').fontSize(12).text('No projects available to display.', { align: 'center' });
         } else {
-            // *** CRITICAL FIX: Use for...of loop for asynchronous operations ***
             for (const [index, p] of projects.entries()) {
                 if (index > 0) doc.addPage();
 
@@ -312,9 +317,10 @@ router.post('/generate-portfolio', isAuthenticated, isProfileComplete, async (re
                 // Image
                 if (p.image && !p.image.includes('default-project.jpg')) {
                     try {
-                        const response = await fetch(`${p.image}?w=400&h=300`); // Request a larger image for PDF
+                        // --- USE localFetch HERE ---
+                        const response = await localFetch(`${p.image}?w=400&h=300`); // Use localFetch
                         const buffer = await response.buffer();
-                        doc.image(buffer, { width: 400, fit: [512, 300], align: 'center', valign: 'center' }); // Use fit for better scaling
+                        doc.image(buffer, { width: 400, fit: [512, 300], align: 'center', valign: 'center' });
                         doc.moveDown(0.5);
                     } catch (error) {
                         console.error('Image fetch error:', error);
