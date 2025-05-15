@@ -5,9 +5,10 @@ const cloudinary = require('cloudinary').v2;
 const Project = require('../models/Project');
 const { isAuthenticated, isProfileComplete } = require('../middleware/auth');
 const PDFDocument = require('pdfkit');
-const User = require('../models/User'); // Add this line
+const User = require('../models/User'); // This line was correctly added previously
+const https = require('https'); // <<< THIS MUST BE 'https', NOT 'httpps'
+
 const router = express.Router();
-const https = require('https');
 
 // Add Project (Keeping your existing code for this route)
 router.post('/add-project', isAuthenticated, isProfileComplete, async (req, res) => {
@@ -267,14 +268,14 @@ router.post('/project/:id/like', isAuthenticated, isProfileComplete, async (req,
     }
 });
 
-// Generate Portfolio (RE-RE-UPDATED for persistent fetch error using HTTPS module)
+// Generate Portfolio (FINAL ATTEMPT FIX for ReferenceError: https is not defined)
 router.post('/generate-portfolio', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
         const user = await User.findById(req.session.userId);
         const projects = await Project.find({ userId: req.session.userId });
         const doc = new PDFDocument({ size: 'A4', margin: 40 });
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', 'attachment; filename=portfolio.pdf');
+        res.setHeader('Content-Disposition', 'attachment; filename=portfolio.pdf'); // Or 'inline' if you prefer
         doc.pipe(res);
 
         // Fonts
@@ -287,7 +288,12 @@ router.post('/generate-portfolio', isAuthenticated, isProfileComplete, async (re
         doc.fillColor('#000000').font('Roboto').fontSize(12).text(user.email || '', { align: 'center' });
         if (user.linkedin) {
             doc.moveDown(0.2);
-            doc.fillColor('#000000').font('Roboto').fontSize(12).text(`LinkedIn: ${user.linkedin}`, { align: 'center', link: user.linkedin });
+            let linkedinUrl = user.linkedin;
+            // Ensure proper absolute URL for LinkedIn in PDF
+            if (!linkedinUrl.startsWith('http://') && !linkedinUrl.startsWith('https://')) {
+                linkedinUrl = `https://${linkedinUrl}`;
+            }
+            doc.fillColor('#000000').font('Roboto').fontSize(12).text(`LinkedIn: ${user.linkedin}`, { align: 'center', link: linkedinUrl });
         }
         doc.moveDown(1);
         doc.lineWidth(2).strokeColor('#007bff').moveTo(40, doc.y).lineTo(552, doc.y).stroke();
@@ -310,26 +316,25 @@ router.post('/generate-portfolio', isAuthenticated, isProfileComplete, async (re
                 // Image
                 if (p.image && !p.image.includes('default-project.jpg')) {
                     try {
-                        // --- NEW IMAGE FETCHING LOGIC USING HTTPS MODULE ---
                         const imageUrl = new URL(p.image); // Parse URL to get hostname and path
                         const imageBuffer = await new Promise((resolve, reject) => {
-                            const request = https.get(imageUrl, (response) => {
+                            const request = https.get(imageUrl, (response) => { // <<< This is the 'https' that must be defined
                                 if (response.statusCode < 200 || response.statusCode >= 300) {
-                                    return reject(new Error(`HTTP Error: ${response.statusCode}`));
+                                    return reject(new Error(`HTTP Error: ${response.statusCode} for ${imageUrl.href}`));
                                 }
                                 const chunks = [];
                                 response.on('data', (chunk) => chunks.push(chunk));
                                 response.on('end', () => resolve(Buffer.concat(chunks)));
                             });
                             request.on('error', (err) => reject(err));
+                            request.end(); // Important to end the request
                         });
-                        // --- END NEW IMAGE FETCHING LOGIC ---
 
                         doc.image(imageBuffer, { width: 400, fit: [512, 300], align: 'center', valign: 'center' });
                         doc.moveDown(0.5);
                     } catch (error) {
                         console.error('Image download error:', error);
-                        doc.fontSize(10).fillColor('#e74c3c').text('Image not available', { align: 'left' });
+                        doc.fontSize(10).fillColor('#e74c3c').text('Image not available or failed to download', { align: 'left' });
                         doc.moveDown(0.5);
                     }
                 }
