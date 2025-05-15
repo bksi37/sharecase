@@ -96,12 +96,15 @@
                     document.getElementById('publicUserBio').textContent = user.bio || ''; // Assuming 'bio' field on User model
                     const linkedInElement = document.getElementById('publicUserLinkedIn');
                     if (user.linkedin) {
-                        linkedInElement.innerHTML = `<a href="${user.linkedin}" target="_blank"><i class="fab fa-linkedin"></i> LinkedIn</a>`;
-                        linkedInElement.style.display = 'block';
-                    } else {
-                        linkedInElement.style.display = 'none';
-                    }
-
+            let linkedinUrl = user.linkedin;
+            if (!linkedinUrl.startsWith('http://') && !linkedinUrl.startsWith('https://')) {
+                linkedinUrl = `https://${linkedinUrl}`; // Prepend https:// if missing
+            }
+            linkedInElement.innerHTML = `<a href="${linkedinUrl}" target="_blank"><i class="fab fa-linkedin"></i> LinkedIn</a>`;
+            linkedInElement.style.display = 'block';
+        } else {
+            linkedInElement.style.display = 'none';
+        }
                 } else {
                     throw new Error('Failed to load user details');
                 }

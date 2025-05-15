@@ -5,9 +5,9 @@ const cloudinary = require('cloudinary').v2;
 const Project = require('../models/Project');
 const { isAuthenticated, isProfileComplete } = require('../middleware/auth');
 const PDFDocument = require('pdfkit');
-const fetch = require('node-fetch'); // Ensure this is also here
 const User = require('../models/User'); // Add this line
 const router = express.Router();
+const httpps = require('https');
 
 // Add Project (Keeping your existing code for this route)
 router.post('/add-project', isAuthenticated, isProfileComplete, async (req, res) => {
@@ -267,16 +267,9 @@ router.post('/project/:id/like', isAuthenticated, isProfileComplete, async (req,
     }
 });
 
-// Generate Portfolio (RE-UPDATED for fetch error)
+// Generate Portfolio (RE-RE-UPDATED for persistent fetch error using HTTPS module)
 router.post('/generate-portfolio', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
-        // --- ADD THIS LINE HERE ---
-        // Re-declaring fetch within this scope to ensure it's definitively available
-        // This is a workaround for the 'fetch is not a function' error you're getting,
-        // suggesting a scope or initialization issue even with 'require' at the top.
-        const localFetch = require('node-fetch'); 
-        // --- END ADDITION ---
-
         const user = await User.findById(req.session.userId);
         const projects = await Project.find({ userId: req.session.userId });
         const doc = new PDFDocument({ size: 'A4', margin: 40 });
@@ -317,13 +310,25 @@ router.post('/generate-portfolio', isAuthenticated, isProfileComplete, async (re
                 // Image
                 if (p.image && !p.image.includes('default-project.jpg')) {
                     try {
-                        // --- USE localFetch HERE ---
-                        const response = await localFetch(`${p.image}?w=400&h=300`); // Use localFetch
-                        const buffer = await response.buffer();
-                        doc.image(buffer, { width: 400, fit: [512, 300], align: 'center', valign: 'center' });
+                        // --- NEW IMAGE FETCHING LOGIC USING HTTPS MODULE ---
+                        const imageUrl = new URL(p.image); // Parse URL to get hostname and path
+                        const imageBuffer = await new Promise((resolve, reject) => {
+                            const request = https.get(imageUrl, (response) => {
+                                if (response.statusCode < 200 || response.statusCode >= 300) {
+                                    return reject(new Error(`HTTP Error: ${response.statusCode}`));
+                                }
+                                const chunks = [];
+                                response.on('data', (chunk) => chunks.push(chunk));
+                                response.on('end', () => resolve(Buffer.concat(chunks)));
+                            });
+                            request.on('error', (err) => reject(err));
+                        });
+                        // --- END NEW IMAGE FETCHING LOGIC ---
+
+                        doc.image(imageBuffer, { width: 400, fit: [512, 300], align: 'center', valign: 'center' });
                         doc.moveDown(0.5);
                     } catch (error) {
-                        console.error('Image fetch error:', error);
+                        console.error('Image download error:', error);
                         doc.fontSize(10).fillColor('#e74c3c').text('Image not available', { align: 'left' });
                         doc.moveDown(0.5);
                     }
