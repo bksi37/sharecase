@@ -36,40 +36,44 @@
     <main>
         <div class="settings-form">
             <h2>Settings</h2>
-            <form id="settingsForm" enctype="multipart/form-data">
-                <h3>Profile</h3>
-<div class="mb-3">
-    <label for="name" class="form-label">Name</label>
-    <input type="text" class="form-control" id="name" name="name" required>
-</div>
-<div class="mb-3">
-    <label for="email" class="form-label">Email</label>
-    <input type="email" class="form-control" id="email" name="email" readonly>
-</div>
-<div class="mb-3">
-    <label for="schoolEmail" class="form-label">School Email</label>
-    <input type="email" class="form-control" id="schoolEmail" name="schoolEmail">
-</div>
-<div class="mb-3">
-    <label for="bio" class="form-label">Bio</label>
-    <textarea class="form-control" id="bio" name="bio" rows="4"></textarea>
-</div>
-<div class="mb-3">
-    <label for="linkedin" class="form-label">LinkedIn Profile URL</label>
-    <input type="url" class="form-control" id="linkedin" name="linkedin" placeholder="e.g., https://linkedin.com/in/yourprofile">
-</div>
-<div class="mb-3">
-    <label for="profilePic" class="form-label">Profile Picture</label>
-    <input type="file" class="form-control" id="profilePic" name="profilePic" accept="image/*">
-</div>
-<div class="d-flex gap-2 mb-4">
-    <button type="submit" class="btn btn-primary">Save Profile</button>
-    <button type="button" class="btn btn-secondary" id="cancelProfileBtn">Cancel</button>
-</div>
-                <h3>Security</h3>
+
+            <h3>Profile</h3>
+            <form id="profileSettingsForm" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label for="name" class="form-label">Name</label>
+                    <input type="text" class="form-control" id="name" name="name" required>
+                </div>
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" class="form-control" id="email" name="email" readonly>
+                </div>
+                <div class="mb-3">
+                    <label for="schoolEmail" class="form-label">School Email</label>
+                    <input type="email" class="form-control" id="schoolEmail" name="schoolEmail">
+                </div>
+                <div class="mb-3">
+                    <label for="bio" class="form-label">Bio</label>
+                    <textarea class="form-control" id="bio" name="bio" rows="4"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label for="linkedin" class="form-label">LinkedIn Profile URL</label>
+                    <input type="url" class="form-control" id="linkedin" name="linkedin" placeholder="e.g., https://linkedin.com/in/yourprofile">
+                </div>
+                <div class="mb-3">
+                    <label for="profilePic" class="form-label">Profile Picture</label>
+                    <input type="file" class="form-control" id="profilePic" name="profilePic" accept="image/*">
+                </div>
+                <div class="d-flex gap-2 mb-4">
+                    <button type="submit" class="btn btn-primary">Save Profile</button>
+                    <button type="button" class="btn btn-secondary" id="cancelProfileBtn">Cancel</button>
+                </div>
+            </form>
+
+            <h3>Security</h3>
+            <form id="securitySettingsForm">
                 <div class="mb-3">
                     <button type="button" class="btn btn-outline-primary" id="changePasswordBtn">Change Password</button>
-                    <div id="passwordSection" class="password-section mt-3">
+                    <div id="passwordSection" class="password-section mt-3" style="display: none;">
                         <div class="mb-3">
                             <label for="currentPassword" class="form-label">Current Password</label>
                             <input type="password" class="form-control" id="currentPassword" required>
@@ -83,7 +87,7 @@
                             <input type="password" class="form-control" id="confirmNewPassword" required>
                         </div>
                         <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-primary" id="savePasswordBtn">Save</button>
+                            <button type="submit" class="btn btn-primary" id="savePasswordBtn">Save</button>
                             <button type="button" class="btn btn-secondary" id="cancelPasswordBtn">Cancel</button>
                         </div>
                     </div>
@@ -92,8 +96,10 @@
                     <input type="checkbox" class="form-check-input" id="twoFactorAuth" name="twoFactorAuth">
                     <label class="form-check-label" for="twoFactorAuth">Enable 2FA</label>
                 </div>
+            </form>
 
-                <h3>Preferences</h3>
+            <h3>Preferences</h3>
+            <form id="preferencesSettingsForm">
                 <div class="mb-3">
                     <label for="notifications" class="form-label">Notifications</label>
                     <select class="form-select" id="notifications" name="notifications">
@@ -118,21 +124,22 @@
                     </select>
                 </div>
                 <div class="d-flex gap-2 mb-4">
-                    <button type="button" class="btn btn-primary" id="savePreferencesBtn">Save Preferences</button>
+                    <button type="submit" class="btn btn-primary" id="savePreferencesBtn">Save Preferences</button>
                     <button type="button" class="btn btn-secondary" id="cancelPreferencesBtn">Cancel</button>
                 </div>
-
-                <h3>Activity Log</h3>
-                <div class="activity-log mb-4">
-                    <ul id="activityLog"></ul>
-                </div>
-
-                <h3 class="text-danger">Danger Zone</h3>
-                <div class="danger-zone">
-                    <p>Delete your account and all associated data.</p>
-                    <button type="button" class="btn btn-danger btn-sm" id="deleteAccountBtn">Delete Account</button>
-                </div>
             </form>
+
+            <h3>Activity Log</h3>
+            <div class="activity-log mb-4">
+                <ul id="activityLog"></ul>
+            </div>
+
+            <h3 class="text-danger">Danger Zone</h3>
+            <div class="danger-zone">
+                <p>Delete your account and all associated data.</p>
+                <button type="button" class="btn btn-danger btn-sm" id="deleteAccountBtn">Delete Account</button>
+            </div>
+
         </div>
     </main>
     <footer>
@@ -172,29 +179,32 @@
         }
 
         async function loadSettings() {
-        try {
-            const response = await fetch('/current-user');
-            if (!response.ok) throw new Error('Please log in to view settings');
-            const user = await response.json();
-            document.getElementById('name').value = user.name || '';
-            document.getElementById('email').value = user.email || '';
-            document.getElementById('schoolEmail').value = user.schoolEmail || '';
-            document.getElementById('bio').value = user.bio || ''; // Add this line
-            document.getElementById('linkedin').value = user.linkedin || ''; // Add this line
-            document.getElementById('notifications').value = user.notifications || 'all';
-            document.getElementById('theme').value = user.theme || 'light';
-            document.getElementById('privacy').value = user.privacy || 'public';
-            document.getElementById('twoFactorAuth').checked = user.twoFactorAuth || false;
-        } catch (error) {
-            console.error('Error loading settings:', error);
-            Toastify({
-                text: error.message,
-                duration: 3000,
-                style: { background: '#e74c3c' },
-            }).showToast();
-            setTimeout(() => window.location.href = '/login.html', 3000);
+            try {
+                const response = await fetch('/current-user');
+                if (!response.ok) throw new Error('Please log in to view settings');
+                const user = await response.json();
+                document.getElementById('name').value = user.name || '';
+                document.getElementById('email').value = user.email || '';
+                document.getElementById('schoolEmail').value = user.schoolEmail || '';
+                document.getElementById('bio').value = user.bio || '';
+                document.getElementById('linkedin').value = user.linkedin || '';
+                
+                // Load preferences into their respective elements
+                document.getElementById('notifications').value = user.notifications || 'all';
+                document.getElementById('theme').value = user.theme || 'light';
+                document.getElementById('privacy').value = user.privacy || 'public';
+                document.getElementById('twoFactorAuth').checked = user.twoFactorAuth || false;
+            } catch (error) {
+                console.error('Error loading settings:', error);
+                Toastify({
+                    text: error.message,
+                    duration: 3000,
+                    style: { background: '#e74c3c' },
+                }).showToast();
+                setTimeout(() => window.location.href = '/login.html', 3000);
+            }
         }
-    }
+        
         async function loadActivityLog() {
             try {
                 const response = await fetch('/activity-log');
@@ -214,7 +224,8 @@
             }
         }
 
-        document.getElementById('settingsForm').addEventListener('submit', async e => {
+        // Event listener for the Profile form
+        document.getElementById('profileSettingsForm').addEventListener('submit', async e => {
             e.preventDefault();
             const formData = new FormData(e.target);
             const schoolEmail = formData.get('schoolEmail');
@@ -259,21 +270,14 @@
             }
         });
 
-        document.getElementById('changePasswordBtn').addEventListener('click', () => {
-            document.getElementById('passwordSection').style.display = 'block';
-        });
-
-        document.getElementById('cancelPasswordBtn').addEventListener('click', () => {
-            document.getElementById('passwordSection').style.display = 'none';
-            document.getElementById('currentPassword').value = '';
-            document.getElementById('newPassword').value = '';
-            document.getElementById('confirmNewPassword').value = '';
-        });
-
-        document.getElementById('savePasswordBtn').addEventListener('click', async () => {
+        // Event listener for the Security (password) form
+        document.getElementById('securitySettingsForm').addEventListener('submit', async e => {
+            e.preventDefault();
             const currentPassword = document.getElementById('currentPassword').value;
             const newPassword = document.getElementById('newPassword').value;
             const confirmNewPassword = document.getElementById('confirmNewPassword').value;
+            
+            // Password validation (client-side)
             if (!currentPassword || !newPassword || !confirmNewPassword) {
                 Toastify({
                     text: 'All password fields are required',
@@ -290,6 +294,7 @@
                 }).showToast();
                 return;
             }
+            // Add a stronger password regex if desired
             if (!/^(?=.*\d)(?=.*[!@#$%^&*]).{8,}$/.test(newPassword)) {
                 Toastify({
                     text: 'New password must be 8+ characters with a number and special character',
@@ -298,6 +303,7 @@
                 }).showToast();
                 return;
             }
+
             try {
                 const response = await fetch('/change-password', {
                     method: 'POST',
@@ -311,7 +317,8 @@
                         duration: 3000,
                         style: { background: '#28a745' },
                     }).showToast();
-                    document.getElementById('passwordSection').style.display = 'none';
+                    document.getElementById('passwordSection').style.display = 'none'; // Hide section
+                    // Clear password fields
                     document.getElementById('currentPassword').value = '';
                     document.getElementById('newPassword').value = '';
                     document.getElementById('confirmNewPassword').value = '';
@@ -332,11 +339,17 @@
             }
         });
 
-        document.getElementById('savePreferencesBtn').addEventListener('click', async () => {
+        // Event listener for the Preferences form
+        document.getElementById('preferencesSettingsForm').addEventListener('submit', async e => {
+            e.preventDefault();
             const notifications = document.getElementById('notifications').value;
             const theme = document.getElementById('theme').value;
             const privacy = document.getElementById('privacy').value;
+            // twoFactorAuth checkbox is now in the security form but can be handled here if logically grouped in JS
+            // For now, it remains in the Security HTML form, but its value is collected here for Preferences update.
+            // If you moved it to the Security form, ensure it's still accessible or collected differently.
             const twoFactorAuth = document.getElementById('twoFactorAuth').checked;
+
             try {
                 const response = await fetch('/update-preferences', {
                     method: 'POST',
@@ -367,12 +380,24 @@
             }
         });
 
-        document.getElementById('cancelPreferencesBtn').addEventListener('click', () => {
-            loadSettings();
+        // Original click handlers for buttons that don't submit a form directly
+        document.getElementById('changePasswordBtn').addEventListener('click', () => {
+            document.getElementById('passwordSection').style.display = 'block';
+        });
+
+        document.getElementById('cancelPasswordBtn').addEventListener('click', () => {
+            document.getElementById('passwordSection').style.display = 'none';
+            document.getElementById('currentPassword').value = '';
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmNewPassword').value = '';
         });
 
         document.getElementById('cancelProfileBtn').addEventListener('click', () => {
-            loadSettings();
+            loadSettings(); // Reloads all settings data
+        });
+
+        document.getElementById('cancelPreferencesBtn').addEventListener('click', () => {
+            loadSettings(); // Reloads all settings data
         });
 
         document.getElementById('deleteAccountBtn').addEventListener('click', async () => {
@@ -407,10 +432,12 @@
             }
         });
 
+        // Initial page load
         window.onload = () => {
             loadUserProfileInHeader();
             loadSettings();
             loadActivityLog();
+            document.getElementById('passwordSection').style.display = 'none'; // Ensure password section is hidden on initial load
         };
     </script>
 </body>
