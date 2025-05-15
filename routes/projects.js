@@ -7,7 +7,7 @@ const { isAuthenticated, isProfileComplete } = require('../middleware/auth');
 const PDFDocument = require('pdfkit');
 const User = require('../models/User'); // Add this line
 const router = express.Router();
-const httpps = require('https');
+const https = require('https');
 
 // Add Project (Keeping your existing code for this route)
 router.post('/add-project', isAuthenticated, isProfileComplete, async (req, res) => {
