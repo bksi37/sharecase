@@ -22,7 +22,8 @@ router.post('/add-project', isAuthenticated, isProfileComplete, async (req, res)
             const file = req.files.image;
             const result = await cloudinary.uploader.upload(`data:${file.mimetype};base64,${file.data.toString('base64')}`, {
                 folder: 'sharecase/projects',
-                format: 'jpg'
+                 quality: 'auto', // q_auto shorthand
+                fetch_format: 'auto' // f_auto shorthand
             });
             imageUrl = result.secure_url;
         }
@@ -225,7 +226,8 @@ router.put('/project/:id', isAuthenticated, isProfileComplete, async (req, res) 
             const file = req.files.image;
             const result = await cloudinary.uploader.upload(`data:${file.mimetype};base64,${file.data.toString('base64')}`, {
                 folder: 'sharecase/projects',
-                format: 'jpg'
+                 quality: 'auto',
+                fetch_format: 'auto'
             });
             imageUrl = result.secure_url;
         }
