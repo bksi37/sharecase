@@ -6,7 +6,7 @@ const { isAuthenticated } = require('../middleware/auth'); // No need for isProf
 const bcrypt = require('bcryptjs');
 const router = express.Router();
 
-// Complete Profile (Keep as is, assumes req.files for initial profile completion)
+// Complete Profile
 router.post('/complete-profile', isAuthenticated, async (req, res) => {
     try {
         const { name, schoolEmail } = req.body;
@@ -22,19 +22,36 @@ router.post('/complete-profile', isAuthenticated, async (req, res) => {
             profilePicUrl = result.secure_url;
         }
 
-        const updateData = { name, schoolEmail, isProfileComplete: true };
-        if (profilePicUrl) updateData.profilePic = profilePicUrl;
-
-        await User.findByIdAndUpdate(userId, updateData);
-        await User.findByIdAndUpdate(userId, {
+        const updateFields = {
+            name,
+            schoolEmail,
+            isProfileComplete: true, // This is now consistently set here
+            // We combine the $push for activityLog directly into this update
             $push: { activityLog: { action: 'Profile completed', timestamp: new Date() } }
-        });
-        res.json({ success: true });
+        };
+
+        if (profilePicUrl) {
+            updateFields.profilePic = profilePicUrl;
+        }
+
+        // Perform the combined update.
+        // { new: true } returns the document *after* the update.
+        // { runValidators: true } ensures any schema validators run during the update.
+        const updatedUser = await User.findByIdAndUpdate(userId, updateFields, { new: true, runValidators: true });
+
+        // This log will show you the user object *after* the update,
+        // which should confirm if isProfileComplete is true.
+        console.log('User after complete-profile update:', updatedUser);
+
+        // This assumes your frontend create-profile.html expects a redirect property in the JSON response
+        res.json({ success: true, redirect: '/index.html' });
+
     } catch (error) {
         console.error('Profile completion error:', error);
-        res.status(500).json({ error: 'Server error' });
+        res.status(500).json({ error: 'Server error', details: error.message }); // Added details for better debugging
     }
 });
+
 
 // Update Profile
 router.post('/update-profile', isAuthenticated, async (req, res) => { // Removed 'upload.single' middleware

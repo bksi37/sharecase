@@ -2,10 +2,11 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const cloudinary = require('cloudinary').v2;
 const User = require('../models/User');
-const { isAuthenticated, isProfileComplete } = require('../middleware/auth');
+const { isAuthenticated, isProfileComplete } = require('../middleware/auth'); // Keep isAuthenticated for other routes
+
 const router = express.Router();
 
-// Current User
+// Current User (Requires Authentication)
 router.get('/current-user', isAuthenticated, async (req, res) => {
     try {
         const user = await User.findById(req.session.userId);
@@ -37,12 +38,12 @@ router.post('/signup', async (req, res) => {
             return res.status(400).json({ error: 'Email already exists' });
         }
         const hashedPassword = await bcrypt.hash(password, 10);
-        const user = new User({ email, password: hashedPassword, name, profileComplete: false });
+        const user = new User({ email, password: hashedPassword, name, isProfileComplete: false });
         await user.save();
         req.session.userId = user._id.toString();
         req.session.userName = user.name;
         await req.session.save();
-        console.log('Signup successful:', { userId: user._id, profileComplete: user.profileComplete });
+        console.log('Signup successful:', { userId: user._id, isProfileComplete: user.isProfileComplete });
         res.json({ success: true, redirect: '/create-profile.html' });
     } catch (error) {
         console.error('Signup error:', error);
@@ -70,11 +71,11 @@ router.post('/login', async (req, res) => {
                 console.error('Session save error:', err);
                 return res.status(500).json({ error: 'Session error' });
             }
-            console.log('Login successful:', { userId: user._id, profileComplete: user.profileComplete });
-            const redirect = user.profileComplete === true ? '/index.html' : '/create-profile.html';
+            console.log('Login successful:', { userId: user._id, isProfileComplete: user.isProfileComplete });
+            const redirect = user.isProfileComplete === true ? '/index.html' : '/create-profile.html';
             res.json({
                 success: true,
-                isProfileComplete: user.profileComplete,
+                isProfileComplete: user.isProfileComplete,
                 redirect
             });
         });
@@ -84,7 +85,7 @@ router.post('/login', async (req, res) => {
     }
 });
 
-// Complete Profile
+// Complete Profile (Requires Authentication)
 router.post('/complete-profile', isAuthenticated, async (req, res) => {
     try {
         const { name, linkedin } = req.body;
@@ -106,10 +107,10 @@ router.post('/complete-profile', isAuthenticated, async (req, res) => {
         user.name = name || user.name;
         user.linkedin = linkedin || '';
         user.profilePic = profilePic;
-        user.profileComplete = true;
+        user.isProfileComplete = true;
         await user.save();
         await req.session.save();
-        console.log('Profile completed:', { userId: user._id, profileComplete: user.profileComplete });
+        console.log('Profile completed:', { userId: user._id, isProfileComplete: user.isProfileComplete });
         res.json({ success: true, redirect: '/index.html' });
     } catch (error) {
         console.error('Complete profile error:', error);
@@ -129,17 +130,59 @@ router.get('/logout', (req, res) => {
     });
 });
 
-// NEW ROUTE: Fetch Public User Details
-router.get('/user-details/:id', async (req, res) => {
+// **CORRECTED AND UNIQUE ROUTE: Fetch Public User Details by ID**
+router.get('/user-details/:id', async (req, res) => { // Removed isAuthenticated for public access
     try {
+        const userId = req.params.id;
         // Select only fields that are safe to expose publicly
-        const user = await User.findById(req.params.id).select('name email profilePic bio linkedin');
+        const user = await User.findById(userId).select('name email profilePic bio linkedin');
+
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
-        res.json(user);
+
+        // Send a structured response with default profile pic if none exists
+        res.json({
+            _id: user._id,
+            name: user.name,
+            email: user.email, // Be cautious about making email public if it's sensitive
+            profilePic: user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg',
+            bio: user.bio,
+            linkedin: user.linkedin
+        });
+
     } catch (error) {
         console.error('Error fetching public user details:', error);
+        // Specifically check for CastError if an invalid ID format is provided
+        if (error.name === 'CastError') {
+             return res.status(400).json({ error: 'Invalid user ID format' });
+        }
+        res.status(500).json({ error: 'Server error', details: error.message });
+    }
+});
+
+// NEW ROUTE: Search Users for Collaboration (Requires Authentication)
+router.get('/users/search', isAuthenticated, async (req, res) => {
+    try {
+        const query = req.query.q; // Get the search term from the query parameter
+        if (!query || query.trim() === '') {
+            return res.status(400).json({ error: 'Search query is required' });
+        }
+
+        const searchTerm = new RegExp(query, 'i'); // Case-insensitive regex search
+
+        // Find users matching the search term in name or email
+        const users = await User.find({
+            $or: [
+                { name: { $regex: searchTerm } },
+                { email: { $regex: searchTerm } },
+                // { username: { $regex: searchTerm } } // Uncomment if you have a 'username' field
+            ]
+        }).select('_id name email profilePic'); // Select only necessary public fields
+
+        res.json(users);
+    } catch (error) {
+        console.error('User search error:', error);
         res.status(500).json({ error: 'Server error' });
     }
 });

@@ -51,16 +51,59 @@
                         <textarea class="form-control" id="problemStatement" name="problemStatement" rows="4"></textarea>
                     </div>
                     <div class="mb-3">
-                        <label for="tags" class="form-label">Tags (e.g., MECH101,2023,Robotics)</label>
-                        <input type="text" class="form-control" id="tags" name="tags" placeholder="Comma-separated tags">
+                        <label class="form-label">Tags</label>
+                        <div class="row">
+                            <div class="col-md-6 mb-2">
+                                <label for="course" class="form-label">Course</label>
+                                <select class="form-select" id="course" name="course">
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <label for="year" class="form-label">Year</label>
+                                <select class="form-select" id="year" name="year">
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <label for="type" class="form-label">Type</label>
+                                <select class="form-select" id="type" name="type">
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <label for="department" class="form-label">Department</label>
+                                <select class="form-select" id="department" name="department">
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <label for="category" class="form-label">Category</label>
+                                <select class="form-select" id="category" name="category">
+                                </select>
+                            </div>
+                            <div class="col-md-12">
+                                <small class="form-text text-muted">Select relevant tags for your project.</small>
+                            </div>
+                        </div>
                     </div>
                     <div class="mb-3">
-                        <label for="collaborators" class="form-label">Collaborators (e.g., John Doe,Jane Smith)</label>
-                        <input type="text" class="form-control" id="collaborators" name="collaborators" placeholder="Comma-separated names">
+                        <label class="form-label">Collaborators (Registered Users)</label>
+                        <div class="form-control" style="min-height: 50px; padding: .375rem .75rem; display: flex; flex-wrap: wrap; align-items: center; gap: 5px;">
+                            <div id="selectedCollaboratorsDisplay" style="display: flex; flex-wrap: wrap; gap: 5px;">
+                            </div>
+                            <input type="text" id="collaboratorSearchInput" class="form-control flex-grow-1" placeholder="Search by name or email..." style="border: none; outline: none; box-shadow: none; padding: 0; min-width: 150px;">
+                        </div>
+                        <div id="collaboratorSearchResults" class="list-group position-absolute z-index-1000 w-100 mt-1 shadow" style="max-height: 200px; overflow-y: auto; display: none; background-color: white;">
+                        </div>
+                        <input type="hidden" id="collaboratorIds" name="collaboratorIds">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="otherCollaborators" class="form-label">Other Collaborators (Unregistered, comma-separated)</label>
+                        <input type="text" class="form-control" id="otherCollaborators" name="otherCollaborators" placeholder="Guest Speaker, External Advisor">
+                        <small class="form-text text-muted">For individuals not registered on ShareCase.</small>
                     </div>
                     <div class="mb-3">
-                        <label for="resources" class="form-label">Resources (e.g., http://example.com/doc.pdf)</label>
+                        <label for="resources" class="form-label">Resources (Optional)</label>
                         <input type="text" class="form-control" id="resources" name="resources" placeholder="Comma-separated URLs">
+                        <small class="form-text text-muted">e.g., http://example.com/doc.pdf, https://github.com/user/repo</small>
                     </div>
                     <div class="mb-3">
                         <label for="isPublished" class="form-label">Publish Status</label>
@@ -91,6 +134,7 @@
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="/js/scripts.js"></script>
     <script>
+        // --- Existing loadUserProfile and Image Upload Logic ---
         async function loadUserProfile() {
             try {
                 const response = await fetch('/current-user');
@@ -152,20 +196,177 @@
             reader.readAsDataURL(file);
         }
 
+        // --- NEW COLLABORATOR SEARCH AND SELECTION LOGIC ---
+        const collaboratorSearchInput = document.getElementById('collaboratorSearchInput');
+        const collaboratorSearchResults = document.getElementById('collaboratorSearchResults');
+        const selectedCollaboratorsDisplay = document.getElementById('selectedCollaboratorsDisplay');
+        const collaboratorIdsHiddenInput = document.getElementById('collaboratorIds');
+        const otherCollaboratorsInput = document.getElementById('otherCollaborators');
+
+        // This array will hold the IDs of the registered collaborators
+        let selectedCollaboratorIds = [];
+
+        // --- Helper Functions ---
+
+        // Debounce function to limit API calls while typing
+        let debounceTimeout;
+        function debounce(func, delay) {
+            clearTimeout(debounceTimeout);
+            debounceTimeout = setTimeout(func, delay);
+        }
+
+        // Function to update the hidden input with comma-separated IDs
+        function updateCollaboratorIdsHiddenInput() {
+            collaboratorIdsHiddenInput.value = selectedCollaboratorIds.join(',');
+        }
+
+        // Function to create and add a collaborator "chip"
+        function addCollaboratorChip(userId, userName, profilePic) {
+            if (selectedCollaboratorIds.includes(userId)) {
+                return; // Prevent adding duplicate collaborators
+            }
+
+            // Add ID to our internal array
+            selectedCollaboratorIds.push(userId);
+            updateCollaboratorIdsHiddenInput(); // Update hidden input immediately
+
+            // Create the chip element
+            const chip = document.createElement('span');
+            chip.classList.add('badge', 'bg-primary', 'me-2', 'd-flex', 'align-items-center');
+            chip.setAttribute('data-user-id', userId);
+            chip.innerHTML = `
+                <img src="${profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'}" class="rounded-circle me-1" style="width: 20px; height: 20px;" alt="${userName}">
+                ${userName}
+                <button type="button" class="btn-close btn-close-white ms-1" aria-label="Remove" data-remove-id="${userId}" style="font-size: 0.6em;"></button>
+            `;
+            selectedCollaboratorsDisplay.appendChild(chip);
+            Toastify({ text: `${userName} added as collaborator`, duration: 2000, style: { background: "#28a745" } }).showToast();
+        }
+
+        // --- Event Listeners ---
+
+        // Handle typing in the search input
+        collaboratorSearchInput.addEventListener('input', () => {
+            const query = collaboratorSearchInput.value.trim();
+            if (query.length > 2) { // Only search if query is at least 3 characters
+                debounce(() => searchUsers(query), 300); // Debounce search
+            } else {
+                collaboratorSearchResults.style.display = 'none'; // Hide results if query too short
+                collaboratorSearchResults.innerHTML = '';
+            }
+        });
+
+        // Handle clicking on a search result
+        collaboratorSearchResults.addEventListener('click', (event) => {
+            const selectedItem = event.target.closest('.list-group-item');
+            if (selectedItem) {
+                const userId = selectedItem.dataset.userId;
+                const userName = selectedItem.dataset.userName;
+                const profilePic = selectedItem.dataset.profilePic;
+
+                addCollaboratorChip(userId, userName, profilePic);
+
+                collaboratorSearchInput.value = ''; // Clear input
+                collaboratorSearchResults.style.display = 'none'; // Hide results
+                collaboratorSearchResults.innerHTML = '';
+            }
+        });
+
+        // Handle clicking the "X" on a chip to remove a collaborator
+        selectedCollaboratorsDisplay.addEventListener('click', (event) => {
+            const removeBtn = event.target.closest('.btn-close');
+            if (removeBtn) {
+                const userIdToRemove = removeBtn.dataset.removeId;
+                const chipToRemove = removeBtn.closest('.badge');
+
+                // Remove from internal array
+                selectedCollaboratorIds = selectedCollaboratorIds.filter(id => id !== userIdToRemove);
+                updateCollaboratorIdsHiddenInput(); // Update hidden input
+
+                // Remove chip from display
+                if (chipToRemove) {
+                    chipToRemove.remove();
+                    Toastify({ text: `Collaborator removed`, duration: 2000, style: { background: "#dc3545" } }).showToast();
+                }
+            }
+        });
+
+        // Hide search results when clicking outside
+        document.addEventListener('click', (event) => {
+            if (!collaboratorSearchInput.contains(event.target) && !collaboratorSearchResults.contains(event.target)) {
+                collaboratorSearchResults.style.display = 'none';
+            }
+        });
+
+        // --- Search Function ---
+
+        async function searchUsers(query) {
+            try {
+                const response = await fetch(`/users/search?q=${encodeURIComponent(query)}`);
+                if (!response.ok) {
+                    throw new Error('Failed to search users');
+                }
+                const users = await response.json();
+
+                collaboratorSearchResults.innerHTML = ''; // Clear previous results
+                if (users.length > 0) {
+                    users.forEach(user => {
+                        // Ensure we don't display users already selected
+                        if (!selectedCollaboratorIds.includes(user._id)) {
+                            const userDiv = document.createElement('button');
+                            userDiv.classList.add('list-group-item', 'list-group-item-action', 'd-flex', 'align-items-center');
+                            userDiv.setAttribute('type', 'button'); // Important for accessibility and clickability
+                            userDiv.dataset.userId = user._id;
+                            userDiv.dataset.userName = user.name;
+                            userDiv.dataset.profilePic = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
+                            userDiv.innerHTML = `
+                                <img src="${user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'}" class="rounded-circle me-2" style="width: 30px; height: 30px;" alt="${user.name}">
+                                ${user.name} (${user.email})
+                            `;
+                            collaboratorSearchResults.appendChild(userDiv);
+                        }
+                    });
+                    collaboratorSearchResults.style.display = 'block';
+                } else {
+                    collaboratorSearchResults.
+                    collaboratorSearchResults.style.display = 'none';
+                    Toastify({ text: 'No users found', duration: 2000, style: { background: "#ffc107" } }).showToast();
+                }
+            } catch (error) {
+                console.error('Error during user search:', error);
+                Toastify({ text: 'Error searching users', duration: 2000, style: { background: "#e74c3c" } }).showToast();
+                collaboratorSearchResults.style.display = 'none';
+            }
+        }
+
+        // --- UPDATED FORM SUBMISSION LOGIC ---
         document.getElementById('uploadForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const formData = new FormData();
             formData.append('title', document.getElementById('title').value);
             formData.append('description', document.getElementById('description').value);
             formData.append('problemStatement', document.getElementById('problemStatement').value);
-            formData.append('tags', document.getElementById('tags').value);
-            formData.append('collaborators', document.getElementById('collaborators').value);
+
+            // --- NEW: Appending tag data from dropdowns ---
+            const selectedCourses = document.getElementById('course')?.value;
+            const selectedYears = document.getElementById('year')?.value;
+            const selectedTypes = document.getElementById('type')?.value;
+            const selectedDepartments = document.getElementById('department')?.value;
+            const selectedCategories = document.getElementById('category')?.value;
+
+            const selectedTagsArray = [selectedCourses, selectedYears, selectedTypes, selectedDepartments, selectedCategories].filter(Boolean);
+            formData.append('tags', selectedTagsArray.join(','));
+
+            formData.append('collaboratorIds', collaboratorIdsHiddenInput.value); // The IDs of registered users
+            formData.append('otherCollaborators', otherCollaboratorsInput.value); // The names of unregistered users
+
             formData.append('resources', document.getElementById('resources').value);
             formData.append('isPublished', document.getElementById('isPublished').value);
             const imageFile = document.getElementById('image').files[0];
             if (imageFile) {
                 formData.append('image', imageFile);
             }
+
             try {
                 const response = await fetch('/add-project', {
                     method: 'POST',
@@ -177,21 +378,68 @@
                         duration: 3000,
                         style: { background: '#28a745' },
                     }).showToast();
-                    setTimeout(() => window.location.href = '/index.html', 3000);
+                    setTimeout(() => window.location.href = '/profile.html', 3000); // Redirect to profile after success
                 } else {
-                    throw new Error('Failed to upload project');
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to upload project');
                 }
             } catch (error) {
                 console.error('Error uploading project:', error);
                 Toastify({
-                    text: 'Error uploading project',
+                    text: error.message || 'Error uploading project',
                     duration: 3000,
                     style: { background: '#e74c3c' },
                 }).showToast();
             }
         });
 
-        window.onload = loadUserProfile;
+        window.onload = () => {
+            loadUserProfile();
+            loadDynamicFilterOptionsForUpload();
+        };
+
+        // --- NEW LOGIC TO FETCH AND POPULATE TAG OPTIONS ---
+        async function loadDynamicFilterOptionsForUpload() {
+            try {
+                const response = await fetch('/dynamic-filter-options');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const filterData = await response.json();
+                console.log('Dynamic Filter Options:', filterData); // Log the data to see its structure
+
+                // --- Populate dropdowns for tags ---
+                const courseSelect = document.getElementById('course');
+                const yearSelect = document.getElementById('year');
+                const typeSelect = document.getElementById('type');
+                const departmentSelect = document.getElementById('department');
+                const categorySelect = document.getElementById('category');
+
+                if (courseSelect) populateDropdown(courseSelect, filterData.courses || []);
+                if (yearSelect) populateDropdown(yearSelect, filterData.years || []);
+                if (typeSelect) populateDropdown(typeSelect, filterData.types || []);
+                if (departmentSelect) populateDropdown(departmentSelect, filterData.departments || []);
+                if (categorySelect) populateDropdown(categorySelect, filterData.categories || []);
+
+            } catch (error) {
+                console.error('Error loading dynamic filter options for upload:', error);
+                Toastify({
+                    text: 'Error loading tag options',
+                    duration: 3000,
+                    style: { background: '#e74c3c' },
+                }).showToast();
+            }
+        }
+
+        function populateDropdown(selectElement, options) {
+            selectElement.innerHTML = '<option value="">Select an option</option>'; // Default "Select" option
+            options.forEach(optionValue => {
+                const option = document.createElement('option');
+                option.value = optionValue;
+                option.textContent = optionValue;
+                selectElement.appendChild(option);
+            });
+        }
     </script>
 </body>
 </html>

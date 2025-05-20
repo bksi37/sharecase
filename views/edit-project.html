@@ -55,8 +55,21 @@
                         <input type="text" class="form-control" id="tags" name="tags" placeholder="Comma-separated tags">
                     </div>
                     <div class="mb-3">
-                        <label for="collaborators" class="form-label">Collaborators (e.g., John Doe,Jane Smith)</label>
-                        <input type="text" class="form-control" id="collaborators" name="collaborators" placeholder="Comma-separated names">
+                        <label class="form-label">Collaborators (Registered Users)</label>
+                        <div class="form-control" style="min-height: 50px; padding: .375rem .75rem; display: flex; flex-wrap: wrap; align-items: center; gap: 5px;">
+                            <div id="selectedCollaboratorsDisplay" style="display: flex; flex-wrap: wrap; gap: 5px;">
+                                </div>
+                            <input type="text" id="collaboratorSearchInput" class="form-control flex-grow-1" placeholder="Search by name or email..." style="border: none; outline: none; box-shadow: none; padding: 0; min-width: 150px;">
+                        </div>
+                        <div id="collaboratorSearchResults" class="list-group position-absolute z-index-1000 w-100 mt-1 shadow" style="max-height: 200px; overflow-y: auto; display: none; background-color: white;">
+                            </div>
+                        <input type="hidden" id="collaboratorIds" name="collaboratorIds">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="otherCollaborators" class="form-label">Other Collaborators (Unregistered, comma-separated)</label>
+                        <input type="text" class="form-control" id="otherCollaborators" name="otherCollaborators" placeholder="Guest Speaker, External Advisor">
+                        <small class="form-text text-muted">For individuals not registered on ShareCase.</small>
                     </div>
                     <div class="mb-3">
                         <label for="resources" class="form-label">Resources (e.g., http://example.com/doc.pdf)</label>
@@ -90,7 +103,148 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="/js/scripts.js"></script>
+
     <script>
+        // --- Global Elements and Variables for Collaborators ---
+        const collaboratorSearchInput = document.getElementById('collaboratorSearchInput');
+        const collaboratorSearchResults = document.getElementById('collaboratorSearchResults');
+        const selectedCollaboratorsDisplay = document.getElementById('selectedCollaboratorsDisplay');
+        const collaboratorIdsHiddenInput = document.getElementById('collaboratorIds');
+        const otherCollaboratorsInput = document.getElementById('otherCollaborators');
+
+        // This array will hold the IDs of the registered collaborators currently selected
+        let selectedCollaboratorIds = [];
+
+        // Debounce function to limit API calls while typing
+        let debounceTimeout;
+        function debounce(func, delay) {
+            clearTimeout(debounceTimeout);
+            debounceTimeout = setTimeout(func, delay);
+        }
+
+        // Function to update the hidden input with comma-separated IDs
+        function updateCollaboratorIdsHiddenInput() {
+            collaboratorIdsHiddenInput.value = selectedCollaboratorIds.join(',');
+        }
+
+        // Function to create and add a collaborator "chip"
+        function addCollaboratorChip(userId, userName, profilePic, isInitialLoad = false) {
+            if (selectedCollaboratorIds.includes(userId)) {
+                return; // Prevent adding duplicate collaborators
+            }
+
+            // Add ID to our internal array
+            selectedCollaboratorIds.push(userId);
+            updateCollaboratorIdsHiddenInput(); // Update hidden input immediately
+
+            // Create the chip element
+            const chip = document.createElement('span');
+            chip.classList.add('badge', 'bg-primary', 'me-2', 'd-flex', 'align-items-center');
+            chip.setAttribute('data-user-id', userId);
+            chip.innerHTML = `
+                <img src="${profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'}" class="rounded-circle me-1" style="width: 20px; height: 20px;" alt="${userName}">
+                ${userName}
+                <button type="button" class="btn-close btn-close-white ms-1" aria-label="Remove" data-remove-id="${userId}" style="font-size: 0.6em;"></button>
+            `;
+            selectedCollaboratorsDisplay.appendChild(chip);
+            if (!isInitialLoad) {
+                Toastify({ text: `${userName} added as collaborator`, duration: 2000, style: { background: "#28a745" } }).showToast();
+            }
+        }
+
+        // --- Event Listeners for Collaborator Input ---
+
+        // Handle typing in the search input
+        collaboratorSearchInput.addEventListener('input', () => {
+            const query = collaboratorSearchInput.value.trim();
+            if (query.length > 2) { // Only search if query is at least 3 characters
+                debounce(() => searchUsers(query), 300); // Debounce search
+            } else {
+                collaboratorSearchResults.style.display = 'none'; // Hide results if query too short
+                collaboratorSearchResults.innerHTML = '';
+            }
+        });
+
+        // Handle clicking on a search result
+        collaboratorSearchResults.addEventListener('click', (event) => {
+            const selectedItem = event.target.closest('.list-group-item');
+            if (selectedItem) {
+                const userId = selectedItem.dataset.userId;
+                const userName = selectedItem.dataset.userName;
+                const profilePic = selectedItem.dataset.profilePic;
+                
+                addCollaboratorChip(userId, userName, profilePic);
+
+                collaboratorSearchInput.value = ''; // Clear input
+                collaboratorSearchResults.style.display = 'none'; // Hide results
+                collaboratorSearchResults.innerHTML = '';
+            }
+        });
+
+        // Handle clicking the "X" on a chip to remove a collaborator
+        selectedCollaboratorsDisplay.addEventListener('click', (event) => {
+            const removeBtn = event.target.closest('.btn-close');
+            if (removeBtn) {
+                const userIdToRemove = removeBtn.dataset.removeId;
+                const chipToRemove = removeBtn.closest('.badge');
+                
+                // Remove from internal array
+                selectedCollaboratorIds = selectedCollaboratorIds.filter(id => id !== userIdToRemove);
+                updateCollaboratorIdsHiddenInput(); // Update hidden input
+
+                // Remove chip from display
+                if (chipToRemove) {
+                    chipToRemove.remove();
+                    Toastify({ text: `Collaborator removed`, duration: 2000, style: { background: "#dc3545" } }).showToast();
+                }
+            }
+        });
+
+        // Hide search results when clicking outside
+        document.addEventListener('click', (event) => {
+            if (!collaboratorSearchInput.contains(event.target) && !collaboratorSearchResults.contains(event.target)) {
+                collaboratorSearchResults.style.display = 'none';
+            }
+        });
+
+        // --- Search Function ---
+        async function searchUsers(query) {
+            try {
+                const response = await fetch(`/users/search?q=${encodeURIComponent(query)}`);
+                if (!response.ok) {
+                    throw new Error('Failed to search users');
+                }
+                const users = await response.json();
+
+                collaboratorSearchResults.innerHTML = ''; // Clear previous results
+                if (users.length > 0) {
+                    users.forEach(user => {
+                        const userDiv = document.createElement('button');
+                        userDiv.classList.add('list-group-item', 'list-group-item-action', 'd-flex', 'align-items-center');
+                        userDiv.setAttribute('type', 'button'); // Important for accessibility and clickability
+                        userDiv.dataset.userId = user._id;
+                        userDiv.dataset.userName = user.name;
+                        userDiv.dataset.profilePic = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
+                        userDiv.innerHTML = `
+                            <img src="${user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'}" class="rounded-circle me-2" style="width: 30px; height: 30px;" alt="${user.name}">
+                            ${user.name} (${user.email})
+                        `;
+                        collaboratorSearchResults.appendChild(userDiv);
+                    });
+                    collaboratorSearchResults.style.display = 'block';
+                } else {
+                    collaboratorSearchResults.style.display = 'none';
+                    Toastify({ text: 'No users found', duration: 2000, style: { background: "#ffc107" } }).showToast();
+                }
+            } catch (error) {
+                console.error('Error during user search:', error);
+                Toastify({ text: 'Error searching users', duration: 2000, style: { background: "#e74c3c" } }).showToast();
+                collaboratorSearchResults.style.display = 'none';
+            }
+        }
+
+        // --- Existing Functions (Modified) ---
+
         async function loadUserProfile() {
             try {
                 const response = await fetch('/current-user');
@@ -141,7 +295,20 @@
                     document.getElementById('description').value = project.description || '';
                     document.getElementById('problemStatement').value = project.problemStatement || '';
                     document.getElementById('tags').value = project.tags.join(', ');
-                    document.getElementById('collaborators').value = project.collaborators.join(', ');
+                    
+                    // --- Populate new collaborator fields ---
+                    selectedCollaboratorIds = []; // Clear array before populating
+                    selectedCollaboratorsDisplay.innerHTML = ''; // Clear display
+                    if (project.collaborators && project.collaborators.length > 0) {
+                        project.collaborators.forEach(collab => {
+                            addCollaboratorChip(collab._id, collab.name, collab.profilePic, true); // true for initial load
+                        });
+                    }
+                    updateCollaboratorIdsHiddenInput(); // Ensure hidden input is set
+                    
+                    document.getElementById('otherCollaborators').value = project.otherCollaborators.join(', ');
+                    // --- End Populate new collaborator fields ---
+
                     document.getElementById('resources').value = project.resources.join(', ');
                     document.getElementById('isPublished').value = project.isPublished ? 'true' : 'false';
                     if (project.image) {
@@ -203,7 +370,12 @@
             formData.append('description', document.getElementById('description').value);
             formData.append('problemStatement', document.getElementById('problemStatement').value);
             formData.append('tags', document.getElementById('tags').value);
-            formData.append('collaborators', document.getElementById('collaborators').value);
+
+            // --- NEW: Appending collaborator data ---
+            formData.append('collaboratorIds', collaboratorIdsHiddenInput.value); // The IDs of registered users
+            formData.append('otherCollaborators', otherCollaboratorsInput.value); // The names of unregistered users
+            // --- END NEW ---
+
             formData.append('resources', document.getElementById('resources').value);
             formData.append('isPublished', document.getElementById('isPublished').value);
             const imageFile = document.getElementById('image').files[0];
@@ -223,12 +395,13 @@
                     }).showToast();
                     setTimeout(() => window.location.href = '/profile.html', 3000);
                 } else {
-                    throw new Error('Failed to update project');
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to update project');
                 }
             } catch (error) {
                 console.error('Error updating project:', error);
                 Toastify({
-                    text: 'Error updating project',
+                    text: error.message || 'Error updating project',
                     duration: 3000,
                     style: { background: '#e74c3c' },
                 }).showToast();
@@ -237,7 +410,7 @@
 
         window.onload = () => {
             loadUserProfile();
-            loadProject();
+            loadProject(); // This will now populate the new collaborator fields
         };
     </script>
 </body>

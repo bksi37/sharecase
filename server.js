@@ -8,6 +8,7 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 require('dotenv').config();
 const { isAuthenticated, isProfileComplete } = require('./middleware/auth');
+const tags = require('./config/tags');
 
 // Initialize Express app
 const app = express();
@@ -42,6 +43,18 @@ app.use((req, res, next) => {
     console.log(`Request: ${req.method} ${req.url} ${JSON.stringify(req.body)} Session: ${(req.session && req.session.userId) || 'none'}`);
     next();
 });
+
+// NEW ROUTE FOR DYNAMIC FILTER OPTIONS
+app.get('/dynamic-filter-options', (req, res) => {
+  res.json({
+    courses: tags.OU_ENGINEERING_COURSES || [],
+    years: tags.years || [],
+    types: tags.types || [],
+    departments: tags.departments || [],
+    categories: tags.PROJECT_CATEGORIES || [],
+  });
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(fileUpload());

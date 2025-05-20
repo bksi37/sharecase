@@ -16,8 +16,9 @@ const isProfileComplete = async (req, res, next) => {
             console.log('User not found:', req.session.userId);
             return res.status(404).json({ error: 'User not found' });
         }
-        console.log('User profile state:', { userId: user._id, profileComplete: user.profileComplete });
-        if (user.profileComplete === true) {
+                // Corrected lines:
+        console.log('User profile state:', { userId: user._id, isProfileComplete: user.isProfileComplete }); // Log the correct field
+        if (user.isProfileComplete === true) { // Check the correct field
             return next();
         }
         res.status(403).json({ error: 'Profile incomplete', redirect: '/create-profile.html?redirected=true' });

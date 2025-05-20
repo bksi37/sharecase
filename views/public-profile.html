@@ -20,7 +20,8 @@
                 <img id="headerProfilePic" src="https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg" alt="Profile Picture">
                 <span id="headerProfileName">Guest</span>
                 <div class="dropdown-menu" id="userDropdown">
-                    <a href="/profile.html">My Profile</a> <a href="/settings.html">Settings</a>
+                    <a href="/profile.html">My Profile</a>
+                    <a href="/settings.html">Settings</a>
                     <a href="/upload-project.html">Upload Project</a>
                     <a id="authLink" href="/login.html">Login</a>
                     <a href="/about.html">About</a>
@@ -41,7 +42,7 @@
             <div class="col-md-8">
                 <h3 class="mb-4">Projects by <span id="publicUserNameProjects"></span></h3>
                 <div class="row row-cols-1 row-cols-md-2 g-4" id="publicUserProjectsGrid">
-                    </div>
+                </div>
                 <p id="noPublicProjectsMessage" class="text-muted mt-3" style="display: none;">No projects found for this user.</p>
             </div>
         </div>
@@ -74,7 +75,7 @@
 
         async function loadPublicUserProfileAndProjects() {
             const urlParams = new URLSearchParams(window.location.search);
-            const userId = urlParams.get('userId');
+            const userId = urlParams.get('id'); // <<< THIS IS THE ONLY CHANGE!
 
             if (!userId) {
                 document.getElementById('publicUserName').textContent = 'User Not Found';
@@ -85,7 +86,6 @@
 
             try {
                 // Fetch user details for the public profile
-                // You'll need to create a new route for this in your user-related backend routes (e.g., routes/users.js)
                 const userResponse = await fetch(`/user-details/${userId}`);
                 if (userResponse.ok) {
                     const user = await userResponse.json();
@@ -96,21 +96,33 @@
                     document.getElementById('publicUserBio').textContent = user.bio || ''; // Assuming 'bio' field on User model
                     const linkedInElement = document.getElementById('publicUserLinkedIn');
                     if (user.linkedin) {
-            let linkedinUrl = user.linkedin;
-            if (!linkedinUrl.startsWith('http://') && !linkedinUrl.startsWith('https://')) {
-                linkedinUrl = `https://${linkedinUrl}`; // Prepend https:// if missing
-            }
-            linkedInElement.innerHTML = `<a href="${linkedinUrl}" target="_blank"><i class="fab fa-linkedin"></i> LinkedIn</a>`;
-            linkedInElement.style.display = 'block';
-        } else {
-            linkedInElement.style.display = 'none';
-        }
+                        let linkedinUrl = user.linkedin;
+                        if (!linkedinUrl.startsWith('http://') && !linkedinUrl.startsWith('https://')) {
+                            linkedinUrl = `https://${linkedinUrl}`; // Prepend https:// if missing
+                        }
+                        linkedInElement.innerHTML = `<a href="${linkedinUrl}" target="_blank"><i class="fab fa-linkedin"></i> LinkedIn</a>`;
+                        linkedInElement.style.display = 'block';
+                    } else {
+                        linkedInElement.style.display = 'none';
+                    }
                 } else {
-                    throw new Error('Failed to load user details');
+                    // Check if it's a 404 specifically for "User Not Found"
+                    if (userResponse.status === 404) {
+                        document.getElementById('publicUserName').textContent = 'User Not Found';
+                        document.getElementById('publicUserProjectsGrid').innerHTML = '<p class="text-center">The requested user could not be found.</p>';
+                        document.getElementById('publicUserNameProjects').textContent = 'User';
+                        // Hide other profile details if user not found
+                        document.getElementById('publicProfilePic').src = 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'; // Reset to default
+                        document.getElementById('publicUserEmail').textContent = '';
+                        document.getElementById('publicUserBio').textContent = '';
+                        document.getElementById('publicUserLinkedIn').style.display = 'none';
+                    } else {
+                        throw new Error(`Failed to load user details: ${userResponse.statusText}`);
+                    }
+                    return; // Stop execution if user details failed to load
                 }
 
                 // Fetch projects for the public profile
-                // This will use the new route we added in projects.js
                 const projectsResponse = await fetch(`/projects-by-user/${userId}`);
                 if (projectsResponse.ok) {
                     const projects = await projectsResponse.json();
@@ -148,6 +160,10 @@
                 }).showToast();
                 document.getElementById('publicUserName').textContent = 'Error Loading Profile';
                 document.getElementById('publicUserNameProjects').textContent = 'Error Loading Profile';
+                document.getElementById('publicProfilePic').src = 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'; // Reset to default
+                document.getElementById('publicUserEmail').textContent = '';
+                document.getElementById('publicUserBio').textContent = '';
+                document.getElementById('publicUserLinkedIn').style.display = 'none';
             }
         }
 

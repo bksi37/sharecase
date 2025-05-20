@@ -34,18 +34,27 @@
         </div>
     </header>
 
-    <main class="container-fluid py-4"> <div class="row justify-content-center">
-            <div class="col-lg-10 col-md-11"> <div class="project-detail-card card p-4 shadow-sm mb-4">
+    <main class="container-fluid py-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-10 col-md-11">
+                <div class="project-detail-card card p-4 shadow-sm mb-4">
                     <h1 id="projectTitle" class="card-title text-center mb-4">Loading Project...</h1>
 
-                    <div class="mb-4 text-center"> <img id="projectImage" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" class="img-fluid rounded shadow-sm" alt="Project Image" style="max-height: 500px; width: auto; object-fit: contain;">
+                    <div class="mb-4 text-center">
+                        <img id="projectImage" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" class="img-fluid rounded shadow-sm" alt="Project Image" style="max-height: 500px; width: auto; object-fit: contain;">
+                    </div>
 
                     <div class="project-details-content">
                         <h4 class="mb-3">Project Overview</h4>
                         <p id="projectDescription" class="mb-3"></p>
-                        <p><strong><i class="fas fa-user-circle me-2"></i>Uploaded By:</strong> <span id="projectUploader"></span></p>
+                        <p class="card-text">
+                            <small class="text-muted">
+                                Uploaded by: <span id="projectUploader"></span>
+                            </small>
+                        </p>
+                        <div id="collaboratorsDisplay" class="d-flex flex-wrap align-items-center mb-3"></div>
+
                         <p><strong><i class="fas fa-chart-line me-2"></i>Problem Statement:</strong> <span id="problemStatement"></span></p>
-                        <p><strong><i class="fas fa-users me-2"></i>Collaborators:</strong> <ul id="collaborators" class="list-unstyled d-inline"></ul></p>
                         <p><strong><i class="fas fa-tags me-2"></i>Tags:</strong> <span id="tags" class="tags"></span></p>
                         <p><strong><i class="fas fa-external-link-alt me-2"></i>Resources:</strong> <ul id="resources" class="list-unstyled d-inline"></ul></p>
                     </div>
@@ -137,14 +146,60 @@
                     document.getElementById('projectImage').src = project.image;
                     document.getElementById('projectDescription').textContent = project.description || 'No description provided.';
                     document.getElementById('problemStatement').textContent = project.problemStatement || 'Not specified.';
-                    document.getElementById('projectUploader').textContent = project.userName || 'Unknown User';
-                    
-                    // Collaborators
-                    const collaboratorsList = document.getElementById('collaborators');
-                    if (project.collaborators && project.collaborators.length > 0) {
-                        collaboratorsList.innerHTML = project.collaborators.map(c => `<li class="d-inline-block me-2"><span class="badge bg-info">${c}</span></li>`).join('');
+
+                    // --- Uploader Logic (Corrected per your request) ---
+                    const projectUploaderSpan = document.getElementById('projectUploader');
+                    if (project.userId && project.userName) {
+                        const uploaderProfilePic = project.userProfilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
+                        const uploaderLinkHref = `/public-profile.html?id=${project.userId}`; // Always link to public profile
+
+                        projectUploaderSpan.innerHTML = `
+                            <a href="${uploaderLinkHref}" class="text-decoration-none d-flex align-items-center">
+                                <img src="${uploaderProfilePic}" alt="Uploader Profile" class="rounded-circle me-2" style="width: 30px; height: 30px; object-fit: cover;">
+                                <strong>${project.userName}</strong>
+                            </a>
+                        `;
                     } else {
-                        collaboratorsList.innerHTML = '<li class="d-inline-block text-muted">None specified.</li>';
+                        projectUploaderSpan.textContent = 'Unknown User';
+                    }
+
+                    // --- Collaborators Logic (Corrected to target collaboratorsDisplay) ---
+                    const collaboratorsDisplay = document.getElementById('collaboratorsDisplay');
+                    let allCollaboratorsHtml = [];
+
+                    // Add registered collaborators (populated user objects)
+                    if (project.collaborators && project.collaborators.length > 0) {
+                        project.collaborators.forEach(collabUser => {
+                            const collabProfilePic = collabUser.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
+                            const collabLinkHref = `/public-profile.html?id=${collabUser._id}`; // Always link to public profile
+
+                            allCollaboratorsHtml.push(
+                                `<li class="d-inline-block me-2 mb-1">
+                                    <a href="${collabLinkHref}" class="badge bg-info text-decoration-none d-flex align-items-center p-2">
+                                        <img src="${collabProfilePic}" alt="Profile" class="rounded-circle me-1" style="width: 20px; height: 20px; object-fit: cover;">
+                                        ${collabUser.name}
+                                    </a>
+                                </li>`
+                            );
+                        });
+                    }
+
+                    // Add other (unregistered) collaborators
+                    if (project.otherCollaborators && project.otherCollaborators.length > 0) {
+                        project.otherCollaborators.forEach(otherCollab => {
+                            allCollaboratorsHtml.push(
+                                `<li class="d-inline-block me-2 mb-1">
+                                    <span class="badge bg-secondary p-2">${otherCollab}</span>
+                                </li>`
+                            );
+                        });
+                    }
+
+                    if (allCollaboratorsHtml.length > 0) {
+                        // Correctly wrap the list items with a ul for collaboratorsDisplay
+                        collaboratorsDisplay.innerHTML = `<h6 class="me-2 mb-1">Collaborators:</h6><ul class="list-unstyled d-flex flex-wrap mb-0">${allCollaboratorsHtml.join('')}</ul>`;
+                    } else {
+                        collaboratorsDisplay.innerHTML = '<p class="text-muted">No collaborators specified.</p>'; // Clear if no collaborators
                     }
 
                     // Tags
@@ -167,16 +222,15 @@
                     document.getElementById('views').innerHTML = `<i class="fas fa-eye"></i> ${project.views} Views`;
                     
                     const likeBtn = document.getElementById('likeBtn');
-                    // Assuming project.userId is the ID of the currently logged-in user
-                    // and project.likedBy is an array of user IDs who liked the project
-                    const currentUserResponse = await fetch('/current-user');
-                    let currentUserId = null;
-                    if (currentUserResponse.ok) {
-                        const currentUser = await currentUserResponse.json();
-                        currentUserId = currentUser._id; 
+                    // Fetch current user for like functionality only
+                    const currentUserResponseForLike = await fetch('/current-user');
+                    let currentUserIdForLike = null;
+                    if (currentUserResponseForLike.ok) {
+                        const currentUser = await currentUserResponseForLike.json();
+                        currentUserIdForLike = currentUser._id; 
                     }
-
-                    const hasLiked = currentUserId && project.likedBy.includes(currentUserId);
+                    
+                    const hasLiked = currentUserIdForLike && project.likedBy.includes(currentUserIdForLike);
                     likeBtn.textContent = hasLiked ? 'Unlike' : 'Like';
                     likeBtn.className = hasLiked ? 'btn btn-primary' : 'btn btn-outline-primary';
                     likeBtn.onclick = () => toggleLike(projectId);
@@ -200,57 +254,49 @@
         }
 
        async function loadComments(projectId, commentsData) {
-    const commentsListDiv = document.getElementById('commentsList');
-    const commentCountSpan = document.getElementById('commentCount');
-    const noCommentsMessage = document.getElementById('noCommentsMessage');
+            const commentsListDiv = document.getElementById('commentsList');
+            const commentCountSpan = document.getElementById('commentCount');
+            const noCommentsMessage = document.getElementById('noCommentsMessage');
 
-    // Added check for noCommentsMessage
-    if (!noCommentsMessage) {
-        console.error("Error: The 'noCommentsMessage' element was not found in the DOM. Comments display may be affected.");
-        // If it's truly missing, we cannot set its style.
-        // We'll try to proceed with other elements to prevent cascading errors.
-        // For robustness, you might consider creating it dynamically here if it's consistently missing.
-        // For now, logging the error and moving on.
-    }
+            if (!noCommentsMessage) {
+                console.error("Error: The 'noCommentsMessage' element was not found in the DOM. Comments display may be affected.");
+            }
 
-    // Ensure commentsListDiv exists before trying to manipulate its innerHTML
-    if (commentsListDiv) {
-        commentsListDiv.innerHTML = ''; // Clear existing comments
-    } else {
-        console.error("Error: The 'commentsList' element was not found in the DOM.");
-        // Cannot proceed with displaying comments if commentsListDiv is missing
-        return;
-    }
+            if (commentsListDiv) {
+                commentsListDiv.innerHTML = '';
+            } else {
+                console.error("Error: The 'commentsList' element was not found in the DOM.");
+                return;
+            }
 
-
-    if (commentsData && commentsData.length > 0) {
-        if (noCommentsMessage) { // Only try to set style if element exists
-            noCommentsMessage.style.display = 'none'; // Hide "no comments" message
+            if (commentsData && commentsData.length > 0) {
+                if (noCommentsMessage) {
+                    noCommentsMessage.style.display = 'none';
+                }
+                commentsData.forEach(c => {
+                    const commentElement = document.createElement('div');
+                    commentElement.classList.add('comment-item', 'card', 'p-3', 'mb-2', 'shadow-sm');
+                    commentElement.innerHTML = `
+                        <div class="d-flex align-items-center mb-2">
+                            <img src="${c.userProfilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'}" alt="User Profile" class="rounded-circle me-2" style="width: 30px; height: 30px; object-fit: cover;">
+                            <small class="text-muted"><strong>${c.userName}</strong> on ${new Date(c.timestamp).toLocaleString()}</small>
+                        </div>
+                        <p class="mb-0">${c.text}</p>
+                    `;
+                    commentsListDiv.appendChild(commentElement);
+                });
+                if (commentCountSpan) {
+                    commentCountSpan.textContent = commentsData.length;
+                }
+            } else {
+                if (noCommentsMessage) {
+                    noCommentsMessage.style.display = 'block';
+                }
+                if (commentCountSpan) {
+                    commentCountSpan.textContent = '0';
+                }
+            }
         }
-        commentsData.forEach(c => {
-            const commentElement = document.createElement('div');
-            commentElement.classList.add('comment-item', 'card', 'p-3', 'mb-2', 'shadow-sm'); // Added shadow-sm for subtle lift
-            commentElement.innerHTML = `
-                <div class="d-flex align-items-center mb-2">
-                    <img src="${c.userProfilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'}" alt="User Profile" class="rounded-circle me-2" style="width: 30px; height: 30px; object-fit: cover;">
-                    <small class="text-muted"><strong>${c.userName}</strong> on ${new Date(c.timestamp).toLocaleString()}</small>
-                </div>
-                <p class="mb-0">${c.text}</p>
-            `;
-            commentsListDiv.appendChild(commentElement);
-        });
-        if (commentCountSpan) {
-            commentCountSpan.textContent = commentsData.length;
-        }
-    } else {
-        if (noCommentsMessage) { // Only try to set style if element exists
-            noCommentsMessage.style.display = 'block'; // Show "no comments" message
-        }
-        if (commentCountSpan) {
-            commentCountSpan.textContent = '0';
-        }
-    }
-}
         async function toggleLike(projectId) {
             try {
                 const response = await fetch(`/project/${projectId}/like`, {
@@ -302,14 +348,13 @@
                     body: JSON.stringify({ text: commentText })
                 });
                 if (response.ok) {
-                    document.getElementById('commentText').value = ''; // Clear the input
+                    document.getElementById('commentText').value = '';
                     Toastify({
                         text: 'Comment posted successfully!',
                         duration: 3000,
                         style: { background: '#28a745' },
                     }).showToast();
-                    // Reload the project to get updated comments
-                    loadProject();
+                    loadProject(); // Reload the project to get updated comments
                 } else {
                     const errorData = await response.json();
                     throw new Error(errorData.message || 'Failed to post comment');
