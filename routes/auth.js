@@ -51,54 +51,54 @@ router.get('/current-user', isAuthenticated, async (req, res) => {
 router.post('/signup', async (req, res) => {
     try {
         const { email, password, name } = req.body;
-        console.log('Signup attempt (backend):', { email, name, password: password ? '[provided]' : '[missing]' });
-
+        console.log('Signup attempt:', { email, name, password: password ? '[provided]' : '[missing]' });
         if (!email || !password || !name) {
-            console.log('Signup failed (backend): Missing fields:', { email, name, password: password ? '[provided]' : '[missing]' });
+            console.log('Signup failed: Missing fields:', { email, name, password: password ? '[provided]' : '[missing]' });
             return res.status(400).json({ success: false, error: 'All fields are required' });
         }
-
         const existingUser = await User.findOne({ email });
         if (existingUser) {
-            console.log('Signup failed (backend): Email already exists:', { email });
+            console.log('Signup failed: Email already exists:', { email });
             return res.status(400).json({ success: false, error: 'Email already exists' });
         }
+        console.log('Signup: Hashing password:', { password });
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
+        console.log('Signup: Hashed password (full):', hashedPassword);
 
-        console.log('Signup (backend): Hashing password...');
-        const hashedPassword = await bcrypt.hash(password, 10);
-        console.log('Signup (backend): Hashed password (first 10 chars):', hashedPassword.substring(0, 10) + '...');
-        // IMPORTANT DEBUG LOG: Log the full hashed password being saved
-        console.log('Signup (backend): Full hashed password to be saved:', hashedPassword);
-
+        // Verify hash immediately
+        const isMatch = await bcrypt.compare(password, hashedPassword);
+        console.log('Signup: bcrypt.compare self-test result:', isMatch);
+        if (!isMatch) {
+            console.error('Signup: Hash verification failed for:', { email });
+            return res.status(500).json({ success: false, error: 'Server error: Password hashing failed' });
+        }
 
         const user = new User({
             email,
             password: hashedPassword,
             name,
-            isProfileComplete: false,
+            isProfileComplete: false
         });
-
         await user.save();
-        console.log('Signup (backend): User created:', { userId: user._id });
+        console.log('Signup: User created:', { userId: user._id });
 
         req.session.userId = user._id.toString();
         req.session.userName = user.name;
-
         await new Promise((resolve, reject) => {
             req.session.save(err => {
                 if (err) {
-                    console.error('Signup (backend): Session save error:', err);
+                    console.error('Signup: Session save error:', err);
                     reject(err);
                 } else {
-                    console.log('Signup (backend): Session saved:', { userId: user._id, sessionId: req.sessionID });
+                    console.log('Signup: Session saved:', { userId: user._id, sessionId: req.sessionID });
                     resolve();
                 }
             });
         });
-
         res.json({ success: true, redirect: '/create-profile.html' });
     } catch (error) {
-        console.error('Signup error (backend):', error);
+        console.error('Signup error:', error);
         if (error.code === 11000) {
             return res.status(400).json({ success: false, error: 'Email already exists' });
         }
