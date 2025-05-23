@@ -47,26 +47,29 @@ router.get('/current-user', isAuthenticated, async (req, res) => {
     }
 });
 
-// Signup
+// Signup Route
 router.post('/signup', async (req, res) => {
     try {
         const { email, password, name } = req.body;
-        console.log('Signup attempt:', { email, name, password: password ? '[provided]' : '[missing]' });
+        console.log('Signup attempt (backend):', { email, name, password: password ? '[provided]' : '[missing]' });
 
         if (!email || !password || !name) {
-            console.log('Signup failed: Missing fields:', { email, name, password: password ? '[provided]' : '[missing]' });
+            console.log('Signup failed (backend): Missing fields:', { email, name, password: password ? '[provided]' : '[missing]' });
             return res.status(400).json({ success: false, error: 'All fields are required' });
         }
 
         const existingUser = await User.findOne({ email });
         if (existingUser) {
-            console.log('Signup failed: Email already exists:', { email });
+            console.log('Signup failed (backend): Email already exists:', { email });
             return res.status(400).json({ success: false, error: 'Email already exists' });
         }
 
-        console.log('Signup: Hashing password...');
+        console.log('Signup (backend): Hashing password...');
         const hashedPassword = await bcrypt.hash(password, 10);
-        console.log('Signup: Hashed password (first 10 chars):', hashedPassword.substring(0, 10) + '...');
+        console.log('Signup (backend): Hashed password (first 10 chars):', hashedPassword.substring(0, 10) + '...');
+        // IMPORTANT DEBUG LOG: Log the full hashed password being saved
+        console.log('Signup (backend): Full hashed password to be saved:', hashedPassword);
+
 
         const user = new User({
             email,
@@ -76,7 +79,7 @@ router.post('/signup', async (req, res) => {
         });
 
         await user.save();
-        console.log('Signup: User created:', { userId: user._id });
+        console.log('Signup (backend): User created:', { userId: user._id });
 
         req.session.userId = user._id.toString();
         req.session.userName = user.name;
@@ -84,10 +87,10 @@ router.post('/signup', async (req, res) => {
         await new Promise((resolve, reject) => {
             req.session.save(err => {
                 if (err) {
-                    console.error('Signup: Session save error:', err);
+                    console.error('Signup (backend): Session save error:', err);
                     reject(err);
                 } else {
-                    console.log('Signup: Session saved:', { userId: user._id, sessionId: req.sessionID });
+                    console.log('Signup (backend): Session saved:', { userId: user._id, sessionId: req.sessionID });
                     resolve();
                 }
             });
@@ -95,7 +98,7 @@ router.post('/signup', async (req, res) => {
 
         res.json({ success: true, redirect: '/create-profile.html' });
     } catch (error) {
-        console.error('Signup error:', error);
+        console.error('Signup error (backend):', error);
         if (error.code === 11000) {
             return res.status(400).json({ success: false, error: 'Email already exists' });
         }
@@ -103,28 +106,33 @@ router.post('/signup', async (req, res) => {
     }
 });
 
+// Login Route
 router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
-        console.log('Login attempt:', { email, password: password ? '[provided]' : '[missing]' });
+        console.log('Login attempt (backend):', { email, password: password ? '[provided]' : '[missing]' });
 
         if (!email || !password) {
-            console.log('Login failed: Missing fields:', { email, password: password ? '[provided]' : '[missing]' });
+            console.log('Login failed (backend): Missing fields:', { email, password: password ? '[provided]' : '[missing]' });
             return res.status(400).json({ success: false, error: 'Email and password are required' });
         }
 
         const user = await User.findOne({ email });
         if (!user) {
-            console.log('Login failed: User not found:', { email });
+            console.log('Login failed (backend): User not found:', { email });
             return res.status(401).json({ success: false, error: 'Invalid email or password' });
         }
 
-        console.log('Login: Comparing password for user:', { userId: user._id });
+        console.log('Login (backend): Comparing password for user:', { userId: user._id });
+        // IMPORTANT DEBUG LOGS: Log the plain text password and the stored hash
+        console.log('Login (backend): Plain text password from request:', password);
+        console.log('Login (backend): Hashed password from database:', user.password);
+
         const isMatch = await bcrypt.compare(password, user.password);
-        console.log('Login: bcrypt.compare result:', isMatch);
+        console.log('Login (backend): bcrypt.compare result:', isMatch);
 
         if (!isMatch) {
-            console.log('Login failed: Invalid password for:', { email });
+            console.log('Login failed (backend): Invalid password for:', { email });
             return res.status(401).json({ success: false, error: 'Invalid email or password' });
         }
 
@@ -135,23 +143,24 @@ router.post('/login', async (req, res) => {
         await new Promise((resolve, reject) => {
             req.session.save(err => {
                 if (err) {
-                    console.error('Login: Session save error:', err);
+                    console.error('Login (backend): Session save error:', err);
                     reject(err);
                 } else {
-                    console.log('Login: Session saved:', { userId: user._id, sessionId: req.sessionID });
+                    console.log('Login (backend): Session saved:', { userId: user._id, sessionId: req.sessionID });
                     resolve();
                 }
             });
         });
 
         const redirect = user.isProfileComplete ? '/index.html' : '/create-profile.html';
-        console.log('Login successful:', { userId: user._id, redirect });
+        console.log('Login successful (backend):', { userId: user._id, redirect });
         res.json({ success: true, redirect });
     } catch (error) {
-        console.error('Login error:', error);
+        console.error('Login error (backend):', error);
         res.status(500).json({ success: false, error: 'Server error' });
     }
 });
+
 
 // Add this new route in your auth.js file
 router.post('/complete-profile', isAuthenticated, upload.single('profilePic'), async (req, res) => {

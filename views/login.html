@@ -49,46 +49,52 @@
             e.preventDefault();
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            console.log('Login attempt:', { email });
+            console.log('Login attempt (frontend):', { email });
+
             try {
                 const response = await fetch('/login', {
                     method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json', 
-                        'X-Requested-With': 'XMLHttpRequest' 
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
                     },
                     body: JSON.stringify({ email, password }),
                     credentials: 'include'
                 });
                 const data = await response.json();
-                console.log('Login response:', data);
+                console.log('Login response (frontend):', data);
+
                 if (response.ok && data.success) {
                     Toastify({
                         text: 'Login successful! Redirecting...',
                         duration: 3000,
                         style: { background: '#28a745' },
+                        className: 'success' // Added for custom Toastify styling if you use it
                     }).showToast();
                     setTimeout(() => window.location.href = data.redirect || '/index.html', 3000);
                 } else {
-                    throw new Error(data.error || 'Login failed');
+                    // Use the error message from the backend, or a generic one
+                    throw new Error(data.error || 'Login failed: An unknown error occurred.');
                 }
             } catch (error) {
-                console.error('Login error:', error);
+                console.error('Login error (frontend):', error);
                 Toastify({
                     text: error.message,
                     duration: 3000,
                     style: { background: '#e74c3c' },
+                    className: 'error' // Added for custom Toastify styling if you use it
                 }).showToast();
             }
         });
 
-        // Prevent redirect loop
+        // Prevent redirect loop for profile completion
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('redirected') === 'true') {
             Toastify({
                 text: 'Please complete your profile to continue',
                 duration: 3000,
                 style: { background: '#e74c3c' },
+                className: 'error'
             }).showToast();
         }
     </script>
