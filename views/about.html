@@ -104,30 +104,45 @@
     <script src="/js/scripts.js"></script>
     <script>
         async function loadUserProfileInHeader() {
-            try {
-                const response = await fetch('/current-user');
-                if (response.ok) {
-                    const user = await response.json();
-                    document.getElementById('headerProfileName').textContent = user.name || 'Guest';
-                    document.getElementById('headerProfilePic').src = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
-                    const authLink = document.getElementById('authLink');
+    try {
+        const response = await fetch('/current-user');
+        if (response.ok) {
+            const data = await response.json();
+            const user = data.user;
+            if (user && data.isLoggedIn) {
+                document.getElementById('headerProfileName').textContent = user.name || 'Guest';
+                document.getElementById('headerProfilePic').src = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
+                const authLink = document.getElementById('authLink');
+                if (authLink) {
                     authLink.textContent = 'Logout';
                     authLink.href = '/logout';
-                } else {
-                    const authLink = document.getElementById('authLink');
-                    authLink.textContent = 'Login';
-                    authLink.href = '/login.html';
                 }
-            } catch (error) {
-                console.error('Error loading user profile:', error);
+            } else {
                 Toastify({
-                    text: 'Error loading user profile',
+                    text: 'Please log in to view this page',
                     duration: 3000,
                     style: { background: '#e74c3c' },
                 }).showToast();
+                setTimeout(() => window.location.href = '/login.html', 3000);
             }
+        } else {
+            Toastify({
+                text: 'Failed to authenticate user. Please log in.',
+                duration: 3000,
+                style: { background: '#e74c3c' },
+            }).showToast();
+            setTimeout(() => window.location.href = '/login.html', 3000);
         }
-
+    } catch (error) {
+        console.error('Error loading user profile in header:', error);
+        Toastify({
+            text: 'Error loading user profile in header',
+            duration: 3000,
+            style: { background: '#e74c3c' },
+        }).showToast();
+        setTimeout(() => window.location.href = '/login.html', 3000);
+    }
+}
         window.onload = () => {
             loadUserProfileInHeader();
         };

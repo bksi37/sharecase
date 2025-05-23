@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/styles.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 </head>
 <body>
     <header class="d-flex justify-content-between align-items-center">
@@ -17,7 +18,7 @@
         </div>
         <div class="search-bar position-relative">
             <input type="text" class="form-control" id="searchInput" placeholder="Search projects...">
-            <button class="btn position-absolute" style="right: 5px; top: 50%; transform: translateY(-50%);" onclick="window.location.href='/index.html'"><i class="fas fa-filter"></i></button>
+            <button class="btn position-absolute" style="right: 5px; top: 50%; transform: translateY(-50%);" id="filterBtn" data-bs-toggle="modal" data-bs-target="#filterModal"><i class="fas fa-filter"></i></button>
         </div>
         <div class="user-menu">
             <div class="profile-container" id="userMenuToggle">
@@ -34,18 +35,27 @@
         </div>
     </header>
     <main>
-        <div class="container profile-container">
+        <div class="container profile-container py-4">
             <div class="row">
-                <div class="col-md-3">
-                    <div class="profile-sidebar">
-                        <img id="profilePic" src="https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg" alt="Profile">
-                        <h2 id="profileName">Your Name</h2>
-                        <ul class="project-list" id="project-list"></ul>
+                <div class="col-md-4 col-lg-3">
+                    <div class="profile-sidebar text-center p-3 shadow-sm rounded mb-4">
+                        <img id="profilePic" src="https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg" alt="Profile" class="img-fluid rounded-circle mb-3" style="width: 120px; height: 120px; object-fit: cover;">
+                        <h2 id="profileName" class="h4 mb-1">Your Name</h2>
+                        <p id="profileMajor" class="text-muted small">Loading Major...</p>
+                        <p id="profileEmail" class="text-muted small">Loading Email...</p>
+                        <button class="btn btn-outline-primary btn-sm mt-3" onclick="window.location.href='/settings.html'">
+                            <i class="fas fa-user-edit"></i> Edit Profile
+                        </button>
+                        <hr class="my-4">
+                        <h5 class="text-start mb-2">About</h5>
+                        <p id="profileBio" class="text-start text-muted small">Loading bio...</p>
+                        <h5 class="text-start mt-4 mb-2">My Projects</h5>
+                        <ul class="list-group list-group-flush text-start" id="project-list"></ul>
                     </div>
                 </div>
-                <div class="col-md-9">
-                    <div class="profile-main">
-                        <ul class="nav nav-tabs">
+                <div class="col-md-8 col-lg-9">
+                    <div class="profile-main p-3 shadow-sm rounded">
+                        <ul class="nav nav-tabs mb-3">
                             <li class="nav-item">
                                 <a class="nav-link active" href="#" id="work-tab">Work</a>
                             </li>
@@ -53,59 +63,160 @@
                                 <a class="nav-link" href="#" id="drafts-tab">Drafts</a>
                             </li>
                         </ul>
-                        <div class="add-project" onclick="window.location.href='/upload-project.html'">+</div>
-                        <div class="row row-cols-1 row-cols-md-3 g-4" id="work-projects"></div>
-                        <div class="row row-cols-1 row-cols-md-3 g-4" id="drafts-projects" style="display: none;"></div>
-
-                        <div class="mt-4">
-                            <button class="btn btn-primary" onclick="generatePortfolio()">Generate Portfolio</button>
+                        <div class="d-flex justify-content-end mb-3">
+                            <button class="btn btn-success" onclick="window.location.href='/upload-project.html'">
+                                <i class="fas fa-plus-circle"></i> Add New Project
+                            </button>
                         </div>
+                        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" id="work-projects"></div>
+                        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" id="drafts-projects" style="display: none;"></div>
+                        <div class="mt-4 text-center">
+                            <button class="btn btn-primary btn-lg" onclick="generatePortfolio()">
+                                <i class="fas fa-file-pdf"></i> Generate Portfolio PDF
+                            </button>
                         </div>
+                    </div>
                 </div>
             </div>
         </div>
     </main>
+
+    <div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="filterModalLabel">Filter Projects</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="courseFilter" class="form-label">Course</label>
+                        <select id="courseFilter" class="form-select">
+                            <option value="">All Courses</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="yearFilter" class="form-label">Year</label>
+                        <select id="yearFilter" class="form-select">
+                            <option value="">All Years</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="typeFilter" class="form-label">Type</label>
+                        <select id="typeFilter" class="form-select">
+                            <option value="">All Types</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="departmentFilter" class="form-label">Department</label>
+                        <select id="departmentFilter" class="form-select">
+                            <option value="">All Departments</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="categoryFilter" class="form-label">Category</label>
+                        <select id="categoryFilter" class="form-select">
+                            <option value="">All Categories</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="applyFilters">Apply Filters</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <footer>
         <p>© 2025 ShareCase. All rights reserved.</p>
     </footer>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="/js/scripts.js"></script>
     <script>
-        async function loadUserProfile() {
+        async function loadUserProfileInHeader() {
             try {
                 const response = await fetch('/current-user');
                 if (response.ok) {
-                    const user = await response.json();
-                    document.getElementById('headerProfileName').textContent = user.name || 'Guest';
-                    document.getElementById('headerProfilePic').src = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
-                    document.getElementById('profileName').textContent = user.name || 'Your Name';
-                    document.getElementById('profilePic').src = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
-                    const authLink = document.getElementById('authLink');
-                    authLink.textContent = 'Logout';
-                    authLink.href = '/logout';
-                    if (user.isProfileComplete === false) { // Explicit check
+                    const data = await response.json();
+                    const user = data.user;
+
+                    if (user && data.isLoggedIn) {
+                        document.getElementById('headerProfileName').textContent = user.name || 'Guest';
+                        document.getElementById('headerProfilePic').src = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
+                        const authLink = document.getElementById('authLink');
+                        if (authLink) {
+                            authLink.textContent = 'Logout';
+                            authLink.href = '/logout';
+                        }
+                    } else {
                         Toastify({
-                            text: 'Please complete your profile',
+                            text: 'Please log in to view this page',
                             duration: 3000,
                             style: { background: '#e74c3c' },
                         }).showToast();
-                        setTimeout(() => window.location.href = '/create-profile.html', 3000);
-                    } else {
-                        loadProjects(); // Load projects only if profile is complete
+                        setTimeout(() => window.location.href = '/login.html', 3000);
                     }
                 } else {
                     Toastify({
-                        text: response.status === 401 ? 'Please log in to view profile' : 'Server error, please try again later',
+                        text: 'Failed to authenticate user. Please log in.',
                         duration: 3000,
                         style: { background: '#e74c3c' },
                     }).showToast();
                     setTimeout(() => window.location.href = '/login.html', 3000);
                 }
             } catch (error) {
-                console.error('Error loading user profile:', error);
+                console.error('Error loading user profile in header:', error);
                 Toastify({
-                    text: 'Error loading user profile',
+                    text: 'Error loading user profile in header',
+                    duration: 3000,
+                    style: { background: '#e74c3c' },
+                }).showToast();
+                setTimeout(() => window.location.href = '/login.html', 3000);
+            }
+        }
+
+        async function loadProfileDetails() {
+            try {
+                const response = await fetch('/current-user');
+                if (response.ok) {
+                    const data = await response.json();
+                    const user = data.user;
+
+                    if (user && data.isLoggedIn) {
+                        document.getElementById('profileName').textContent = user.name || 'N/A';
+                        document.getElementById('profilePic').src = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
+                        document.getElementById('profileMajor').textContent = user.major || 'Major: Not specified';
+                        document.getElementById('profileEmail').textContent = user.personalEmail || 'Email: Not specified';
+                        document.getElementById('profileBio').textContent = user.bio || 'No bio provided.';
+
+                        if (!user.isProfileComplete) {
+                            Toastify({
+                                text: 'Please complete your profile',
+                                duration: 3000,
+                                style: { background: '#e74c3c' },
+                            }).showToast();
+                            setTimeout(() => window.location.href = '/create-profile.html', 3000);
+                        }
+                    } else {
+                        Toastify({
+                            text: 'User profile details not found. Please log in.',
+                            duration: 3000,
+                            style: { background: '#e74c3c' },
+                        }).showToast();
+                        setTimeout(() => window.location.href = '/login.html', 3000);
+                    }
+                } else {
+                    Toastify({
+                        text: 'Failed to load profile details. Please log in.',
+                        duration: 3000,
+                        style: { background: '#e74c3c' },
+                    }).showToast();
+                    setTimeout(() => window.location.href = '/login.html', 3000);
+                }
+            } catch (error) {
+                console.error('Error loading main profile details:', error);
+                Toastify({
+                    text: 'Error loading main profile details.',
                     duration: 3000,
                     style: { background: '#e74c3c' },
                 }).showToast();
@@ -129,12 +240,12 @@
 
                 projectList.innerHTML = projects.length
                     ? projects.map(p => `<li><a href="/project.html?id=${p.id}">${p.title}</a></li>`).join('')
-                    : '<li>No projects yet.</li>';
+                    : '<li class="text-muted small">No projects yet.</li>';
 
                 workProjects.innerHTML = published.length
                     ? published.map(p => `
                         <div class="col" data-id="${p.id}">
-                            <div class="card h-100">
+                            <div class="card h-100 position-relative">
                                 <img src="${p.image}" class="card-img-top" alt="${p.title}" onerror="this.src='https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'">
                                 <div class="card-body">
                                     <h5 class="card-title">${p.title}</h5>
@@ -144,15 +255,16 @@
                                     <button class="edit-btn" onclick="editProject('${p.id}')"><i class="fas fa-edit"></i></button>
                                     <button class="delete-btn" onclick="deleteProject('${p.id}')"><i class="fas fa-trash"></i></button>
                                 </div>
+                                ${p.isCollaborator ? '<span class="badge bg-secondary position-absolute top-0 start-0 m-2">Collaborator</span>' : ''}
                             </div>
                         </div>
                     `).join('')
-                    : '<p>No published projects.</p>';
+                    : '<p class="text-muted text-center w-100">No published projects.</p>';
 
                 draftsProjects.innerHTML = drafts.length
                     ? drafts.map(p => `
                         <div class="col" data-id="${p.id}">
-                            <div class="card h-100">
+                            <div class="card h-100 position-relative">
                                 <img src="${p.image}" class="card-img-top" alt="${p.title}" onerror="this.src='https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'">
                                 <div class="card-body">
                                     <h5 class="card-title">${p.title}</h5>
@@ -162,10 +274,11 @@
                                     <button class="edit-btn" onclick="editProject('${p.id}')"><i class="fas fa-edit"></i></button>
                                     <button class="delete-btn" onclick="deleteProject('${p.id}')"><i class="fas fa-trash"></i></button>
                                 </div>
+                                ${p.isCollaborator ? '<span class="badge bg-secondary position-absolute top-0 start-0 m-2">Collaborator</span>' : ''}
                             </div>
                         </div>
                     `).join('')
-                    : '<p>No drafts.</p>';
+                    : '<p class="text-muted text-center w-100">No drafts.</p>';
 
                 document.querySelectorAll('.card').forEach(card => {
                     card.addEventListener('click', (e) => {
@@ -231,7 +344,6 @@
             document.getElementById('work-projects').style.display = 'none';
         });
 
-        // **Updated generatePortfolio function**
         async function generatePortfolio() {
             try {
                 const response = await fetch('/generate-portfolio', { method: 'POST' });
@@ -251,7 +363,8 @@
                         style: { background: '#28a745' },
                     }).showToast();
                 } else {
-                    throw new Error('Failed to generate portfolio');
+                    const errorText = await response.text();
+                    throw new Error(`Failed to generate portfolio: ${errorText}`);
                 }
             } catch (error) {
                 console.error('Generate portfolio error:', error);
@@ -262,9 +375,12 @@
                 }).showToast();
             }
         }
-        // **End Updated generatePortfolio function**
 
-        window.onload = loadUserProfile;
+        window.onload = () => {
+            loadUserProfileInHeader();
+            loadProfileDetails();
+            loadProjects();
+        };
     </script>
 </body>
 </html>

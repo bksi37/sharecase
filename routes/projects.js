@@ -5,44 +5,40 @@ const cloudinary = require('cloudinary').v2;
 const Project = require('../models/Project');
 const { isAuthenticated, isProfileComplete } = require('../middleware/auth');
 const PDFDocument = require('pdfkit');
-const User = require('../models/User'); // This line was correctly added previously
-const https = require('https'); // <<< THIS MUST BE 'https', NOT 'httpps'
-const mongoose = require('mongoose'); // ADD THIS LINE
-const ObjectId = mongoose.Types.ObjectId; // ADD THIS LINE
-const tagsConfig = require('../config/tags'); // Assuming you have a tags file
-
+const User = require('../models/User');
+const https = require('https');
+const mongoose = require('mongoose');
+const ObjectId = mongoose.Types.ObjectId;
+const tagsConfig = require('../config/tags');
+const upload = require('../middleware/upload');
 const router = express.Router();
 
-// Add Project
-router.post('/add-project', isAuthenticated, isProfileComplete, async (req, res) => {
+// Add Project (Updated for Multer)
+router.post('/add-project', isAuthenticated, isProfileComplete, upload.single('image'), async (req, res) => {
     try {
-        // Destructure new fields: collaboratorIds (string of IDs), otherCollaborators (string of names)
         const { title, description, tags, problemStatement, collaboratorIds, otherCollaborators, resources, isPublished } = req.body;
 
         if (!title) {
             return res.status(400).json({ error: 'Title is required' });
         }
 
-        // Parse registered collaborator IDs
         const parsedCollaboratorIds = collaboratorIds
             ? collaboratorIds.split(',').map(id => id.trim()).filter(id => id && ObjectId.isValid(id)).map(id => new ObjectId(id))
             : [];
 
-        // Parse other (unregistered) collaborators
         const parsedOtherCollaborators = otherCollaborators
             ? otherCollaborators.split(',').map(c => c.trim()).filter(c => c !== '')
             : [];
 
         let imageUrl = 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg';
-        if (req.files && req.files.image) {
-            const file = req.files.image;
-            const result = await cloudinary.uploader.upload(`data:${file.mimetype};base64,${file.data.toString('base64')}`, {
-                folder: 'sharecase/projects',
-                quality: 'auto',
-                fetch_format: 'auto'
-            });
-            imageUrl = result.secure_url;
+        // Handle project image upload using req.file (from Multer)
+        if (req.file && req.file.path) {
+            imageUrl = req.file.path; // Multer's CloudinaryStorage already gives you the secure_url
+            console.log('New project image URL assigned from Multer:', imageUrl);
+        } else {
+            console.log('No project image uploaded. Using default or existing.');
         }
+
 
         const project = new Project({
             title,
@@ -52,27 +48,30 @@ router.post('/add-project', isAuthenticated, isProfileComplete, async (req, res)
             userId: req.session.userId,
             userName: req.session.userName || 'Anonymous',
             problemStatement: problemStatement || '',
-            collaborators: parsedCollaboratorIds,       // Store ObjectIds for registered users
-            otherCollaborators: parsedOtherCollaborators, // Store strings for unregistered users
+            collaborators: parsedCollaboratorIds,
+            otherCollaborators: parsedOtherCollaborators,
             resources: resources ? resources.split(',').map(r => r.trim()) : [],
             isPublished: isPublished === 'true'
         });
 
         await project.save();
 
-        // --- Update projectsCollaboratedOn for each registered collaborator ---
         if (parsedCollaboratorIds.length > 0) {
             await User.updateMany(
                 { _id: { $in: parsedCollaboratorIds } },
-                { $addToSet: { projectsCollaboratedOn: project._id } } // $addToSet prevents duplicates
+                { $addToSet: { projectsCollaboratedOn: project._id } }
             );
         }
-        // --- End User Update ---
 
         res.redirect('/index.html'); // Or res.status(200).json({ success: true, projectId: project._id }); if frontend expects JSON
     } catch (error) {
         console.error('Add project error:', error);
-        res.status(500).json({ error: 'Server error', details: error.message }); // Added details for debugging
+        // Handle Multer errors specifically
+        if (error instanceof multer.MulterError) {
+             console.error('Multer Error during add-project:', error.message);
+             return res.status(400).json({ error: `File upload error: ${error.message}` });
+        }
+        res.status(500).json({ error: 'Server error', details: error.message });
     }
 });
 
@@ -106,36 +105,99 @@ router.get('/projects', isAuthenticated, isProfileComplete, async (req, res) => 
     }
 });
 
-// Search Projects (Keeping your existing code for this route, but ensuring userName is included)
-router.get('/search', isAuthenticated, isProfileComplete, async (req, res) => {
+// Consolidated Search Projects AND Users (Robust version)
+router.get('/search', isAuthenticated, async (req, res) => { // Removed isProfileComplete to allow broader search
     try {
         const { q, course, year, type, department, category } = req.query;
-        const query = {};
-        if (q) query.title = { $regex: q, $options: 'i' };
-        if (course || year || type || department || category) {
-            query.tags = { $all: [course, year, type, department, category].filter(t => t) };
+        const projectQuery = {};
+        const userQuery = {};
+
+        // Build project search query (using the assumption that 'tags' is an array of strings)
+        if (q) {
+            projectQuery.$or = [
+                { title: { $regex: q, $options: 'i' } },
+                { description: { $regex: q, $options: 'i' } },
+                { problemStatement: { $regex: q, $options: 'i' } },
+                { tags: { $regex: q, $options: 'i' } } // Search within the tags array
+            ];
         }
-        const projects = await Project.find(query).populate('userId', 'name');
-        res.json(projects.map(p => ({
+
+        // Add specific filter parameters if they are provided and not 'All'
+        // This assumes these filter values are also stored as strings within the 'tags' array.
+        const filterTags = [course, year, type, department, category].filter(t => t && t !== 'All');
+        if (filterTags.length > 0) {
+            projectQuery.tags = { $all: filterTags }; // Requires all specified tags to be present
+        }
+
+        projectQuery.isPublished = true; // Only show published projects in search results
+
+        // Build user search query
+        if (q) {
+            userQuery.$or = [
+                { name: { $regex: q, $options: 'i' } },
+                { major: { $regex: q, $options: 'i' } },
+                // Assuming User schema has a department field, if not, remove this:
+                { department: { $regex: q, $options: 'i' } }
+            ];
+        }
+        // Only fetch users whose profiles are complete (optional, but good for meaningful search results)
+        userQuery.isProfileComplete = true;
+
+        // Execute both queries concurrently
+        const [projects, users] = await Promise.all([
+            Project.find(projectQuery)
+                   .populate('userId', 'name profilePic') // Corrected to userId
+                   .limit(20), // Limit project results for performance
+            User.find(userQuery)
+                .select('name major department profilePic linkedin') // Select relevant user fields
+                .limit(10) // Limit user results
+        ]);
+
+        // Format projects for consistent frontend consumption
+        const formattedProjects = projects.map(p => ({
             id: p._id,
             title: p.title,
             description: p.description,
             image: p.image || 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg',
-            userId: p.userId._id,
-            userName: p.userId.name, // Ensure userName is here for search results as well
+            userId: p.userId ? p.userId._id : null, // Handle case where userId might not be populated (though it should be)
+            userName: p.userId ? p.userId.name : 'Unknown',
+            userProfilePic: p.userId ? (p.userId.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg') : 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg',
             likes: p.likes || 0,
-            views: p.views || 0
-        })));
+            views: p.views || 0,
+            tags: p.tags || [], // Include tags in the response
+            isPublished: p.isPublished // Include publish status
+        }));
+
+        // Format users for frontend consumption
+        const formattedUsers = users.map(u => ({
+            _id: u._id,
+            name: u.name,
+            major: u.major || 'N/A',
+            // Department might not exist, handle gracefully
+            department: u.department || 'N/A',
+            profilePic: u.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg',
+            linkedin: u.linkedin || ''
+        }));
+
+        res.json({
+            success: true,
+            results: {
+                projects: formattedProjects,
+                users: formattedUsers
+            }
+        });
+
     } catch (error) {
-        console.error('Search projects error:', error);
-        res.status(500).json({ error: 'Server error' });
+        console.error('Global search error:', error);
+        res.status(500).json({ error: 'Server error during search' });
     }
 });
 
-// Filter Options (Keeping your existing code for this route)
+// Filter Options (Keeping your existing code for this route, ensure tags are consistent)
 router.get('/filter-options', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
         const projects = await Project.find();
+        // These filters assume specific tag values are present in the 'tags' array
         const courses = [...new Set(projects.flatMap(p => p.tags.filter(t => t.startsWith('MECH') || t.startsWith('CS'))))];
         const years = [...new Set(projects.flatMap(p => p.tags.filter(t => /^\d{4}$/.test(t))))];
         const types = [...new Set(projects.flatMap(p => p.tags.filter(t => ['Robotics', 'Software', 'Hardware'].includes(t))))];
@@ -219,8 +281,8 @@ router.delete('/project/:id', isAuthenticated, isProfileComplete, async (req, re
     }
 });
 
-// Edit Project (Modified to allow collaborators to edit)
-router.put('/project/:id', isAuthenticated, isProfileComplete, async (req, res) => {
+// Edit Project (Modified for Multer)
+router.put('/project/:id', isAuthenticated, isProfileComplete, upload.single('image'), async (req, res) => { // <--- Apply Multer here
     try {
         const project = await Project.findById(req.params.id);
         if (!project) {
@@ -234,7 +296,6 @@ router.put('/project/:id', isAuthenticated, isProfileComplete, async (req, res) 
             return res.status(403).json({ error: 'Unauthorized to edit this project.' });
         }
 
-        // Proceed with editing (rest of your edit logic remains the same)
         const { title, description, tags, problemStatement, collaboratorIds, otherCollaborators, resources, isPublished } = req.body;
 
         if (!title) {
@@ -250,19 +311,20 @@ router.put('/project/:id', isAuthenticated, isProfileComplete, async (req, res) 
             : [];
 
         let imageUrl = project.image;
-        if (req.files && req.files.image) {
+        // Handle project image upload using req.file (from Multer)
+        if (req.file && req.file.path) {
+            // If a new image is uploaded, destroy the old one (if it's not the default)
             if (imageUrl && !imageUrl.includes('default-project.jpg')) {
                 const publicId = imageUrl.split('/').pop().split('.')[0];
-                await cloudinary.uploader.destroy(`sharecase/projects/${publicId}`);
+                await cloudinary.uploader.destroy(`sharecase/projects/${publicId}`); // Ensure public ID matches Cloudinary setup
             }
-            const file = req.files.image;
-            const result = await cloudinary.uploader.upload(`data:${file.mimetype};base64,${file.data.toString('base64')}`, {
-                folder: 'sharecase/projects',
-                quality: 'auto',
-                fetch_format: 'auto'
-            });
-            imageUrl = result.secure_url;
+            imageUrl = req.file.path; // Multer's CloudinaryStorage already gives you the secure_url
+            console.log('New project image URL assigned from Multer during edit:', imageUrl);
+        } else {
+            // If no new image, keep the existing one.
+            console.log('No new project image uploaded during edit. Retaining existing.');
         }
+
 
         const oldCollaboratorIds = project.collaborators.map(id => id.toString());
         const addedCollaborators = newCollaboratorIds.filter(id => !oldCollaboratorIds.includes(id.toString()));
@@ -297,9 +359,14 @@ router.put('/project/:id', isAuthenticated, isProfileComplete, async (req, res) 
 
     } catch (error) {
         console.error('Edit project error:', error);
+        if (error instanceof multer.MulterError) {
+             console.error('Multer Error during edit-project:', error.message);
+             return res.status(400).json({ error: `File upload error: ${error.message}` });
+        }
         res.status(500).json({ error: 'Server error', details: error.message });
     }
 });
+
 // Like/Unlike Project (Keeping your existing code for this route)
 router.post('/project/:id/like', isAuthenticated, isProfileComplete, async (req, res) => {
     try {

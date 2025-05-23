@@ -9,11 +9,16 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/styles.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 </head>
 <body>
     <header class="d-flex justify-content-between align-items-center">
         <div class="logo">
             <a href="/index.html">ShareCase</a>
+        </div>
+        <div class="search-bar position-relative">
+            <input type="text" class="form-control" id="searchInput" placeholder="Search projects...">
+            <button class="btn position-absolute" style="right: 5px; top: 50%; transform: translateY(-50%);" id="filterBtn" data-bs-toggle="modal" data-bs-target="#filterModal"><i class="fas fa-filter"></i></button>
         </div>
         <div class="user-menu">
             <div class="profile-container" id="userMenuToggle">
@@ -35,8 +40,7 @@
             <div class="col-md-4 text-center">
                 <img id="publicProfilePic" src="https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg" alt="Profile Picture" class="img-fluid rounded-circle mb-3" style="width: 150px; height: 150px; object-fit: cover;">
                 <h2 id="publicUserName" class="mb-2"></h2>
-                <p id="publicUserEmail" class="text-muted"></p>
-                <p id="publicUserBio" class="text-secondary"></p>
+                <p id="publicUserMajor" class="text-muted"></p>
                 <p id="publicUserLinkedIn"></p>
             </div>
             <div class="col-md-8">
@@ -48,57 +52,143 @@
         </div>
     </main>
 
+    <div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="filterModalLabel">Filter Projects</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="courseFilter" class="form-label">Course</label>
+                        <select id="courseFilter" class="form-select">
+                            <option value="">All Courses</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="yearFilter" class="form-label">Year</label>
+                        <select id="yearFilter" class="form-select">
+                            <option value="">All Years</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="typeFilter" class="form-label">Type</label>
+                        <select id="typeFilter" class="form-select">
+                            <option value="">All Types</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="departmentFilter" class="form-label">Department</label>
+                        <select id="departmentFilter" class="form-select">
+                            <option value="">All Departments</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="categoryFilter" class="form-label">Category</label>
+                        <select id="categoryFilter" class="form-select">
+                            <option value="">All Categories</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="applyFilters">Apply Filters</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <footer>
         <p>© 2025 ShareCase. All rights reserved.</p>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="/js/scripts.js"></script>
     <script>
-        // Assumes loadUserProfile is in scripts.js or copied here
-        async function loadUserProfile() {
+        async function loadUserProfileInHeader() {
             try {
                 const response = await fetch('/current-user');
                 if (response.ok) {
-                    const user = await response.json();
-                    document.getElementById('headerProfileName').textContent = user.name || 'Guest';
-                    document.getElementById('headerProfilePic').src = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
+                    const data = await response.json();
+                    const user = data.user;
+
+                    if (user && data.isLoggedIn) {
+                        document.getElementById('headerProfileName').textContent = user.name || 'Guest';
+                        document.getElementById('headerProfilePic').src = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
+                        const authLink = document.getElementById('authLink');
+                        if (authLink) {
+                            authLink.textContent = 'Logout';
+                            authLink.href = '/logout';
+                        }
+                    } else {
+                        const authLink = document.getElementById('authLink');
+                        if (authLink) {
+                            authLink.textContent = 'Login';
+                            authLink.href = '/login.html';
+                        }
+                    }
+                } else {
                     const authLink = document.getElementById('authLink');
-                    authLink.textContent = 'Logout';
-                    authLink.href = '/logout';
+                    if (authLink) {
+                        authLink.textContent = 'Login';
+                        authLink.href = '/login.html';
+                    }
                 }
             } catch (error) {
-                console.error('Error loading user profile:', error);
+                console.error('Error loading user profile in header:', error);
+                Toastify({
+                    text: 'Error loading user profile in header',
+                    duration: 3000,
+                    style: { background: '#e74c3c' },
+                }).showToast();
+                const authLink = document.getElementById('authLink');
+                if (authLink) {
+                    authLink.textContent = 'Login';
+                    authLink.href = '/login.html';
+                }
             }
         }
 
         async function loadPublicUserProfileAndProjects() {
             const urlParams = new URLSearchParams(window.location.search);
-            const userId = urlParams.get('id'); // <<< THIS IS THE ONLY CHANGE!
+            let userId = urlParams.get('id'); // Use 'id' to match project.html links
+
+            // If no userId in URL and user is authenticated, use current user's ID
+            if (!userId) {
+                try {
+                    const response = await fetch('/current-user');
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.user && data.isLoggedIn) {
+                            userId = data.user._id;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error checking current user:', error);
+                }
+            }
 
             if (!userId) {
                 document.getElementById('publicUserName').textContent = 'User Not Found';
-                document.getElementById('publicUserProjectsGrid').innerHTML = '<p class="text-center">No user ID provided.</p>';
+                document.getElementById('publicUserProjectsGrid').innerHTML = '<p class="text-center">No user ID provided in the URL.</p>';
                 document.getElementById('publicUserNameProjects').textContent = 'User';
                 return;
             }
 
             try {
-                // Fetch user details for the public profile
                 const userResponse = await fetch(`/user-details/${userId}`);
                 if (userResponse.ok) {
                     const user = await userResponse.json();
                     document.getElementById('publicProfilePic').src = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
                     document.getElementById('publicUserName').textContent = user.name || 'N/A';
                     document.getElementById('publicUserNameProjects').textContent = user.name || 'N/A';
-                    document.getElementById('publicUserEmail').textContent = user.email || 'N/A'; // Decide if email should be public
-                    document.getElementById('publicUserBio').textContent = user.bio || ''; // Assuming 'bio' field on User model
+                    document.getElementById('publicUserMajor').textContent = user.major ? `Major: ${user.major}` : 'Major: Not specified';
+
                     const linkedInElement = document.getElementById('publicUserLinkedIn');
                     if (user.linkedin) {
                         let linkedinUrl = user.linkedin;
                         if (!linkedinUrl.startsWith('http://') && !linkedinUrl.startsWith('https://')) {
-                            linkedinUrl = `https://${linkedinUrl}`; // Prepend https:// if missing
+                            linkedinUrl = `https://${linkedinUrl}`;
                         }
                         linkedInElement.innerHTML = `<a href="${linkedinUrl}" target="_blank"><i class="fab fa-linkedin"></i> LinkedIn</a>`;
                         linkedInElement.style.display = 'block';
@@ -106,23 +196,19 @@
                         linkedInElement.style.display = 'none';
                     }
                 } else {
-                    // Check if it's a 404 specifically for "User Not Found"
                     if (userResponse.status === 404) {
                         document.getElementById('publicUserName').textContent = 'User Not Found';
                         document.getElementById('publicUserProjectsGrid').innerHTML = '<p class="text-center">The requested user could not be found.</p>';
                         document.getElementById('publicUserNameProjects').textContent = 'User';
-                        // Hide other profile details if user not found
-                        document.getElementById('publicProfilePic').src = 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'; // Reset to default
-                        document.getElementById('publicUserEmail').textContent = '';
-                        document.getElementById('publicUserBio').textContent = '';
+                        document.getElementById('publicProfilePic').src = 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
+                        document.getElementById('publicUserMajor').textContent = '';
                         document.getElementById('publicUserLinkedIn').style.display = 'none';
                     } else {
                         throw new Error(`Failed to load user details: ${userResponse.statusText}`);
                     }
-                    return; // Stop execution if user details failed to load
+                    return;
                 }
 
-                // Fetch projects for the public profile
                 const projectsResponse = await fetch(`/projects-by-user/${userId}`);
                 if (projectsResponse.ok) {
                     const projects = await projectsResponse.json();
@@ -160,16 +246,15 @@
                 }).showToast();
                 document.getElementById('publicUserName').textContent = 'Error Loading Profile';
                 document.getElementById('publicUserNameProjects').textContent = 'Error Loading Profile';
-                document.getElementById('publicProfilePic').src = 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'; // Reset to default
-                document.getElementById('publicUserEmail').textContent = '';
-                document.getElementById('publicUserBio').textContent = '';
+                document.getElementById('publicProfilePic').src = 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
+                document.getElementById('publicUserMajor').textContent = '';
                 document.getElementById('publicUserLinkedIn').style.display = 'none';
             }
         }
 
         window.onload = () => {
-            loadUserProfile(); // Still load current user for header
-            loadPublicUserProfileAndProjects(); // Load the specific user's public profile
+            loadUserProfileInHeader();
+            loadPublicUserProfileAndProjects();
         };
     </script>
 </body>

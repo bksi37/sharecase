@@ -15,9 +15,14 @@
         <div class="logo">
             <a href="/index.html">ShareCase</a>
         </div>
-        <div class="search-bar position-relative">
-            <input type="text" class="form-control" id="searchInput" placeholder="Search projects...">
-            <button class="btn position-absolute" style="right: 5px; top: 50%; transform: translateY(-50%);" id="filterBtn" data-bs-toggle="modal" data-bs-target="#filterModal"><i class="fas fa-filter"></i></button>
+        <div class="search-bar-container position-relative">
+            <div class="input-group">
+                <input type="text" class="form-control" id="searchInput" placeholder="Search projects, users...">
+                <button class="btn btn-outline-secondary" id="filterBtn" data-bs-toggle="modal" data-bs-target="#filterModal" type="button">
+                    <i class="fas fa-filter"></i>
+                </button>
+            </div>
+            <div id="autocompleteSuggestions" class="autocomplete-suggestions"></div>
         </div>
         <div class="user-menu">
             <div class="profile-container" id="userMenuToggle">
@@ -34,8 +39,11 @@
         </div>
     </header>
     <main>
-        <div class="container">
-            <div class="row row-cols-1 row-cols-md-3 g-4" id="projectGrid"></div>
+        <div class="container mt-4">
+            <h2 id="projectGridHeader" class="mt-4" style="display: none;">Latest Projects</h2> <div class="row row-cols-1 row-cols-md-3 g-4" id="projectGrid">
+                <p id="noProjectsFoundSearchMessage" class="text-center w-100 mt-5" style="display: none;">No projects found matching your search or filters.</p>
+                <p id="initialLoadingMessage" class="text-center w-100 mt-5">Loading projects...</p>
+            </div>
         </div>
     </main>
     <div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
@@ -91,22 +99,83 @@
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="/js/scripts.js"></script>
     <script>
+        // Global variables for debounce
+        let searchTimeout;
+        const DEBOUNCE_DELAY = 300; // ms
+
+        // Get DOM elements once when the script loads
+        const searchInput = document.getElementById('searchInput');
+        const projectGrid = document.getElementById('projectGrid');
+        const projectGridHeader = document.getElementById('projectGridHeader'); // New
+        const noProjectsFoundSearchMessage = document.getElementById('noProjectsFoundSearchMessage'); // Renamed for clarity
+        const initialLoadingMessage = document.getElementById('initialLoadingMessage'); // New
+        const autocompleteSuggestions = document.getElementById('autocompleteSuggestions');
+
         async function loadUserProfile() {
             try {
+                console.log('loadUserProfile: Fetching /current-user...');
                 const response = await fetch('/current-user');
                 if (response.ok) {
-                    const user = await response.json();
-                    document.getElementById('headerProfileName').textContent = user.name || 'Guest';
-                    document.getElementById('headerProfilePic').src = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
+                    const data = await response.json(); // Renamed 'user' to 'data' to avoid confusion
+                    console.log('loadUserProfile: Received user data:', data); // Log the full data object
+
+                    // The key change is here: Access data.user.name and data.user.profilePic
+                    const userName = data.user ? data.user.name : null; // Safely access nested property
+                    const userProfilePic = data.user ? data.user.profilePic : null; // Safely access nested property
+                    
+                    const headerProfileName = document.getElementById('headerProfileName');
+                    const headerProfilePic = document.getElementById('headerProfilePic');
                     const authLink = document.getElementById('authLink');
-                    authLink.textContent = 'Logout';
-                    authLink.href = '/logout';
+
+                    if (headerProfileName) {
+                        headerProfileName.textContent = userName || 'Guest'; // Use userName
+                        console.log('loadUserProfile: Updated headerProfileName to:', headerProfileName.textContent);
+                    } else {
+                        console.warn('loadUserProfile: headerProfileName element not found!');
+                    }
+
+                    if (headerProfilePic) {
+                        headerProfilePic.src = userProfilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'; // Use userProfilePic
+                        console.log('loadUserProfile: Updated headerProfilePic src to:', headerProfilePic.src);
+                    } else {
+                        console.warn('loadUserProfile: headerProfilePic element not found!');
+                    }
+                    
+                    if (authLink && data.isLoggedIn) { // Only set to Logout if isLoggedIn is true
+                        authLink.textContent = 'Logout';
+                        authLink.href = '/logout';
+                        console.log('loadUserProfile: Updated authLink to Logout.');
+                    } else if (authLink && !data.isLoggedIn) {
+                        authLink.textContent = 'Login';
+                        authLink.href = '/login.html';
+                        console.log('loadUserProfile: Updated authLink to Login.');
+                    } else {
+                        console.warn('loadUserProfile: authLink element not found!');
+                    }
+
+                } else {
+                    console.error('loadUserProfile: Failed to fetch user profile:', response.status, response.statusText);
+                    // If fetch fails, ensure it defaults to Guest/Login
+                    document.getElementById('headerProfileName').textContent = 'Guest';
+                    document.getElementById('headerProfilePic').src = 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
+                    const authLink = document.getElementById('authLink');
+                    if (authLink) {
+                        authLink.textContent = 'Login';
+                        authLink.href = '/login.html';
+                    }
                 }
             } catch (error) {
-                console.error('Error loading user profile:', error);
+                console.error('loadUserProfile: Error loading user profile (catch block):', error);
+                // If there's an error, ensure it defaults to Guest/Login
+                document.getElementById('headerProfileName').textContent = 'Guest';
+                document.getElementById('headerProfilePic').src = 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
+                const authLink = document.getElementById('authLink');
+                if (authLink) {
+                    authLink.textContent = 'Login';
+                    authLink.href = '/login.html';
+                }
             }
         }
-
         async function loadDynamicFilterOptions() {
             try {
                 const response = await fetch('/dynamic-filter-options');
@@ -147,99 +216,205 @@
             });
         }
 
-        async function loadProjects() {
+        function renderProjectCard(p) {
+            const projectId = p.id || p._id;
+            const authorId = p.userId;
+            const authorName = p.userName;
+
+            return `
+                <div class="col">
+                    <div class="card h-100" style="cursor: pointer;" onclick="window.location.href='/project.html?id=${projectId}'">
+                        <img src="${p.image || 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'}" class="card-img-top" alt="${p.title}" onerror="this.src='https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'">
+                        <div class="card-body">
+                            <h5 class="card-title">${p.title}</h5>
+                            <p class="card-text">${p.description ? p.description.substring(0, 100) + '...' : 'No description'}</p>
+                            <div class="project-stats">
+                                <span><i class="fas fa-heart"></i> ${p.likes || 0} Likes</span>
+                                <span><i class="fas fa-eye"></i> ${p.views || 0} Views</span>
+                            </div>
+                            <div class="project-author"> By: <a href="/public-profile.html?userId=${authorId}">${authorName}</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderUserSuggestion(user) {
+            return `
+                <div class="autocomplete-item" onclick="window.location.href='/public-profile.html?userId=${user._id}'">
+                    <img src="${user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'}" alt="${user.name}">
+                    <span>${user.name}</span>
+                    <span class="user-detail">${user.major || user.department ? `(${user.major || ''}${user.major && user.department ? ', ' : ''}${user.department || ''})` : ''}</span>
+                </div>
+            `;
+        }
+
+        // New function to load all projects (for initial load / clear search)
+        async function loadAllProjects() {
+            projectGrid.innerHTML = ''; // Clear existing projects
+            noProjectsFoundSearchMessage.style.display = 'none'; // Hide search-specific message
+            initialLoadingMessage.textContent = 'Loading latest projects...';
+            initialLoadingMessage.style.display = 'block'; // Show general loading message
+            projectGridHeader.style.display = 'block'; // Show "Latest Projects" header
+
+            autocompleteSuggestions.innerHTML = '';
+            autocompleteSuggestions.style.display = 'none'; // Hide autocomplete
+
             try {
-                const response = await fetch('/projects');
+                // Ensure your backend has a route like /projects that returns all published projects
+                const response = await fetch('/projects'); // Assuming this route exists and works
                 if (response.ok) {
                     const projects = await response.json();
-                    const projectGrid = document.getElementById('projectGrid');
-                    projectGrid.innerHTML = projects.length
-                        ? projects.map(p => `
-                                    <div class="col">
-                                        <div class="card h-100" onclick="window.location.href='/project.html?id=${p.id}'">
-                                            <img src="${p.image}" class="card-img-top" alt="${p.title}" onerror="this.src='https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'">
-                                            <div class="card-body">
-                                                <h5 class="card-title">${p.title}</h5>
-                                                <p class="card-text">${p.description ? p.description.substring(0, 100) + '...' : 'No description'}</p>
-                                                <div class="project-stats">
-                                                    <span><i class="fas fa-heart"></i> ${p.likes} Likes</span>
-                                                    <span><i class="fas fa-eye"></i> ${p.views} Views</span>
-                                                </div>
-                                                <div class="project-author"> By: <a href="/public-profile.html?userId=${p.userId}">${p.userName}</a>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                `).join('')
-                        : '<p>No projects found.</p>';
+                    if (projects.length > 0) {
+                        projectGrid.innerHTML = projects.map(p => renderProjectCard(p)).join('');
+                        initialLoadingMessage.style.display = 'none'; // Hide loading message
+                    } else {
+                        projectGrid.innerHTML = '';
+                        initialLoadingMessage.textContent = 'No projects found in the database.';
+                        initialLoadingMessage.style.display = 'block'; // Show message if no projects at all
+                    }
                 } else {
-                    throw new Error('Failed to load projects');
+                    throw new Error('Failed to load all projects');
                 }
             } catch (error) {
-                console.error('Error loading projects:', error);
+                console.error('Error loading all projects:', error);
                 Toastify({
                     text: 'Error loading projects',
                     duration: 3000,
                     style: { background: '#e74c3c' },
                 }).showToast();
+                projectGrid.innerHTML = '';
+                initialLoadingMessage.textContent = 'Error loading projects. Please try again.';
+                initialLoadingMessage.style.display = 'block'; // Show error message
             }
         }
 
-        async function searchProjects() {
-            const query = document.getElementById('searchInput').value;
+
+        async function performGlobalSearch() {
+            const query = searchInput.value.trim();
             const course = document.getElementById('courseFilter').value;
             const year = document.getElementById('yearFilter').value;
             const type = document.getElementById('typeFilter').value;
             const department = document.getElementById('departmentFilter').value;
             const category = document.getElementById('categoryFilter').value;
+
+            const params = new URLSearchParams();
+            if (query) params.append('q', query);
+            if (course && course !== 'All') params.append('course', course);
+            if (year && year !== 'All') params.append('year', year);
+            if (type && type !== 'All') params.append('type', type);
+            if (department && department !== 'All') params.append('department', department);
+            if (category && category !== 'All') params.append('category', category);
+
+            // Determine if a search is active (query or any filter other than 'All')
+            const isSearchActive = query ||
+                                   (course && course !== 'All') ||
+                                   (year && year !== 'All') ||
+                                   (type && type !== 'All') ||
+                                   (department && department !== 'All') ||
+                                   (category && category !== 'All');
+
+            if (!isSearchActive) {
+                // If no search/filters, load all projects and clear autocomplete
+                loadAllProjects();
+                autocompleteSuggestions.innerHTML = '';
+                autocompleteSuggestions.style.display = 'none';
+                return;
+            }
+
+            // Hide general messages and show search-specific area
+            initialLoadingMessage.style.display = 'none';
+            projectGridHeader.style.display = 'none'; // Hide "Latest Projects" header during search
+            noProjectsFoundSearchMessage.style.display = 'none'; // Hide "No projects found" message initially
+
             try {
-                const response = await fetch(`/search?q=${encodeURIComponent(query)}&course=${encodeURIComponent(course)}&year=${encodeURIComponent(year)}&type=${encodeURIComponent(type)}&department=${encodeURIComponent(department)}&category=${encodeURIComponent(category)}`);
+                const response = await fetch(`/search?${params.toString()}`);
                 if (response.ok) {
-                    const projects = await response.json();
-                    const projectGrid = document.getElementById('projectGrid');
-                    projectGrid.innerHTML = projects.length
-                        ? projects.map(p => `
-                                    <div class="col">
-                                        <div class="card h-100" onclick="window.location.href='/project.html?id=${p.id}'">
-                                            <img src="${p.image}" class="card-img-top" alt="${p.title}" onerror="this.src='https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'">
-                                            <div class="card-body">
-                                                <h5 class="card-title">${p.title}</h5>
-                                                <p class="card-text">${p.description ? p.description.substring(0, 100) + '...' : 'No description'}</p>
-                                                <div class="project-stats">
-                                                    <span><i class="fas fa-heart"></i> ${p.likes} Likes</span>
-                                                    <span><i class="fas fa-eye"></i> ${p.views} Views</span>
-                                                </div>
-                                                <div class="project-author"> By: <a href="/public-profile.html?userId=${p.userId}">${p.userName}</a>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                `).join('')
-                        : '<p>No projects found.</p>';
+                    const data = await response.json(); // Expects { results: { projects: [], users: [] } }
+                    const projects = data.results.projects;
+                    const users = data.results.users;
+
+                    // Handle Autocomplete Suggestions for Users
+                    if (query && users.length > 0) {
+                        autocompleteSuggestions.innerHTML = users.map(u => renderUserSuggestion(u)).join('');
+                        autocompleteSuggestions.style.display = 'block';
+                    } else {
+                        autocompleteSuggestions.innerHTML = '';
+                        autocompleteSuggestions.style.display = 'none';
+                    }
+
+                    // Display Project Results
+                    if (projects.length > 0) {
+                        projectGrid.innerHTML = projects.map(p => renderProjectCard(p)).join('');
+                        noProjectsFoundSearchMessage.style.display = 'none'; // Hide if projects are found
+                    } else {
+                        projectGrid.innerHTML = '';
+                        noProjectsFoundSearchMessage.textContent = 'No projects found matching your search or filters.';
+                        noProjectsFoundSearchMessage.style.display = 'block'; // Show "No projects found" message
+                    }
+
                 } else {
-                    throw new Error('Failed to search projects');
+                    throw new Error('Failed to perform search');
                 }
             } catch (error) {
-                console.error('Error searching projects:', error);
+                console.error('Error performing global search:', error);
                 Toastify({
-                    text: 'Error searching projects',
+                    text: 'Error performing search',
                     duration: 3000,
                     style: { background: '#e74c3c' },
                 }).showToast();
+                projectGrid.innerHTML = '';
+                noProjectsFoundSearchMessage.textContent = 'Error loading search results. Please try again.';
+                noProjectsFoundSearchMessage.style.display = 'block'; // Show error message
+                autocompleteSuggestions.innerHTML = '';
+                autocompleteSuggestions.style.display = 'none';
             }
         }
 
-        document.getElementById('searchInput').addEventListener('input', searchProjects);
+        // Event Listeners
+        searchInput.addEventListener('input', () => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(performGlobalSearch, DEBOUNCE_DELAY);
+        });
 
         document.getElementById('applyFilters').addEventListener('click', () => {
-            searchProjects();
+            performGlobalSearch();
             bootstrap.Modal.getInstance(document.getElementById('filterModal')).hide();
         });
 
+        // Hide autocomplete when clicking outside
+        document.addEventListener('click', (event) => {
+            if (!autocompleteSuggestions.contains(event.target) && event.target !== searchInput) {
+                autocompleteSuggestions.style.display = 'none';
+            }
+        });
+
+        // Re-show autocomplete if input is refocused and has text
+        searchInput.addEventListener('focus', () => {
+            const query = searchInput.value.trim();
+            if (query && autocompleteSuggestions.children.length > 0) {
+                autocompleteSuggestions.style.display = 'block';
+            }
+        });
+
+
         window.onload = () => {
+            // ADDED LOG HERE
+            console.log('window.onload: Triggered.');
             loadUserProfile();
-            loadDynamicFilterOptions(); // Call the new function
-            loadProjects();
+            loadDynamicFilterOptions();
+            const urlParams = new URLSearchParams(window.location.search);
+            const initialQuery = urlParams.get('q');
+
+            // If there's an initial query from URL, perform search
+            if (initialQuery) {
+                searchInput.value = initialQuery;
+                performGlobalSearch();
+            } else {
+                // Otherwise, load all projects by default
+                loadAllProjects();
+            }
         };
     </script>
 </body>

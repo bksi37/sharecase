@@ -7,7 +7,7 @@ body {
     font-family: 'Roboto', 'Arial', sans-serif;
     background-color: #f9f9f9; /* Very light grey background */
     margin: 0;
-    padding-top: 70px;
+    padding-top: 10px;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -106,7 +106,7 @@ header {
 .container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 20px;
+    padding: 5px;
     flex: 1;
 }
 
@@ -672,4 +672,79 @@ footer {
 
 .user-menu .profile-container.active .dropdown-menu {
     display: flex; /* Show when active */
+}
+/* Autocomplete Container */
+.search-bar-container {
+    flex-grow: 1; /* Allow it to take up available space */
+    max-width: 600px; /* Optional: limit width for larger screens */
+    margin: 0 20px; /* Adjust spacing around the search bar */
+}
+
+.autocomplete-suggestions {
+    position: absolute;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    width: calc(100% - 2px); /* Match search input width, accounting for border */
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 1000; /* Ensure it appears above other content */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    display: none; /* Hidden by default */
+    top: 100%; /* Position right below the search input */
+    left: 0;
+}
+
+.autocomplete-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 15px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+}
+
+.autocomplete-item:last-child {
+    border-bottom: none;
+}
+
+.autocomplete-item:hover {
+    background-color: #f8f9fa;
+}
+
+.autocomplete-item img {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-right: 10px;
+    border: 1px solid #007bff;
+}
+
+.autocomplete-item span {
+    font-size: 0.95em;
+    color: #333;
+    font-weight: 500;
+}
+
+.autocomplete-item .user-detail {
+    font-size: 0.8em;
+    color: #666;
+    margin-left: 8px;
+    font-weight: 400;
+}
+
+/* Ensure search input and filter button are aligned */
+.search-bar-container .input-group .form-control {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.search-bar-container .input-group .btn {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+/* Adjust header search bar layout if needed */
+header .search-bar { /* Old search bar, might conflict */
+    display: none; /* Hide if still present */
 }

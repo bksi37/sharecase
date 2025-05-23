@@ -3,7 +3,6 @@ const mongoose = require('mongoose');
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const cloudinary = require('cloudinary').v2;
-const fileUpload = require('express-fileupload');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 require('dotenv').config();
@@ -57,7 +56,6 @@ app.get('/dynamic-filter-options', (req, res) => {
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(fileUpload());
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -72,6 +70,8 @@ cloudinary.config({
 const authRoutes = require('./routes/auth');
 const profileRoutes = require('./routes/profile');
 const projectRoutes = require('./routes/projects');
+ 
+
 app.use('/', authRoutes);
 app.use('/', profileRoutes);
 app.use('/', projectRoutes);

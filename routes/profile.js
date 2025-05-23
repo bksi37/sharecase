@@ -1,113 +1,84 @@
+// routes/profile.js
 const express = require('express');
+const router = express.Router(); // <-- THIS IS THE MISSING LINE!
 const cloudinary = require('cloudinary').v2;
 const User = require('../models/User');
 const Project = require('../models/Project');
-const { isAuthenticated } = require('../middleware/auth'); // No need for isProfileComplete here
+const { isAuthenticated, isProfileComplete } = require('../middleware/auth'); // Added isProfileComplete as it's used in profile routes
 const bcrypt = require('bcryptjs');
-const router = express.Router();
+const upload = require('../middleware/upload');
 
-// Complete Profile
-router.post('/complete-profile', isAuthenticated, async (req, res) => {
+
+// Update Profile (Updated for Multer)
+router.post('/update-profile', isAuthenticated, upload.single('profilePic'), async (req, res) => {
     try {
-        const { name, schoolEmail } = req.body;
+        const { name, personalEmail, bio, linkedin, major, github, personalWebsite } = req.body;
         const userId = req.session.userId;
-        let profilePicUrl = null;
 
-        // Check if req.files.profilePic exists and has tempFilePath (from express-fileupload)
-        if (req.files && req.files.profilePic && req.files.profilePic.tempFilePath) {
-            const result = await cloudinary.uploader.upload(req.files.profilePic.tempFilePath, {
-                folder: 'sharecase/profiles', // Original folder
-                transformation: [{ width: 150, height: 150, crop: 'fill' }]
-            });
-            profilePicUrl = result.secure_url;
-        }
-
-        const updateFields = {
-            name,
-            schoolEmail,
-            isProfileComplete: true, // This is now consistently set here
-            // We combine the $push for activityLog directly into this update
-            $push: { activityLog: { action: 'Profile completed', timestamp: new Date() } }
-        };
-
-        if (profilePicUrl) {
-            updateFields.profilePic = profilePicUrl;
-        }
-
-        // Perform the combined update.
-        // { new: true } returns the document *after* the update.
-        // { runValidators: true } ensures any schema validators run during the update.
-        const updatedUser = await User.findByIdAndUpdate(userId, updateFields, { new: true, runValidators: true });
-
-        // This log will show you the user object *after* the update,
-        // which should confirm if isProfileComplete is true.
-        console.log('User after complete-profile update:', updatedUser);
-
-        // This assumes your frontend create-profile.html expects a redirect property in the JSON response
-        res.json({ success: true, redirect: '/index.html' });
-
-    } catch (error) {
-        console.error('Profile completion error:', error);
-        res.status(500).json({ error: 'Server error', details: error.message }); // Added details for better debugging
-    }
-});
-
-
-// Update Profile
-router.post('/update-profile', isAuthenticated, async (req, res) => { // Removed 'upload.single' middleware
-    try {
-        // Extract new fields: bio and linkedin, along with existing ones
-        const { name, schoolEmail, bio, linkedin } = req.body;
-        const userId = req.session.userId;
+        console.log('Update profile attempt (profile.js):', { userId, name, personalEmail, major, linkedin, github, personalWebsite });
+        console.log('Multer processed req.file (profile.js):', req.file); // Debugging: Check if req.file is populated
 
         let user = await User.findById(userId);
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
 
-        // Update fields if provided (or clear if empty string is sent)
-        user.name = name || user.name; // Keep existing name if new name is empty
-        user.schoolEmail = schoolEmail; // Allow setting to empty
-        user.bio = bio; // Allow setting to empty
+        // Update fields if provided (or clear if empty string is sent for non-required fields)
+        user.name = name; // Update name in settings
+        user.personalEmail = personalEmail;
+        user.major = major;
+        user.bio = bio;
+        user.github = github;
+        user.personalWebsite = personalWebsite;
 
-        // Process LinkedIn URL: ensure it has https:// prefix if not already present
+        // Process LinkedIn URL
         let processedLinkedin = linkedin;
         if (processedLinkedin && !processedLinkedin.startsWith('http://') && !processedLinkedin.startsWith('https://')) {
             processedLinkedin = `https://${processedLinkedin}`;
         }
-        user.linkedin = processedLinkedin; // Allow setting to empty
+        user.linkedin = processedLinkedin;
 
-        // Handle profile picture upload using req.files (from express-fileupload)
-        if (req.files && req.files.profilePic && req.files.profilePic.tempFilePath) {
-            const result = await cloudinary.uploader.upload(req.files.profilePic.tempFilePath, { // Use tempFilePath
-                folder: 'sharecase/profiles', // Use the same folder as complete-profile for consistency
-                public_id: `profile_${userId}`, // Use user ID for consistent public_id
-                overwrite: true // Overwrite previous profile picture
-            });
-            user.profilePic = result.secure_url;
+        // Handle profile picture upload using req.file (from Multer)
+        if (req.file && req.file.path) {
+            user.profilePic = req.file.path; // Multer's CloudinaryStorage already gives you the secure_url
+            console.log('New profile pic URL assigned from Multer (profile.js):', user.profilePic);
+        } else {
+            // If no new file was uploaded, retain the existing profilePic.
+            // If the user *wants* to remove their picture, you'd need a separate checkbox/button for that.
+            console.log('No new profile pic uploaded in update-profile. Retaining existing.');
         }
 
-        await user.save(); // Save the updated user document
+        await user.save();
 
-        // Add activity log entry
         await User.findByIdAndUpdate(userId, {
             $push: { activityLog: { action: 'Profile updated', timestamp: new Date() } }
         });
 
-        // Respond with success and updated profilePic (if applicable) and other relevant data
         res.json({
             success: true,
-            profilePic: user.profilePic, // Send back the updated URL
-            name: user.name,
+            profilePic: user.profilePic, // Send back the updated pic URL
+            name: user.name, // Send back updated name for header
             bio: user.bio,
             linkedin: user.linkedin,
-            schoolEmail: user.schoolEmail
+            personalEmail: user.personalEmail,
+            major: user.major,
+            github: user.github,
+            personalWebsite: user.personalWebsite
         });
     } catch (error) {
-        console.error('Profile update error:', error);
+        console.error('Profile update error (profile.js):', error);
+        if (error.name === 'ValidationError') {
+            return res.status(400).json({ error: error.message });
+        }
+        // Handle Multer errors specifically
+        if (error instanceof multer.MulterError) {
+             console.error('Multer Error during update-profile:', error.message);
+             return res.status(400).json({ error: `File upload error: ${error.message}` });
+        }
         res.status(500).json({ error: 'Server error' });
     }
 });
+
 
 // Change Password (Existing code - no changes needed here for this request)
 router.post('/change-password', isAuthenticated, async (req, res) => {

@@ -2,23 +2,47 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const cloudinary = require('cloudinary').v2;
 const User = require('../models/User');
-const { isAuthenticated, isProfileComplete } = require('../middleware/auth'); // Keep isAuthenticated for other routes
+const { isAuthenticated, isProfileComplete } = require('../middleware/auth');
+const upload = require('../middleware/upload'); // Ensure this is correctly imported
 
 const router = express.Router();
 
 // Current User (Requires Authentication)
 router.get('/current-user', isAuthenticated, async (req, res) => {
     try {
-        const user = await User.findById(req.session.userId);
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
+        if (!req.session.userId) {
+            return res.json({ isLoggedIn: false });
         }
+
+        const user = await User.findById(req.session.userId)
+            .select('name email profilePic major department bio linkedin github personalWebsite personalEmail privacy isProfileComplete'); // <--- ENSURE 'personalEmail' IS HERE!
+
+        if (!user) {
+            req.session.destroy();
+            return res.json({ isLoggedIn: false });
+        }
+
         res.json({
-            name: user.name,
-            profilePic: user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'
+            isLoggedIn: true,
+            user: {
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                profilePic: user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg',
+                major: user.major || '',
+                department: user.department || '', // Assuming you have this
+                bio: user.bio || '', // Assuming you have this
+                linkedin: user.linkedin || '',
+                github: user.github || '',
+                personalWebsite: user.personalWebsite || '',
+                personalEmail: user.personalEmail || '', // <--- ENSURE THIS IS INCLUDED IN THE RESPONSE OBJECT
+                privacy: user.privacy,
+                isProfileComplete: user.isProfileComplete
+            }
         });
+
     } catch (error) {
-        console.error('Fetch current user error:', error);
+        console.error('Error fetching current user:', error);
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -28,47 +52,101 @@ router.post('/signup', async (req, res) => {
     try {
         const { email, password, name } = req.body;
         console.log('Signup attempt:', { email, name, password: password ? '[provided]' : '[missing]' });
+
         if (!email || !password || !name) {
-            console.log('Missing fields:', { email, name, password: password ? '[provided]' : '[missing]' });
+            console.log('Signup failed: Missing fields for user:', { email, name, password: password ? '[provided]' : '[missing]' });
             return res.status(400).json({ error: 'All fields are required' });
         }
+
         const existingUser = await User.findOne({ email });
         if (existingUser) {
-            console.log('Email already exists:', { email });
+            console.log('Signup failed: Email already exists:', { email });
             return res.status(400).json({ error: 'Email already exists' });
         }
+
+        // --- ADD THESE LOGS FOR PASSWORD HASHING ---
+        console.log('Signup: Hashing password...');
         const hashedPassword = await bcrypt.hash(password, 10);
-        const user = new User({ email, password: hashedPassword, name, isProfileComplete: false });
+        console.log('Signup: Hashed password (first 10 chars):', hashedPassword.substring(0, 10) + '...');
+        // --- END ADDED LOGS ---
+
+        const user = new User({
+            email,
+            password: hashedPassword,
+            name,
+            isProfileComplete: false,
+            // REMOVE schoolEmail: undefined
+            // Since `schoolEmail` is no longer in your User schema,
+            // you should not reference it here. If you keep it, Mongoose
+            // will ignore it or throw an error depending on strictness.
+            // Just let the schema define the fields.
+        });
+
         await user.save();
         req.session.userId = user._id.toString();
         req.session.userName = user.name;
         await req.session.save();
         console.log('Signup successful:', { userId: user._id, isProfileComplete: user.isProfileComplete });
         res.json({ success: true, redirect: '/create-profile.html' });
+
     } catch (error) {
         console.error('Signup error:', error);
-        res.status(500).json({ error: 'Server error' });
+        if (error.code === 11000) {
+            if (error.keyPattern && error.keyPattern.email) {
+                return res.status(400).json({ error: 'Email already exists.' });
+            }
+            // Remove the schoolEmail specific error handling too, as it's not in schema
+            // if (error.keyPattern && error.keyPattern.schoolEmail) {
+            //     return res.status(400).json({ error: 'School email provided is already registered.' });
+            // }
+        }
+        res.status(500).json({ error: 'Server error. Please try again later.' });
     }
 });
+
 
 // Login
 router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
-        console.log('Login attempt:', { email });
+        console.log('Login attempt received for email:', email);
+        // --- ADD THESE LOGS FOR PASSWORD COMPARISON ---
+        console.log('Login: Received password (first 5 chars for safety):', String(password).substring(0, 5) + '...');
+        // --- END ADDED LOGS ---
+
         if (!email || !password) {
+            console.log('Login failed: Email or password missing from request body.');
             return res.status(400).json({ error: 'Email and password are required' });
         }
+
         const user = await User.findOne({ email });
-        if (!user || !await bcrypt.compare(password, user.password)) {
-            console.log('Invalid credentials:', { email });
+
+        if (!user) {
+            console.log(`Login failed: User not found for email: ${email}`);
             return res.status(400).json({ error: 'Invalid email or password' });
         }
+
+        // --- ADD THESE LOGS FOR PASSWORD COMPARISON ---
+        console.log(`Login: User found: ${user.email}`);
+        console.log(`Login: Stored HASH from DB (first 10 chars for safety): ${String(user.password).substring(0, 10)}...`);
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        console.log(`Login: bcrypt.compare result for ${email}: ${isMatch}`); // THIS IS THE KEY LOG
+        // --- END ADDED LOGS ---
+
+        if (!isMatch) {
+            console.log(`Login failed: Password mismatch for email: ${email}`);
+            return res.status(400).json({ error: 'Invalid email or password' });
+        }
+
+        // If login is successful
         req.session.userId = user._id.toString();
         req.session.userName = user.name;
+        req.session.isProfileComplete = user.isProfileComplete; // Make sure this is captured
+        
         await req.session.save(err => {
             if (err) {
-                console.error('Session save error:', err);
+                console.error('Session save error during login:', err);
                 return res.status(500).json({ error: 'Session error' });
             }
             console.log('Login successful:', { userId: user._id, isProfileComplete: user.isProfileComplete });
@@ -79,44 +157,98 @@ router.post('/login', async (req, res) => {
                 redirect
             });
         });
+
     } catch (error) {
-        console.error('Login error:', error);
+        console.error('Login route server error:', error);
         res.status(500).json({ error: 'Server error' });
     }
 });
 
-// Complete Profile (Requires Authentication)
-router.post('/complete-profile', isAuthenticated, async (req, res) => {
+// Add this new route in your auth.js file
+// --- COMPLETE PROFILE ROUTE ---
+router.post('/complete-profile', isAuthenticated, upload.single('profilePic'), async (req, res) => {
     try {
-        const { name, linkedin } = req.body;
-        console.log('Complete profile attempt:', { userId: req.session.userId, name, linkedin });
-        const user = await User.findById(req.session.userId);
+        const userId = req.session.userId;
+        const { personalEmail, major, linkedin, github, personalWebsite, bio, department } = req.body;
+
+        const user = await User.findById(userId);
         if (!user) {
-            console.log('User not found:', req.session.userId);
-            return res.status(404).json({ error: 'User not found' });
+            return res.status(404).json({ success: false, error: 'User not found.' });
         }
-        let profilePic = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
-        if (req.files && req.files.profilePic) {
-            const file = req.files.profilePic;
-            const result = await cloudinary.uploader.upload(`data:${file.mimetype};base64,${file.data.toString('base64')}`, {
-                folder: 'sharecase/profiles',
-                format: 'jpg'
+
+        // Update user fields
+        user.personalEmail = personalEmail || user.personalEmail; // Update if provided, otherwise keep existing
+        user.major = major || user.major;
+        user.linkedin = linkedin || user.linkedin;
+        user.github = github || user.github;
+        user.personalWebsite = personalWebsite || user.personalWebsite;
+        user.bio = bio || user.bio; // Ensure these fields exist in your User model
+        user.department = department || user.department; // Ensure these fields exist in your User model
+
+        // Handle profile picture upload if a file is provided
+        if (req.file) {
+            // Check if user already has a profile picture and it's not the default one
+            // You might want to delete the old one from Cloudinary to save space
+            if (user.profilePic && !user.profilePic.includes('default-profile.jpg')) {
+                // Extract public ID from Cloudinary URL (e.g., 'profile_pics/abcde12345')
+                const publicId = user.profilePic.split('/').pop().split('.')[0];
+                await cloudinary.uploader.destroy(`profile_pics/${publicId}`); // Assuming 'profile_pics' is your folder
+            }
+
+            const result = await cloudinary.uploader.upload(req.file.path, {
+                folder: 'profile_pics', // Organize uploads in a 'profile_pics' folder in Cloudinary
+                width: 300, // Optional: resize to a specific width
+                height: 300, // Optional: resize to a specific height
+                crop: "fill", // Optional: crop to fill the dimensions
+                gravity: "face", // Optional: focus on faces
             });
-            profilePic = result.secure_url;
+            user.profilePic = result.secure_url;
         }
-        user.name = name || user.name;
-        user.linkedin = linkedin || '';
-        user.profilePic = profilePic;
-        user.isProfileComplete = true;
+
+        user.isProfileComplete = true; // Mark profile as complete
         await user.save();
+
+        req.session.isProfileComplete = true; // Update session
         await req.session.save();
-        console.log('Profile completed:', { userId: user._id, isProfileComplete: user.isProfileComplete });
+
+        console.log(`Profile completed for user: ${userId}`);
         res.json({ success: true, redirect: '/index.html' });
+
     } catch (error) {
-        console.error('Complete profile error:', error);
-        res.status(500).json({ error: 'Server error' });
+        console.error('Error completing profile:', error);
+        // Clean up uploaded file if an error occurs after Cloudinary upload but before save
+        if (req.file && req.file.path) {
+            // You might want to delete the local temp file after upload, or let multer handle it.
+            // If Cloudinary upload failed, you'd handle that specifically.
+        }
+        res.status(500).json({ success: false, error: 'Server error. Could not save profile.', details: error.message });
     }
 });
+
+// NEW ROUTE: Skip Profile Completion
+router.post('/skip-profile-completion', isAuthenticated, async (req, res) => {
+    try {
+        const userId = req.session.userId;
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'User not found.' });
+        }
+
+        user.isProfileComplete = true; // Mark profile as complete without requiring any data
+        await user.save();
+
+        req.session.isProfileComplete = true; // Update session
+        await req.session.save();
+
+        console.log('User skipped profile completion:', userId);
+        res.json({ success: true, redirect: '/index.html' }); // Redirect to homepage
+    } catch (error) {
+        console.error('Error skipping profile completion:', error);
+        res.status(500).json({ success: false, error: 'Server error. Could not skip profile.' });
+    }
+});
+
 
 // Logout
 router.get('/logout', (req, res) => {
@@ -130,55 +262,52 @@ router.get('/logout', (req, res) => {
     });
 });
 
-// **CORRECTED AND UNIQUE ROUTE: Fetch Public User Details by ID**
-router.get('/user-details/:id', async (req, res) => { // Removed isAuthenticated for public access
+// Fetch Public User Details by ID (no authentication needed for public access)
+router.get('/user-details/:id', async (req, res) => {
     try {
         const userId = req.params.id;
-        // Select only fields that are safe to expose publicly
-        const user = await User.findById(userId).select('name email profilePic bio linkedin');
+        const user = await User.findById(userId).select('name email profilePic major linkedin github personalWebsite');
 
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
 
-        // Send a structured response with default profile pic if none exists
         res.json({
             _id: user._id,
             name: user.name,
-            email: user.email, // Be cautious about making email public if it's sensitive
+            email: user.email,
             profilePic: user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg',
-            bio: user.bio,
-            linkedin: user.linkedin
+            major: user.major,
+            linkedin: user.linkedin,
+            github: user.github,
+            personalWebsite: user.personalWebsite
         });
 
     } catch (error) {
         console.error('Error fetching public user details:', error);
-        // Specifically check for CastError if an invalid ID format is provided
         if (error.name === 'CastError') {
-             return res.status(400).json({ error: 'Invalid user ID format' });
+            return res.status(400).json({ error: 'Invalid user ID format' });
         }
         res.status(500).json({ error: 'Server error', details: error.message });
     }
 });
 
-// NEW ROUTE: Search Users for Collaboration (Requires Authentication)
+// Search Users for Collaboration (Requires Authentication for search functionality)
 router.get('/users/search', isAuthenticated, async (req, res) => {
     try {
-        const query = req.query.q; // Get the search term from the query parameter
+        const query = req.query.q;
         if (!query || query.trim() === '') {
             return res.status(400).json({ error: 'Search query is required' });
         }
 
-        const searchTerm = new RegExp(query, 'i'); // Case-insensitive regex search
+        const searchTerm = new RegExp(query, 'i');
 
-        // Find users matching the search term in name or email
         const users = await User.find({
             $or: [
                 { name: { $regex: searchTerm } },
                 { email: { $regex: searchTerm } },
-                // { username: { $regex: searchTerm } } // Uncomment if you have a 'username' field
             ]
-        }).select('_id name email profilePic'); // Select only necessary public fields
+        }).select('_id name email profilePic major');
 
         res.json(users);
     } catch (error) {
