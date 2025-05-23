@@ -16,10 +16,7 @@ const app = express();
 // Trust Render's proxy
 app.set('trust proxy', 1);
 
-// Set Mongoose strictQuery
 mongoose.set('strictQuery', true);
-
-// MongoDB Connection
 mongoose.connect(process.env.MONGO_URL, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => console.log('MongoDB connected successfully'))
     .catch(err => {
@@ -28,22 +25,28 @@ mongoose.connect(process.env.MONGO_URL, { useNewUrlParser: true, useUnifiedTopol
     });
 
 // Session Configuration
+const sessionStore = MongoStore.create({
+    mongoUrl: process.env.MONGO_URL,
+    collectionName: 'sessions',
+    ttl: 24 * 60 * 60, // 1 day
+    autoRemove: 'native'
+});
+
+sessionStore.on('error', err => console.error('MongoStore error:', err));
+sessionStore.on('connected', () => console.log('MongoStore connected successfully'));
+
 app.use(session({
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    store: MongoStore.create({ 
-        mongoUrl: process.env.MONGO_URL, 
-        collectionName: 'sessions',
-        ttl: 24 * 60 * 60 // 1 day, matches cookie.maxAge
-    }),
+    store: sessionStore,
     cookie: {
         maxAge: 24 * 60 * 60 * 1000, // 1 day
         secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
         sameSite: 'lax',
-        path: '/',
-    },
+        path: '/'
+    }
 }));
 
 // Middleware
