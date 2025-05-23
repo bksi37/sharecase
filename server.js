@@ -4,8 +4,8 @@ const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const cloudinary = require('cloudinary').v2;
 const cookieParser = require('cookie-parser');
-const path = require('path');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 const { isAuthenticated, isProfileComplete } = require('./middleware/auth');
 const tags = require('./config/tags');
@@ -13,7 +13,7 @@ const tags = require('./config/tags');
 // Initialize Express app
 const app = express();
 
-// Set Mongoose strictQuery to suppress deprecation warning
+// Set Mongoose strictQuery
 mongoose.set('strictQuery', true);
 
 // MongoDB Connection
@@ -32,7 +32,7 @@ app.use(session({
     store: MongoStore.create({ mongoUrl: process.env.MONGO_URL, collectionName: 'sessions' }),
     cookie: {
         maxAge: 24 * 60 * 60 * 1000, // 1 day
-        secure: process.env.NODE_ENV === 'production', // Secure cookies on Render (HTTPS)
+        secure: process.env.NODE_ENV === 'production', // Secure cookies on Render
         httpOnly: true,
         sameSite: 'lax',
     },
@@ -48,7 +48,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Request/Response Logging
+// Logging
 app.use((req, res, next) => {
     const originalJson = res.json;
     res.json = function (body) {
@@ -90,15 +90,15 @@ app.get('/dynamic-filter-options', (req, res) => {
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'views', 'landing.html')));
 app.get('/signup.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'signup.html')));
 app.get('/login.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'login.html')));
-app.get('/create-profile.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'create-profile.html')));
+app.get('/create-profile.html', isAuthenticated, (req, res) => res.sendFile(path.join(__dirname, 'views', 'create-profile.html')));
 app.get('/index.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'index.html')));
 app.get('/upload-project.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'upload-project.html')));
-app.get('/project.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'project.html'))); // Public access
+app.get('/project.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'project.html')));
 app.get('/profile.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'profile.html')));
 app.get('/settings.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'settings.html')));
 app.get('/about.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'about.html')));
 app.get('/edit-project.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'edit-project.html')));
-app.get('/public-profile.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'public-profile.html'))); // Public access
+app.get('/public-profile.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'public-profile.html')));
 
 // Error Handling
 app.use((err, req, res, next) => {

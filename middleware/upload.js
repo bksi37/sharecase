@@ -1,4 +1,3 @@
-// middleware/upload.js - CORRECTED FOR YOUR USE CASE
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
@@ -22,8 +21,7 @@ const storage = new CloudinaryStorage({
     params: async (req, file) => {
         console.log('Multer params:', { userId: req.session.userId, file: file ? file.originalname : 'no file' });
         if (!file) {
-            console.log('No file provided, skipping upload');
-            return {}; // Return empty params to prevent an error when no file is present
+            return {};
         }
         const folderName = 'sharecase/profiles';
         const publicId = `profile-${req.session.userId || Date.now()}-${file.originalname.split('.')[0]}`;
@@ -36,7 +34,7 @@ const storage = new CloudinaryStorage({
     },
 });
 
-// Multer instance for file uploads (this is the one you need for profilePic)
+// Multer instance
 const uploadFile = multer({
     storage: storage,
     limits: {
@@ -44,8 +42,7 @@ const uploadFile = multer({
         files: 1
     },
     fileFilter: (req, file, cb) => {
-        console.log('File filter called:', { file: file ? file.mimetype : 'no file' });
-        // If no file is present, let it pass (Multer will handle it later by not setting req.file)
+        console.log('File filter:', { file: file ? file.mimetype : 'no file' });
         if (!file) {
             return cb(null, true);
         }
@@ -57,8 +54,4 @@ const uploadFile = multer({
     }
 });
 
-// REMOVE 'uploadText' if you're not using it or if it's not needed for this export
-// const uploadText = multer();
-
-// Export the 'uploadFile' instance directly, so 'upload.single' works
 module.exports = uploadFile;

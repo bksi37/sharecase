@@ -165,87 +165,73 @@ router.post('/login', async (req, res) => {
 });
 
 // Add this new route in your auth.js file
-// --- COMPLETE PROFILE ROUTE ---
 router.post('/complete-profile', isAuthenticated, upload.single('profilePic'), async (req, res) => {
     try {
         const userId = req.session.userId;
         const { personalEmail, major, linkedin, github, personalWebsite, bio, department } = req.body;
+        console.log('Complete profile attempt:', { userId, personalEmail, major, linkedin, github, personalWebsite, bio, department, file: req.file ? req.file.originalname : 'no file' });
 
         const user = await User.findById(userId);
         if (!user) {
-            return res.status(404).json({ success: false, error: 'User not found.' });
+            console.log('Complete profile failed: User not found:', userId);
+            return res.status(404).json({ success: false, error: 'User not found' });
         }
 
-        // Update user fields
-        user.personalEmail = personalEmail || user.personalEmail; // Update if provided, otherwise keep existing
+        user.personalEmail = personalEmail || user.personalEmail;
         user.major = major || user.major;
         user.linkedin = linkedin || user.linkedin;
         user.github = github || user.github;
         user.personalWebsite = personalWebsite || user.personalWebsite;
-        user.bio = bio || user.bio; // Ensure these fields exist in your User model
-        user.department = department || user.department; // Ensure these fields exist in your User model
+        user.bio = bio || user.bio;
+        user.department = department || user.department;
 
-        // Handle profile picture upload if a file is provided
         if (req.file) {
-            // Check if user already has a profile picture and it's not the default one
-            // You might want to delete the old one from Cloudinary to save space
             if (user.profilePic && !user.profilePic.includes('default-profile.jpg')) {
-                // Extract public ID from Cloudinary URL (e.g., 'profile_pics/abcde12345')
                 const publicId = user.profilePic.split('/').pop().split('.')[0];
-                await cloudinary.uploader.destroy(`profile_pics/${publicId}`); // Assuming 'profile_pics' is your folder
+                await cloudinary.uploader.destroy(`profile_pics/${publicId}`);
             }
-
-            const result = await cloudinary.uploader.upload(req.file.path, {
-                folder: 'profile_pics', // Organize uploads in a 'profile_pics' folder in Cloudinary
-                width: 300, // Optional: resize to a specific width
-                height: 300, // Optional: resize to a specific height
-                crop: "fill", // Optional: crop to fill the dimensions
-                gravity: "face", // Optional: focus on faces
-            });
-            user.profilePic = result.secure_url;
+            user.profilePic = req.file.path; // Multer's CloudinaryStorage provides the URL
+            console.log('New profile pic URL:', user.profilePic);
         }
 
-        user.isProfileComplete = true; // Mark profile as complete
+        user.isProfileComplete = true;
         await user.save();
 
-        req.session.isProfileComplete = true; // Update session
+        req.session.isProfileComplete = true;
         await req.session.save();
 
-        console.log(`Profile completed for user: ${userId}`);
+        console.log('Profile completed for user:', userId);
         res.json({ success: true, redirect: '/index.html' });
-
     } catch (error) {
         console.error('Error completing profile:', error);
-        // Clean up uploaded file if an error occurs after Cloudinary upload but before save
-        if (req.file && req.file.path) {
-            // You might want to delete the local temp file after upload, or let multer handle it.
-            // If Cloudinary upload failed, you'd handle that specifically.
-        }
-        res.status(500).json({ success: false, error: 'Server error. Could not save profile.', details: error.message });
+        res.status(500).json({ success: false, error: 'Server error', details: error.message });
     }
 });
 
-// NEW ROUTE: Skip Profile Completion
+
+//skip-profile-completion
 router.post('/skip-profile-completion', isAuthenticated, async (req, res) => {
     try {
         const userId = req.session.userId;
-        const user = await User.findById(userId);
+        console.log('Skip profile attempt:', { userId });
 
+        const user = await User.findById(userId);
         if (!user) {
-            return res.status(404).json({ success: false, error: 'User not found.' });
+            console.log('Skip profile failed: User not found:', userId);
+            return res.status(404).json({ success: false, error: 'User not found' });
         }
 
-        user.isProfileComplete = true; // Mark profile as complete without requiring any data
+        user.isProfileComplete = true;
         await user.save();
 
-        req.session.isProfileComplete = true; // Update session
+        req.session.isProfileComplete = true;
         await req.session.save();
 
         console.log('User skipped profile completion:', userId);
-        res.json({ success: true, redirect: '/index.html' }); // Redirect to homepage
+        res.json({ success: true, redirect: '/index.html' });
     } catch (error) {
         console.error('Error skipping profile completion:', error);
-        res.status(500).json({ success: false, error: 'Server error. Could not skip profile.' });
+        res.status(500).json({ success: false, error: 'Server error' });
     }
 });
 
