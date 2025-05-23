@@ -54,53 +54,52 @@ router.post('/signup', async (req, res) => {
         console.log('Signup attempt:', { email, name, password: password ? '[provided]' : '[missing]' });
 
         if (!email || !password || !name) {
-            console.log('Signup failed: Missing fields for user:', { email, name, password: password ? '[provided]' : '[missing]' });
-            return res.status(400).json({ error: 'All fields are required' });
+            console.log('Signup failed: Missing fields:', { email, name, password: password ? '[provided]' : '[missing]' });
+            return res.status(400).json({ success: false, error: 'All fields are required' });
         }
 
         const existingUser = await User.findOne({ email });
         if (existingUser) {
             console.log('Signup failed: Email already exists:', { email });
-            return res.status(400).json({ error: 'Email already exists' });
+            return res.status(400).json({ success: false, error: 'Email already exists' });
         }
 
-        // --- ADD THESE LOGS FOR PASSWORD HASHING ---
         console.log('Signup: Hashing password...');
         const hashedPassword = await bcrypt.hash(password, 10);
         console.log('Signup: Hashed password (first 10 chars):', hashedPassword.substring(0, 10) + '...');
-        // --- END ADDED LOGS ---
 
         const user = new User({
             email,
             password: hashedPassword,
             name,
             isProfileComplete: false,
-            // REMOVE schoolEmail: undefined
-            // Since `schoolEmail` is no longer in your User schema,
-            // you should not reference it here. If you keep it, Mongoose
-            // will ignore it or throw an error depending on strictness.
-            // Just let the schema define the fields.
         });
 
         await user.save();
+        console.log('Signup: User created:', { userId: user._id });
+
         req.session.userId = user._id.toString();
         req.session.userName = user.name;
-        await req.session.save();
-        console.log('Signup successful:', { userId: user._id, isProfileComplete: user.isProfileComplete });
-        res.json({ success: true, redirect: '/create-profile.html' });
 
+        await new Promise((resolve, reject) => {
+            req.session.save(err => {
+                if (err) {
+                    console.error('Signup: Session save error:', err);
+                    reject(err);
+                } else {
+                    console.log('Signup: Session saved:', { userId: user._id, sessionId: req.sessionID });
+                    resolve();
+                }
+            });
+        });
+
+        res.json({ success: true, redirect: '/create-profile.html' });
     } catch (error) {
         console.error('Signup error:', error);
         if (error.code === 11000) {
-            if (error.keyPattern && error.keyPattern.email) {
-                return res.status(400).json({ error: 'Email already exists.' });
-            }
-            // Remove the schoolEmail specific error handling too, as it's not in schema
-            // if (error.keyPattern && error.keyPattern.schoolEmail) {
-            //     return res.status(400).json({ error: 'School email provided is already registered.' });
-            // }
+            return res.status(400).json({ success: false, error: 'Email already exists' });
         }
-        res.status(500).json({ error: 'Server error. Please try again later.' });
+        res.status(500).json({ success: false, error: 'Server error' });
     }
 });
 

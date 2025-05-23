@@ -13,6 +13,9 @@ const tags = require('./config/tags');
 // Initialize Express app
 const app = express();
 
+// Trust Render's proxy
+app.set('trust proxy', 1);
+
 // Set Mongoose strictQuery
 mongoose.set('strictQuery', true);
 
@@ -29,12 +32,17 @@ app.use(session({
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    store: MongoStore.create({ mongoUrl: process.env.MONGO_URL, collectionName: 'sessions' }),
+    store: MongoStore.create({ 
+        mongoUrl: process.env.MONGO_URL, 
+        collectionName: 'sessions',
+        ttl: 24 * 60 * 60 // 1 day, matches cookie.maxAge
+    }),
     cookie: {
         maxAge: 24 * 60 * 60 * 1000, // 1 day
-        secure: process.env.NODE_ENV === 'production', // Secure cookies on Render
+        secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
         sameSite: 'lax',
+        path: '/',
     },
 }));
 
@@ -47,6 +55,17 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Debug Session
+app.use((req, res, next) => {
+    console.log('Session middleware:', { 
+        sessionId: req.sessionID, 
+        userId: req.session.userId, 
+        cookies: req.cookies, 
+        path: req.path 
+    });
+    next();
+});
 
 // Logging
 app.use((req, res, next) => {

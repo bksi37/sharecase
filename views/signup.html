@@ -56,47 +56,55 @@
         document.getElementById('signupForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            // UNCOMMENT AND USE THE NAME FIELD
-            const name = document.getElementById('name').value; 
+            const name = document.getElementById('name').value;
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
 
-            // Frontend validation: Check if passwords match
             if (password !== confirmPassword) {
                 Toastify({
                     text: 'Passwords do not match!',
                     duration: 3000,
                     style: { background: '#e74c3c' },
                 }).showToast();
-                return; // Stop the form submission
+                return;
             }
 
             try {
                 const response = await fetch('/signup', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                    // INCLUDE 'name' IN THE JSON BODY
-                    body: JSON.stringify({ name, email, password }) // <-- Changed here
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        'X-Requested-With': 'XMLHttpRequest' 
+                    },
+                    body: JSON.stringify({ name, email, password }),
+                    credentials: 'include',
                 });
+
+                console.log('Signup request sent:', { name, email });
+
                 const data = await response.json();
+                console.log('Signup response:', data);
+
                 if (response.ok && data.success) {
                     Toastify({
-                        text: 'Signup successful! Please complete your profile.',
+                        text: 'Signup successful! Redirecting to profile setup...',
                         duration: 3000,
                         style: { background: '#28a745' },
                     }).showToast();
-                    setTimeout(() => window.location.href = data.redirect, 3000);
+                    setTimeout(() => window.location.href = data.redirect || '/create-profile.html', 3000);
                 } else {
                     throw new Error(data.error || 'Signup failed');
                 }
             } catch (error) {
                 console.error('Signup error:', error);
                 Toastify({
-                    text: error.message,
+                    text: error.message || 'Error during signup',
                     duration: 3000,
                     style: { background: '#e74c3c' },
                 }).showToast();
+                // Stay on signup page to allow retry
+                // setTimeout(() => window.location.href = '/signup.html', 3000);
             }
         });
     </script>
