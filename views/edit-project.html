@@ -225,13 +225,12 @@
             }
         }
 
-        async function loadUserProfileInHeader() {
+                async function loadUserProfileInHeader() {
             try {
-                const response = await fetch('/current-user');
+                const response = await fetch('/current-user', { credentials: 'include' });
                 if (response.ok) {
                     const data = await response.json();
                     const user = data.user;
-
                     if (user && data.isLoggedIn) {
                         document.getElementById('headerProfileName').textContent = user.name || 'Guest';
                         document.getElementById('headerProfilePic').src = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
@@ -274,7 +273,6 @@
                 setTimeout(() => window.location.href = '/login.html', 3000);
             }
         }
-
         async function loadProject() {
             const urlParams = new URLSearchParams(window.location.search);
             const projectId = urlParams.get('id');
