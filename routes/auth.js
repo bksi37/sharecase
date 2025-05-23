@@ -103,63 +103,53 @@ router.post('/signup', async (req, res) => {
     }
 });
 
-
-// Login
 router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
-        console.log('Login attempt received for email:', email);
-        // --- ADD THESE LOGS FOR PASSWORD COMPARISON ---
-        console.log('Login: Received password (first 5 chars for safety):', String(password).substring(0, 5) + '...');
-        // --- END ADDED LOGS ---
+        console.log('Login attempt:', { email, password: password ? '[provided]' : '[missing]' });
 
         if (!email || !password) {
-            console.log('Login failed: Email or password missing from request body.');
-            return res.status(400).json({ error: 'Email and password are required' });
+            console.log('Login failed: Missing fields:', { email, password: password ? '[provided]' : '[missing]' });
+            return res.status(400).json({ success: false, error: 'Email and password are required' });
         }
 
         const user = await User.findOne({ email });
-
         if (!user) {
-            console.log(`Login failed: User not found for email: ${email}`);
-            return res.status(400).json({ error: 'Invalid email or password' });
+            console.log('Login failed: User not found:', { email });
+            return res.status(401).json({ success: false, error: 'Invalid email or password' });
         }
 
-        // --- ADD THESE LOGS FOR PASSWORD COMPARISON ---
-        console.log(`Login: User found: ${user.email}`);
-        console.log(`Login: Stored HASH from DB (first 10 chars for safety): ${String(user.password).substring(0, 10)}...`);
-
+        console.log('Login: Comparing password for user:', { userId: user._id });
         const isMatch = await bcrypt.compare(password, user.password);
-        console.log(`Login: bcrypt.compare result for ${email}: ${isMatch}`); // THIS IS THE KEY LOG
-        // --- END ADDED LOGS ---
+        console.log('Login: bcrypt.compare result:', isMatch);
 
         if (!isMatch) {
-            console.log(`Login failed: Password mismatch for email: ${email}`);
-            return res.status(400).json({ error: 'Invalid email or password' });
+            console.log('Login failed: Invalid password for:', { email });
+            return res.status(401).json({ success: false, error: 'Invalid email or password' });
         }
 
-        // If login is successful
         req.session.userId = user._id.toString();
         req.session.userName = user.name;
-        req.session.isProfileComplete = user.isProfileComplete; // Make sure this is captured
-        
-        await req.session.save(err => {
-            if (err) {
-                console.error('Session save error during login:', err);
-                return res.status(500).json({ error: 'Session error' });
-            }
-            console.log('Login successful:', { userId: user._id, isProfileComplete: user.isProfileComplete });
-            const redirect = user.isProfileComplete === true ? '/index.html' : '/create-profile.html';
-            res.json({
-                success: true,
-                isProfileComplete: user.isProfileComplete,
-                redirect
+        req.session.isProfileComplete = user.isProfileComplete;
+
+        await new Promise((resolve, reject) => {
+            req.session.save(err => {
+                if (err) {
+                    console.error('Login: Session save error:', err);
+                    reject(err);
+                } else {
+                    console.log('Login: Session saved:', { userId: user._id, sessionId: req.sessionID });
+                    resolve();
+                }
             });
         });
 
+        const redirect = user.isProfileComplete ? '/index.html' : '/create-profile.html';
+        console.log('Login successful:', { userId: user._id, redirect });
+        res.json({ success: true, redirect });
     } catch (error) {
-        console.error('Login route server error:', error);
-        res.status(500).json({ error: 'Server error' });
+        console.error('Login error:', error);
+        res.status(500).json({ success: false, error: 'Server error' });
     }
 });
 

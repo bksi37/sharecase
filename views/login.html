@@ -49,20 +49,26 @@
             e.preventDefault();
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
+            console.log('Login attempt:', { email });
             try {
                 const response = await fetch('/login', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                    body: JSON.stringify({ email, password })
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        'X-Requested-With': 'XMLHttpRequest' 
+                    },
+                    body: JSON.stringify({ email, password }),
+                    credentials: 'include'
                 });
                 const data = await response.json();
+                console.log('Login response:', data);
                 if (response.ok && data.success) {
                     Toastify({
-                        text: 'Login successful!',
+                        text: 'Login successful! Redirecting...',
                         duration: 3000,
                         style: { background: '#28a745' },
                     }).showToast();
-                    setTimeout(() => window.location.href = data.redirect, 3000);
+                    setTimeout(() => window.location.href = data.redirect || '/index.html', 3000);
                 } else {
                     throw new Error(data.error || 'Login failed');
                 }
