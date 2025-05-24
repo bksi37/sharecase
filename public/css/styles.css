@@ -731,6 +731,7 @@ h3 {
     transition: background-color 0.2s ease-in-out;
 }
 
+
 .tags .badge:hover {
     background-color: #cfe2ff; /* Slightly darker blue on hover */
 }
@@ -971,4 +972,20 @@ header .search-bar-container .input-group .form-control { /* Specific target for
 header .search-bar-container .input-group .btn { /* Specific target for Bootstrap button */
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
+}
+
+/* Add this at the END of your styles.css file (or after all other Bootstrap imports) */
+.bg-primary {
+    /* Choose a light gray color */
+    background-color: #e0e0e0 !important; 
+    /* You might want to adjust text color if it's currently white on blue */
+    color: #007bff !important; /* Dark grey text for contrast on light background */
+}
+
+.bg-secondary {
+    --bs-bg-opacity: 1;
+    background-color: #e0e0e0 !important;
+}
+.container.mt-4 {
+    margin-top: 0px !important; /* or 0 if you want no space */
 }

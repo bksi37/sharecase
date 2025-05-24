@@ -187,7 +187,7 @@
                         document.getElementById('profilePic').src = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
                         document.getElementById('profileMajor').textContent = user.major || 'Major: Not specified';
                         document.getElementById('profileEmail').textContent = user.personalEmail || 'Email: Not specified';
-                        document.getElementById('profileBio').textContent = user.bio || 'No bio provided.';
+                        document.getElementById('profileBio').textContent = user.bio || 'No bio needed*.';
 
                         if (!user.isProfileComplete) {
                             Toastify({

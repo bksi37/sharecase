@@ -88,7 +88,7 @@ router.get('/dynamic-filter-options', isAuthenticated, isProfileComplete, async 
 // Fetch All Projects (Keeping your existing code for this route)
 router.get('/projects', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
-        const projects = await Project.find().populate('userId', 'name');
+        const projects = await Project.find({ isPublished: true }).populate('userId', 'name');
         res.json(projects.map(p => ({
             id: p._id,
             title: p.title,
@@ -394,7 +394,7 @@ router.post('/project/:id/like', isAuthenticated, isProfileComplete, async (req,
 router.post('/generate-portfolio', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
         const user = await User.findById(req.session.userId);
-        const projects = await Project.find({ userId: req.session.userId });
+        const projects = await Project.find({ userId: req.session.userId, isPublished: true });
         const doc = new PDFDocument({ size: 'A4', margin: 40 });
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', 'attachment; filename=portfolio.pdf'); // Or 'inline' if you prefer
@@ -418,12 +418,12 @@ router.post('/generate-portfolio', isAuthenticated, isProfileComplete, async (re
             doc.fillColor('#000000').font('Roboto').fontSize(12).text(`LinkedIn: ${user.linkedin}`, { align: 'center', link: linkedinUrl });
         }
         doc.moveDown(1);
-        doc.lineWidth(2).strokeColor('#007bff').moveTo(40, doc.y).lineTo(552, doc.y).stroke();
+        doc.lineWidth(2).strokeColor('#212529').moveTo(40, doc.y).lineTo(552, doc.y).stroke();
         doc.moveDown(1);
 
         // Projects Section Title
-        doc.fillColor('#007bff').font('Roboto-Bold').fontSize(22).text('My Projects', { align: 'left' });
-        doc.moveDown(1);
+        doc.fillColor('#212529').font('Roboto-Bold').fontSize(22).text('My Projects', { align: 'left' });
+        doc.moveDown(.5);
 
         if (projects.length === 0) {
             doc.font('Roboto').fontSize(12).text('No projects available to display.', { align: 'center' });
@@ -432,7 +432,7 @@ router.post('/generate-portfolio', isAuthenticated, isProfileComplete, async (re
                 if (index > 0) doc.addPage();
 
                 // Project Title
-                doc.fillColor('#007bff').font('Roboto-Bold').fontSize(18).text(p.title, { align: 'left' });
+                doc.fillColor('#212529').font('Roboto-Bold').fontSize(18).text(p.title, { align: 'left' });
                 doc.moveDown(0.5);
 
                 // Image
@@ -452,7 +452,7 @@ router.post('/generate-portfolio', isAuthenticated, isProfileComplete, async (re
                             request.end(); // Important to end the request
                         });
 
-                        doc.image(imageBuffer, { width: 400, align: 'center', valign: 'center' });
+                        doc.image(imageBuffer, { width: 350, align: 'center', valign: 'center' });
                         doc.moveDown(0.5);
                     } catch (error) {
                         console.error('Image download error:', error);
