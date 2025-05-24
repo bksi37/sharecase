@@ -1,13 +1,14 @@
 /* General styles for ShareCase */
 * {
     box-sizing: border-box;
+    /* Consider adding: font-variant-numeric: tabular-nums; for consistent number spacing */
 }
 
 body {
     font-family: 'Roboto', 'Arial', sans-serif;
     background-color: #f9f9f9; /* Very light grey background */
     margin: 0;
-    padding-top: 50px;
+    padding-top: 60px; /* Adjusted to match header height, ensuring content starts below fixed header */
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -22,40 +23,55 @@ header {
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* Softer shadow */
     z-index: 1000;
     padding: 10px 20px;
-    height: 60px;
+    height: 60px; /* Explicit height for consistency */
     display: flex;
     align-items: center;
+    justify-content: space-between; /* Ensures logo, search, and user menu are spaced out */
 }
 
 .logo {
-    font-size: 20px;
+    font-size: 22px; /* Slightly larger logo for better visibility */
     font-weight: bold;
     line-height: 1;
+    letter-spacing: 0.5px; /* A touch of letter spacing for style */
 }
 
 .logo a {
     text-decoration: none;
-    color: #555555; /* Soft grey logo text */
+    color: #444444; /* Slightly darker grey for better contrast */
+    transition: color 0.2s ease-in-out; /* Smooth transition on hover */
+}
+
+.logo a:hover {
+    color: #007bff; /* Highlight on hover */
 }
 
 .search-bar {
     flex-grow: 1;
     max-width: 500px;
     margin: 0 20px;
+    position: relative; /* Needed for autocomplete suggestions positioning */
 }
 
 .search-bar input {
-    height: 35px;
-    font-size: 14px;
-    border: 1px solid #e0e0e0; /* Very light grey border */
-    border-radius: 5px;
-    background: #ffffff; /* White background */
+    height: 38px; /* Slightly taller for better touch target */
+    font-size: 15px; /* Slightly larger font */
+    border: 1px solid #dcdcdc; /* Slightly more defined border */
+    border-radius: 6px; /* Slightly more rounded corners */
+    background: #ffffff;
+    padding-right: 45px; /* Ensure space for filter button */
 }
 
 .search-bar .btn {
     background: transparent;
     border: none;
-    color: #9e9e9e; /* Medium soft grey icon */
+    color: #757575; /* Darker grey icon */
+    padding: 0 10px; /* Adjust button padding */
+    transition: color 0.2s ease-in-out;
+}
+
+.search-bar .btn:hover {
+    color: #007bff; /* Blue on hover */
 }
 
 .user-menu {
@@ -68,96 +84,131 @@ header {
     align-items: center;
     cursor: pointer;
     position: relative;
-    justify-content: center;
+    padding: 5px; /* Added padding for a larger click area */
+    border-radius: 20px; /* Slightly rounded background on hover/active */
+    transition: background-color 0.2s ease-in-out;
+}
+
+.user-menu .profile-container:hover,
+.user-menu .profile-container.active {
+    background-color: #f5f5f5; /* Light background on hover/active */
 }
 
 .user-menu img {
-    width: 30px;
-    height: 30px;
+    width: 35px; /* Slightly larger profile picture */
+    height: 35px;
     border-radius: 50%;
     object-fit: cover;
-    margin-right: 10px;
+    margin-right: 8px; /* Adjusted margin */
+    border: 2px solid #e0e0e0; /* Subtle border around profile pic */
+}
+
+.user-menu #headerProfileName {
+    font-weight: 500;
+    color: #333;
+    margin-right: 5px; /* Space before dropdown arrow (if any) */
 }
 
 .user-menu .dropdown-menu {
     display: none;
     position: absolute;
-    top: 100%;
+    top: calc(100% + 5px); /* Position slightly below the profile container */
     right: 0;
-    background: #ffffff; /* White dropdown background */
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* Softer shadow */
-    border-radius: 4px;
+    background: #ffffff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* More pronounced shadow for dropdown */
+    border-radius: 6px; /* Slightly more rounded */
     padding: 10px 0;
     z-index: 1000;
+    min-width: 180px; /* Wider dropdown */
 }
 
 .user-menu .dropdown-menu a {
     display: block;
-    padding: 8px 20px;
-    color: #666666; /* Soft grey text */
+    padding: 10px 20px; /* Increased padding */
+    color: #555555; /* Darker text for better readability */
     text-decoration: none;
-    font-size: 14px;
+    font-size: 15px; /* Slightly larger font */
+    transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
 }
 
 .user-menu .dropdown-menu a:hover {
-    background: #f5f5f5; /* Very light grey hover */
+    background: #e9f0ff; /* Light blue hover */
+    color: #007bff; /* Blue text on hover */
+}
+
+.user-menu .profile-container.active .dropdown-menu {
+    display: flex; /* Show when active */
+    flex-direction: column; /* Ensure vertical layout */
 }
 
 .container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 5px;
+    padding: 20px 15px; /* Added vertical padding, adjusted horizontal */
     flex: 1;
 }
 
 /* Button Styles */
 .btn-primary {
-    background-color: #007bff; /* Blue button */
-    border-color: #007bff; /* Blue border */
+    background-color: #007bff;
+    border-color: #007bff;
     color: #fff;
+    font-weight: 500; /* Slightly bolder text */
+    border-radius: 5px; /* Consistent rounded corners */
+    transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
 }
 
 .btn-primary:hover {
-    background-color: #0056b3; /* Darker blue hover */
-    border-color: #0056b3; /* Darker blue border */
+    background-color: #0056b3;
+    border-color: #0056b3;
+    box-shadow: 0 2px 5px rgba(0, 123, 255, 0.2); /* Subtle hover shadow */
 }
 
 .btn-secondary {
-    background: #cccccc; /* Light soft grey button */
+    background: #e0e0e0; /* A bit lighter grey */
     border: none;
-    color: #333; /* Darker text for contrast */
+    color: #555; /* Darker text for contrast */
+    font-weight: 500;
+    border-radius: 5px;
+    transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
 }
 
 .btn-secondary:hover {
-    background: #bbbbbb; /* Slightly darker soft grey hover */
+    background: #cccccc;
+    color: #333;
 }
 
 .btn-outline-primary {
-    border-color: #007bff; /* Blue border */
-    color: #007bff; /* Blue text */
+    border-color: #007bff;
+    color: #007bff;
+    font-weight: 500;
+    border-radius: 5px;
+    transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
 }
 
 .btn-outline-primary:hover {
-    background: #007bff; /* Blue background */
+    background: #007bff;
     color: #fff;
+    box-shadow: 0 2px 5px rgba(0, 123, 255, 0.2);
 }
 
 footer {
-    background: #ffffff; /* White footer */
+    background: #f8f9fa; /* Lighter background for footer */
     padding: 20px;
     text-align: center;
-    border-top: 1px solid #f0f0f0; /* Very light grey border */
+    border-top: 1px solid #e9ecef; /* Lighter border */
     margin-top: auto;
 }
 
 footer p {
     margin: 0;
-    color: #888888; /* Soft grey text */
+    color: #777777; /* Slightly darker soft grey text */
+    font-size: 14px;
 }
 
 /* Comment styles */
 .comment-section {
-    margin-top: 30px;
+    margin-top: 40px; /* More space above comment section */
 }
 
 .comment-list {
@@ -166,106 +217,144 @@ footer p {
 }
 
 .comment-list li {
-    background: #ffffff; /* White comment background */
+    background: #ffffff;
     padding: 15px;
     border-radius: 8px;
     margin-bottom: 10px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* Softer shadow */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03); /* Even softer shadow */
+    border: 1px solid #f0f0f0; /* Subtle border */
 }
 
 .comment-list .comment-meta {
-    font-size: 0.9em;
-    color: #888888; /* Soft grey text */
+    font-size: 0.85em; /* Slightly smaller font */
+    color: #999999; /* Softer grey text */
+    margin-bottom: 5px; /* Space between meta and text */
+}
+
+.comment-item strong {
+    color: #17a2b8; /* A calming blue-green for usernames */
+    font-weight: 600;
+}
+
+.comment-item small {
+    color: #999999;
 }
 
 /* Upload project styles */
 .upload-container {
     max-width: 800px;
-    margin: 100px auto;
-    padding: 30px;
-    background: #ffffff; /* White upload container background */
-    border-radius: 10px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); /* Softer shadow */
+    margin: 80px auto 50px; /* Adjusted top margin for fixed header */
+    padding: 40px; /* Increased padding */
+    background: #ffffff;
+    border-radius: 12px; /* More rounded */
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08); /* More prominent but still soft shadow */
 }
 
 .upload-container h2 {
-    color: #666666; /* Soft grey heading */
+    color: #444444; /* Darker heading */
     text-align: center;
+    margin-bottom: 30px;
 }
 
 .drop-zone {
-    border: 2px dashed #e0e0e0; /* Very light grey dashed border */
-    padding: 20px;
+    border: 2px dashed #cccccc; /* Slightly darker dashed border */
+    padding: 30px; /* More padding */
     text-align: center;
     cursor: pointer;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    background: #ffffff; /* White drop zone background */
+    border-radius: 10px; /* More rounded */
+    margin-bottom: 25px;
+    background: #fdfdfd; /* Very subtle off-white */
+    transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
 }
 
 .drop-zone.dragover {
-    background: #f5f5f5; /* Very light grey on drag */
+    background: #e9f0ff; /* Light blue on drag */
+    border-color: #007bff; /* Blue border on drag */
 }
 
 .image-preview img {
     max-width: 100%;
     height: auto;
-    border-radius: 8px;
+    border-radius: 10px; /* Consistent rounded corners */
+    border: 1px solid #e0e0e0; /* Subtle border */
 }
 
 /* View counter styles */
 .view-count {
     font-size: 0.9em;
-    color: #888888; /* Soft grey text */
+    color: #888888;
     margin-left: 10px;
 }
 
 /* Project Grid Styles */
 .project-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 20px;
-    padding: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); /* Slightly wider min width for cards */
+    gap: 25px; /* Increased gap between cards */
+    padding: 20px 0; /* Adjusted padding */
 }
 
 .card {
-    background: #ffffff; /* White card background */
-    border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* Softer shadow */
+    background: #ffffff;
+    border-radius: 10px; /* More rounded */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); /* Softer shadow */
     overflow: hidden;
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border: 1px solid #f0f0f0; /* Subtle card border */
 }
 
 .card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Slightly more prominent hover shadow */
+    transform: translateY(-7px); /* More pronounced lift effect */
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12); /* Stronger hover shadow */
 }
 
 .card-img-top {
-    height: 200px;
+    height: 220px; /* Slightly taller image area */
     object-fit: cover;
+    border-bottom: 1px solid #f5f5f5; /* Subtle separation */
+}
+
+.card-body {
+    padding: 15px; /* Adjusted padding inside card body */
 }
 
 .card-body h5 {
-    font-size: 18px;
-    margin: 10px;
-    color: #555555; /* Soft grey title */
+    font-size: 19px; /* Slightly larger title */
+    margin-top: 0;
+    margin-bottom: 8px; /* Adjusted margin */
+    color: #444444; /* Darker title text */
+    line-height: 1.3;
 }
 
 .card-body p {
     font-size: 14px;
-    color: #888888; /* Soft grey text */
-    margin: 0 10px 10px;
+    color: #777777; /* Slightly darker grey text */
+    margin-bottom: 15px;
+    line-height: 1.5;
+}
+
+.project-stats {
+    font-size: 13px; /* Slightly smaller stats font */
+    color: #999999;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+.project-stats span {
+    margin-right: 12px;
+}
+.project-stats .fas {
+    margin-right: 5px;
+    color: #c0c0c0; /* Lighter icon color */
 }
 
 /* Filter Form Styles */
 .filter-form {
     max-width: 600px;
-    margin: 20px auto;
-    background: #f9f9f9; /* Very light grey background */
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* Softer shadow */
+    margin: 30px auto; /* Adjusted margin */
+    background: #ffffff; /* White background for filters */
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
     display: none;
 }
 
@@ -275,585 +364,505 @@ footer p {
 
 /* Settings Page Styles */
 .settings-form {
-    max-width: 600px;
-    margin: 70px auto;
-    background: #ffffff; /* White settings form background */
-    padding: 30px;
-    border-radius: 10px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); /* Softer shadow */
+    max-width: 700px; /* Slightly wider settings form */
+    margin: 80px auto 50px; /* Adjusted top margin */
+    background: #ffffff;
+    padding: 40px; /* Increased padding */
+    border-radius: 12px;
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
 }
 
 .settings-form h2 {
-    color: #555555; /* Soft grey heading */
+    color: #444444;
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.form-group {
+    margin-bottom: 20px; /* Spacing between form groups */
 }
 
 .password-section {
     display: none;
+    margin-top: 30px; /* Space above password section */
+    padding-top: 20px;
+    border-top: 1px solid #f0f0f0;
 }
 
 .danger-zone {
-    border: 1px solid #dc3545; /* Keep red for danger */
-    padding: 20px;
+    border: 1px solid #dc3545;
+    padding: 25px; /* More padding */
     border-radius: 8px;
+    background-color: #fffafa; /* Very light red background */
+    margin-top: 40px;
+}
+
+.danger-zone h3 {
+    color: #dc3545;
+    margin-bottom: 15px;
 }
 
 .activity-log ul {
     list-style: none;
     padding: 0;
+    margin-top: 20px;
 }
 
 .activity-log li {
-    padding: 10px 0;
-    border-bottom: 1px solid #f0f0f0; /* Very light grey border */
+    padding: 12px 0; /* Slightly more padding */
+    border-bottom: 1px solid #eeeeee; /* Lighter border */
+    font-size: 15px;
+    color: #555;
+}
+.activity-log li:last-child {
+    border-bottom: none;
 }
 
 /* About Page Styles */
 .about-container {
     max-width: 900px;
     margin: 100px auto 50px;
-    background: #ffffff; /* White about container background */
-    padding: 40px;
-    border-radius: 10px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); /* Softer shadow */
+    background: #ffffff;
+    padding: 50px; /* More generous padding */
+    border-radius: 12px;
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
 }
 
 .about-container h1 {
-    font-size: 36px;
-    color: #555555; /* Soft grey heading */
-    margin-bottom: 15px;
+    font-size: 40px; /* Larger heading */
+    color: #333333;
+    margin-bottom: 20px;
+    text-align: center;
 }
 
 .about-container .lead {
-    font-size: 20px;
-    color: #888888; /* Soft grey text */
+    font-size: 22px; /* Larger lead text */
+    color: #666666;
+    margin-bottom: 30px;
+    text-align: center;
 }
 
 .about-container p {
-    font-size: 16px;
-    line-height: 1.6;
-    color: #666666; /* Soft grey text */
+    font-size: 17px; /* Slightly larger paragraph text */
+    line-height: 1.7;
+    color: #555555;
+    margin-bottom: 1em; /* Standard paragraph spacing */
 }
 
 .about-container h3 {
-    font-size: 24px;
+    font-size: 28px; /* Larger subheadings */
     margin-top: 40px;
     margin-bottom: 20px;
-    color: #555555; /* Soft grey heading */
+    color: #444444;
 }
 
 .accordion-button {
     font-size: 18px;
-    color: #666666; /* Soft grey text */
+    color: #555555;
+    font-weight: 500;
 }
 
 .accordion-button:not(.collapsed) {
-    color: #555555; /* Soft grey text */
-    background-color: #f5f5f5; /* Very light grey background */
+    color: #007bff; /* Blue when expanded */
+    background-color: #e9f0ff; /* Light blue background when expanded */
+    box-shadow: none; /* Remove default bootstrap shadow */
+}
+
+.accordion-item {
+    border: 1px solid #e0e0e0; /* Subtle border for accordion items */
+    border-radius: 8px;
+    margin-bottom: 10px;
+    overflow: hidden; /* Ensures border-radius applies to children */
+}
+
+.accordion-body {
+    font-size: 15px;
+    color: #666;
+    line-height: 1.6;
 }
 
 .team-section {
-    background: #ffffff; /* White team section background */
-    padding: 40px 20px;
+    background: #fefefe; /* Very light background for team section */
+    padding: 50px 20px;
     text-align: center;
-    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.05); /* Softer shadow */
-    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03); /* Softer, subtle shadow */
+    margin-top: 50px;
+    border-radius: 10px;
 }
 
 .team-section h3 {
-    font-size: 28px;
-    margin-bottom: 20px;
-    color: #555555; /* Soft grey heading */
+    font-size: 32px; /* Larger team heading */
+    margin-bottom: 25px;
+    color: #333333;
 }
 
 .team-section p {
-    font-size: 16px;
-    color: #888888; /* Soft grey text */
+    font-size: 17px;
+    color: #777777;
+    max-width: 700px;
+    margin: 0 auto 30px;
 }
 
-/* Profile Page Styles */
-/* --- Profile Page Specific Styles --- */
-
-/* Overall Page Layout Adjustment */
-body {
-    /* Adjust padding-top to account for fixed header, ensuring content doesn't get hidden behind it. */
-    /* If your header is 60px tall (as per your global styles), 70px or 80px is a good start. */
-    padding-top: 80px; 
-    background-color: #f0f2f5; /* A subtle, softer grey background for content areas */
-}
-
-/* Main Profile Container - Adjust margin for better spacing */
+/* Profile Page Styles (Enhanced for clarity and aesthetics) */
 .profile-container {
-    margin-top: 25px; /* Adjust from 0px for better top spacing */
-    margin-bottom: 50px; /* More space at the bottom of the page */
+    margin-top: 30px; /* Space from header */
 }
 
-/* Profile Sidebar (Left Column) */
-.profile-sidebar {
-    background: #ffffff;
-    padding: 30px; /* Increased padding for more internal space */
-    border-radius: 12px; /* Slightly more rounded corners for a modern look */
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); /* Deeper, softer shadow for a more premium feel */
+.profile-header {
+    background: linear-gradient(135deg, #007bff, #0056b3); /* Blue gradient for header */
+    color: white;
+    padding: 40px 20px;
+    border-radius: 12px;
     text-align: center;
-    margin-bottom: 25px; /* Adjust spacing below sidebar if on small screens */
-    border: 1px solid #e0e0e0; /* Subtle border for definition */
+    margin-bottom: 30px;
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
 }
 
-.profile-sidebar img#profilePic {
-    width: 140px; /* Slightly larger profile picture */
-    height: 140px;
+.profile-header img {
+    width: 120px; /* Larger profile image */
+    height: 120px;
     border-radius: 50%;
     object-fit: cover;
-    margin: 0 auto 15px; /* More space below image */
+    margin: 0 auto 15px;
     display: block;
-    border: 4px solid #007bff; /* Add a subtle blue border for emphasis */
-    padding: 3px; /* Small padding inside the border */
-    transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out; /* Smooth hover effect */
-    box-shadow: 0 0 10px rgba(0, 123, 255, 0.2); /* Soft blue glow around image */
+    border: 5px solid rgba(255, 255, 255, 0.8); /* White border */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2); /* Shadow for image */
 }
 
-.profile-sidebar img#profilePic:hover {
-    transform: scale(1.03); /* Slightly zoom on hover */
-    box-shadow: 0 0 15px rgba(0, 123, 255, 0.4); /* Enhanced glow on hover */
-}
-
-.profile-sidebar h2#profileName {
-    font-size: 1.8rem; /* Larger, more prominent name */
-    font-weight: 700; /* Bolder font for name */
-    color: #212529; /* Darker, more professional name color */
-    margin-top: 15px;
+.profile-header h2 {
+    font-size: 32px;
     margin-bottom: 5px;
+    font-weight: 700; /* Bold name */
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
 }
 
-.profile-sidebar p#profileMajor,
-.profile-sidebar p#profileEmail {
-    font-size: 0.95rem; /* Slightly larger text for details */
-    color: #6c757d; /* Consistent muted grey for details */
-    margin-bottom: 5px;
+.profile-header p {
+    font-size: 18px;
+    margin-bottom: 10px;
+    opacity: 0.9;
 }
 
-.profile-sidebar .btn-outline-primary {
-    border-color: #007bff;
-    color: #007bff;
-    padding: 10px 25px; /* More prominent button */
-    border-radius: 25px; /* Pill-shaped button */
-    font-weight: 500;
-    transition: all 0.3s ease;
-    margin-top: 20px; /* More space above button */
-}
-
-.profile-sidebar .btn-outline-primary:hover {
-    background-color: #007bff;
+.profile-header .social-links a {
     color: white;
-    transform: translateY(-2px); /* Subtle lift effect on hover */
-    box-shadow: 0 4px 10px rgba(0, 123, 255, 0.2); /* Gentle shadow on hover */
+    font-size: 22px;
+    margin: 0 10px;
+    transition: transform 0.2s ease-in-out, color 0.2s ease-in-out;
 }
 
-.profile-sidebar hr {
-    border-top: 1px solid rgba(0, 0, 0, 0.08); /* Lighter, subtle horizontal rule */
-    margin: 30px 0; /* More vertical spacing for sections */
+.profile-header .social-links a:hover {
+    color: #e0e0e0;
+    transform: scale(1.1);
 }
 
-.profile-sidebar h5 {
-    font-size: 1.15rem; /* Slightly larger heading for sections */
-    font-weight: 600; /* Bolder heading */
-    color: #343a40; /* Darker heading color */
-    text-align: left; /* Ensure left alignment */
-    margin-bottom: 15px;
-}
-
-.profile-sidebar p#profileBio {
-    font-size: 0.95rem;
-    color: #555555; /* Slightly darker grey for bio text */
-    line-height: 1.6; /* Improved readability for long text */
-    text-align: left; /* Ensure left alignment */
-    margin-bottom: 20px;
-}
-
-/* My Projects List in Sidebar */
-.profile-sidebar .list-group-flush {
-    border-top: none;
-    border-bottom: none;
-    margin-top: 10px; /* Space from "My Projects" heading */
-}
-
-.profile-sidebar .list-group-flush li {
-    padding: 8px 0; /* Vertical padding for list items */
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05); /* Light separator */
-}
-
-.profile-sidebar .list-group-flush li:last-child {
-    border-bottom: none; /* No border for the last item */
-}
-
-.profile-sidebar .list-group-flush a {
-    color: #007bff; /* Blue link */
-    text-decoration: none;
-    font-size: 0.9rem; /* Slightly smaller for sidebar list */
-    display: block;
-    transition: color 0.2s ease, text-decoration 0.2s ease;
-}
-
-.profile-sidebar .list-group-flush a:hover {
-    color: #0056b3; /* Darker blue on hover */
-    text-decoration: underline;
-}
-
-/* Profile Main Content (Right Column - Projects) */
-.profile-main {
+.profile-details-card {
     background: #ffffff;
-    padding: 30px; /* Consistent padding */
-    border-radius: 12px; /* Consistent rounded corners */
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); /* Consistent deeper shadow */
-    border: 1px solid #e0e0e0; /* Subtle border */
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    margin-bottom: 30px;
+    border: 1px solid #f0f0f0;
 }
 
-/* Navigation Tabs (Work/Drafts) */
-.profile-main .nav-tabs {
-    border-bottom: 2px solid #e0e0e0; /* Thicker, lighter bottom border */
-    margin-bottom: 25px; /* More space below tabs */
+.profile-details-card h3 {
+    font-size: 24px;
+    color: #444;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #e0e0e0; /* Subtle separator */
+    padding-bottom: 10px;
 }
 
-.profile-main .nav-tabs .nav-item .nav-link {
-    color: #6c757d; /* Muted text for inactive tabs */
-    font-weight: 500;
-    padding: 12px 20px; /* More padding for tabs */
-    border: none; /* Remove default tab borders */
-    border-bottom: 3px solid transparent; /* Prepare for active indicator */
-    transition: all 0.3s ease;
-    font-size: 1.05rem; /* Slightly larger tab text */
+.profile-details-card p {
+    font-size: 16px;
+    color: #666;
+    margin-bottom: 10px;
 }
 
-.profile-main .nav-tabs .nav-item .nav-link.active {
-    color: #007bff; /* Blue for active tab */
-    border-bottom-color: #007bff; /* Blue underline for active tab */
-    background-color: transparent; /* No background change */
-    font-weight: 600; /* Bolder active tab */
+.profile-details-card strong {
+    color: #333;
 }
 
-.profile-main .nav-tabs .nav-item .nav-link:hover:not(.active) {
-    color: #333333; /* Darker on hover for inactive */
-    border-bottom-color: rgba(0, 123, 255, 0.2); /* Light blue underline on hover */
+.profile-projects-section {
+    background: #ffffff;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    border: 1px solid #f0f0f0;
 }
 
-/* Add New Project Button */
-.profile-main .btn-success {
-    background-color: #28a745; /* Standard success green */
-    border-color: #28a745;
-    padding: 10px 25px;
-    border-radius: 25px; /* Pill-shaped button */
-    font-weight: 500;
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.2); /* Subtle green glow */
+.profile-projects-section h3 {
+    font-size: 24px;
+    color: #444;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #e0e0e0;
+    padding-bottom: 10px;
 }
 
-.profile-main .btn-success:hover {
-    background-color: #218838; /* Darker green on hover */
-    border-color: #1e7e34;
-    transform: translateY(-2px); /* Lift effect on hover */
-    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3); /* More pronounced shadow */
+.project-list {
+    list-style: none;
+    padding: 0;
+    display: grid; /* Use grid for better layout of projects */
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); /* Consistent with main project grid */
+    gap: 20px;
 }
 
-/* Project Cards Grid */
-.profile-main .row.g-4 {
-    margin-top: 20px; /* More space above the project grid */
+.project-list .card { /* Reusing existing card styles for profile projects */
+    margin-bottom: 0; /* Remove default margin from li */
 }
 
-.profile-main .card {
-    border: none; /* Remove default card border */
-    border-radius: 12px; /* Rounded corners for cards, consistent with main containers */
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08); /* Consistent softer shadow for cards */
-    transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
-    cursor: pointer; /* Indicate clickability */
-    overflow: hidden; /* Ensures rounded corners clip content */
-    background-color: #ffffff; /* White card background */
+.add-project {
+    font-size: 60px; /* Larger plus sign */
+    cursor: pointer;
+    color: #007bff;
+    text-align: center;
+    background: #f5f5f5;
+    width: 100px; /* Larger circle */
+    height: 100px;
+    line-height: 90px; /* Adjusted line height for vertical centering */
+    border-radius: 50%;
+    margin: 30px auto; /* More margin */
+    box-shadow: 0 4px 10px rgba(0, 123, 255, 0.2); /* Subtle blue shadow */
+    transition: background-color 0.2s ease-in-out, transform 0.2s ease-in-out;
 }
 
-.profile-main .card:hover {
-    transform: translateY(-5px); /* Lift effect on hover */
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15); /* More pronounced shadow on hover */
+.add-project:hover {
+    background-color: #e9f0ff; /* Light blue on hover */
+    transform: scale(1.05); /* Slight grow effect */
 }
 
-.profile-main .card-img-top {
-    height: 180px; /* Fixed height for consistent image size */
-    object-fit: cover; /* Ensure images cover the area without distortion */
-    border-top-left-radius: 12px; /* Match card border radius */
-    border-top-right-radius: 12px; /* Match card border radius */
-}
-
-.profile-main .card-body {
-    padding: 20px; /* Ample padding inside card body */
-}
-
-.profile-main .card-title {
-    font-size: 1.3rem; /* Slightly larger and bolder title */
-    font-weight: 600;
-    color: #333333;
-    margin-bottom: 8px;
-    line-height: 1.3;
-}
-
-.profile-main .card-text {
-    font-size: 0.9rem;
-    color: #666666;
-    line-height: 1.6;
-    margin-bottom: 0; /* Remove default margin from last paragraph */
-}
-
-/* Card Buttons (Edit/Delete) */
 .card-buttons {
     position: absolute;
-    top: 15px; /* Adjust position */
-    right: 15px; /* Adjust position */
+    top: 10px;
+    right: 10px;
     display: flex;
-    gap: 8px;
-    background-color: rgba(255, 255, 255, 0.9); /* Semi-transparent background for button group */
-    border-radius: 15px; /* Pill shape for container */
-    padding: 5px 10px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Subtle shadow for buttons */
+    gap: 10px; /* Increased gap */
 }
 
 .delete-btn, .edit-btn {
-    background: none; /* No background fill */
-    color: #007bff; /* Default blue icons */
+    background: #dc3545;
+    color: white;
     border: none;
-    width: 30px;
-    height: 30px;
+    border-radius: 50%;
+    width: 35px; /* Slightly larger buttons */
+    height: 35px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    font-size: 1rem; /* Standard icon size */
-    transition: color 0.2s ease, transform 0.2s ease;
+    font-size: 16px;
+    transition: background-color 0.2s ease-in-out, transform 0.2s ease-in-out;
 }
 
-.edit-btn:hover {
-    color: #28a745; /* Green on hover for edit */
-    transform: scale(1.1);
+.edit-btn {
+    background: #007bff;
 }
 
 .delete-btn:hover {
-    color: #dc3545; /* Red on hover for delete */
+    background: #c82333;
+    transform: scale(1.1);
+}
+.edit-btn:hover {
+    background: #0056b3;
     transform: scale(1.1);
 }
 
-/* Collaborator Badge */
-.badge.bg-secondary {
-    background-color: #6c757d !important; /* Ensure Bootstrap secondary color */
-    font-size: 0.75rem;
-    padding: 0.4em 0.8em;
-    border-radius: 0.25rem;
-}
-
-/* Generate Portfolio Button */
-.btn-primary.btn-lg {
-    background-color: #007bff;
-    border-color: #007bff;
-    padding: 15px 35px; /* Larger padding for a more prominent button */
-    font-size: 1.2rem; /* Larger text */
-    border-radius: 30px; /* More rounded */
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 10px rgba(0, 123, 255, 0.2); /* Subtle blue glow */
-    margin-top: 30px; /* More space above the button */
-}
-
-.btn-primary.btn-lg:hover {
-    background-color: #0056b3;
-    border-color: #0056b3;
-    transform: translateY(-3px); /* More pronounced lift */
-    box-shadow: 0 8px 15px rgba(0, 123, 255, 0.3); /* Enhanced glow */
-}
-
-/* --- Responsive Adjustments --- */
-@media (max-width: 767.98px) {
-    .profile-container {
-        margin-top: 20px;
-        margin-bottom: 30px;
-    }
-    .profile-sidebar {
-        padding: 20px;
-        margin-bottom: 20px;
-    }
-    .profile-sidebar img#profilePic {
-        width: 100px;
-        height: 100px;
-        margin-bottom: 10px;
-    }
-    .profile-sidebar h2#profileName {
-        font-size: 1.5rem;
-    }
-    .profile-main {
-        padding: 20px;
-    }
-    .profile-main .nav-tabs .nav-link {
-        padding: 10px 15px;
-        font-size: 0.95rem;
-    }
-    .profile-main .card-img-top {
-        height: 150px;
-    }
-    .profile-main .card-title {
-        font-size: 1.1rem;
-    }
-    .btn-primary.btn-lg {
-        padding: 10px 20px;
-        font-size: 1rem;
-    }
-}
-
-/* Clean up any orphaned styles that might conflict */
-.project-list, .add-project {
-    /* These styles might be from older iterations and could conflict */
-    /* If you still use them, integrate them into the new scheme */
-    /* For now, assume they are not needed for the main project display */
-    /* display: none; */ /* Temporarily hide if causing issues or remove completely */
-}
 
 /* Project Page Styles */
 
 /* Main content wrapper (replaces .project-container's role for width) */
 main.container-fluid {
-    padding-top: 20px;
-    padding-bottom: 20px;
+    padding-top: 30px; /* More space from header */
+    padding-bottom: 30px;
 }
 
 /* Styles for the main project detail card */
-.project-detail-card { /* Renamed from .project-container to match new HTML */
-    margin: 0 auto; /* Centering for good measure, though col-lg-10 does it */
-    background: #ffffff; /* White project container */
-    padding: 20px; /* Adjusted padding */
-    border-radius: 8px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); /* Softer shadow */
+.project-detail-card {
+    margin: 0 auto;
+    background: #ffffff;
+    padding: 30px; /* More padding */
+    border-radius: 12px;
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08); /* More prominent shadow */
+    border: 1px solid #f0f0f0; /* Subtle border */
 }
 
 .project-detail-card h1, #projectTitle {
-    font-size: 28px;
-    color: #555555; /* Soft grey title */
-    margin-bottom: 15px;
+    font-size: 34px; /* Larger title */
+    color: #333333;
+    margin-bottom: 20px;
+    font-weight: 700;
 }
 
 /* Project Image styles */
-#projectImage { /* Specific ID for the main project image */
-    width: 100%; /* Ensure it fills its column */
-    height: 400px; /* Fixed height for consistency, adjust as needed */
-    object-fit: cover; /* Crops image to fit without distortion */
-    border-radius: 8px;
-    margin-bottom: 20px;
+#projectImage {
+    width: 100%;
+    height: 450px; /* Taller image area */
+    object-fit: cover;
+    border-radius: 10px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); /* Subtle shadow for image */
 }
 
 .project-detail-card p, #projectDescription, #problemStatement {
-    font-size: 16px;
-    color: #666666; /* Soft grey text */
+    font-size: 17px; /* Slightly larger text */
+    color: #555555;
+    line-height: 1.7;
+    margin-bottom: 1em;
 }
 
 /* General h3 styling */
 h3 {
-    margin-top: 20px;
-    margin-bottom: 10px;
-    color: #007bff; /* Primary color for subheadings */
+    margin-top: 30px; /* More space above subheadings */
+    margin-bottom: 15px;
+    color: #007bff;
+    font-size: 24px;
+    font-weight: 600;
 }
 
 /* Tag styling */
-.tags .badge { /* Targeting the new Bootstrap badge structure */
+.tags .badge {
     display: inline-block;
-    background-color: #f5f5f5; /* Very light grey background - override Bootstrap default if needed */
-    color: #333; /* Darker text for contrast */
-    padding: 5px 10px;
+    background-color: #e9f0ff; /* Light blue tag background */
+    color: #007bff; /* Blue text */
+    padding: 8px 12px; /* More padding */
     border-radius: 5px;
-    margin-right: 5px; /* Space between tags */
-    margin-bottom: 5px; /* Space for wrapping tags */
+    margin-right: 8px;
+    margin-bottom: 8px;
+    font-size: 0.95em;
+    font-weight: 500;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.tags .badge:hover {
+    background-color: #cfe2ff; /* Slightly darker blue on hover */
 }
 
 /* Collaborators and Resources list items */
 #collaborators li,
 #resources li {
-    padding: 2px 0; /* Reduced padding for inline display */
-    margin-bottom: 5px; /* Spacing for potential wrapping */
+    padding: 5px 0; /* Adjusted padding */
+    margin-bottom: 5px;
+    font-size: 16px;
+    color: #666;
+}
+
+#collaborators li a,
+#resources li a {
+    color: #007bff;
+    text-decoration: none;
+    transition: text-decoration 0.2s ease-in-out;
+}
+
+#collaborators li a:hover,
+#resources li a:hover {
+    text-decoration: underline;
 }
 
 /* Project Stats */
 .project-stats {
-    font-size: 14px;
-    color: #888888; /* Soft grey text */
-    margin-top: 15px;
-    margin-bottom: 15px;
+    font-size: 15px; /* Slightly larger stats font */
+    color: #777777;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    display: flex; /* Align items */
+    gap: 20px; /* Space between stats */
 }
 .project-stats span {
-    margin-right: 15px; /* Increased margin for better separation */
+    display: flex;
+    align-items: center;
+}
+.project-stats .fas {
+    margin-right: 8px;
+    color: #007bff; /* Blue icons */
 }
 
 /* Like Button */
 #likeBtn {
-    margin-bottom: 20px;
+    margin-bottom: 30px;
+    font-size: 18px; /* Larger button text */
+    padding: 10px 20px;
 }
 
 /* Comments Section Styles */
 .comments-section {
-    padding-top: 20px;
-    margin-top: 20px;
-    border-top: 1px solid #eeeeee; /* Subtle separator line */
+    padding-top: 30px;
+    margin-top: 30px;
+    border-top: 1px solid #e0e0e0;
 }
 
 #commentsList {
-    max-height: 400px; /* Limits the height of the comments list */
-    overflow-y: auto; /* Adds scrollbar if comments exceed max-height */
-    padding-right: 10px; /* Space for scrollbar if present */
-    margin-bottom: 20px; /* Space between comments list and input box */
+    max-height: 450px; /* Slightly more height for comments */
+    overflow-y: auto;
+    padding-right: 15px; /* More space for scrollbar */
+    margin-bottom: 25px;
 }
 
-.comment-item { /* New class for individual comments */
-    background-color: #f9f9f9; /* Slightly off-white for comment background */
-    border: 1px solid #e0e0e0; /* Lighter border */
-    border-radius: 5px;
-    padding: 15px;
-    margin-bottom: 10px;
+.comment-item {
+    background-color: #fcfcfc; /* Even lighter background */
+    border: 1px solid #e9ecef; /* Lighter, subtle border */
+    border-radius: 8px;
+    padding: 18px; /* More padding */
+    margin-bottom: 12px; /* More space between comments */
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.02); /* Very subtle shadow */
+}
+
+.comment-item p {
+    margin-bottom: 5px;
+    font-size: 16px;
+    color: #444;
 }
 
 .comment-item strong {
-    color: #28a745; /* Green color for username */
+    color: #20c997; /* A vibrant green for username */
+    font-weight: 600;
 }
 
 .comment-item small {
-    color: #6c757d; /* Muted color for timestamp */
-    margin-left: 8px; /* Adjusted spacing */
+    color: #888888;
+    margin-left: 10px;
+    font-size: 0.85em;
 }
 
 /* Comment Input Box Styles */
-.comment-input-box { /* New class for the form container */
-    background-color: #ffffff; /* White background for the input box */
-    border-radius: 8px;
-    padding: 20px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); /* Lighter shadow for the input box */
+.comment-input-box {
+    background-color: #ffffff;
+    border-radius: 12px;
+    padding: 25px; /* More padding */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e0e0e0;
 }
 
 #commentText {
-    min-height: 80px; /* Minimum height for the textarea */
-    max-height: 150px; /* Maximum height to prevent it from growing too large */
-    resize: vertical; /* Allow vertical resizing only */
-    font-size: 15px;
-    border-color: #ced4da; /* Default border color */
+    min-height: 90px; /* Taller textarea */
+    max-height: 180px;
+    resize: vertical;
+    font-size: 16px;
+    border-color: #ced4da;
+    border-radius: 8px;
+    padding: 12px;
 }
 
 #commentText:focus {
-    border-color: #80bdff; /* Bootstrap focus blue */
-    box-shadow: 0 0 0 0.25rem rgba(0, 123, 255, 0.25); /* Bootstrap focus shadow */
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.25rem rgba(0, 123, 255, 0.25);
 }
 
-
-/* Author styles - kept as is, but ensure its HTML element exists and has this class */
+/* Author styles */
 .project-author {
-    font-size: 0.9em; /* Slightly smaller font size */
-    color: #6c757d;    /* A subtle grey color */
-    margin-top: 10px; /* Space above the author name */
+    font-size: 1em; /* Slightly larger font size */
+    color: #6c757d;
+    margin-top: 15px; /* More space above the author name */
+    font-weight: 400;
 }
 
 .project-author a {
-    color: #007bff;            /* Bootstrap primary blue for links */
-    text-decoration: none;    /* Remove underline by default */
-    font-weight: 500;         /* Slightly bolder for prominence */
+    color: #007bff;
+    text-decoration: none;
+    font-weight: 600; /* Bolder for prominence */
+    transition: color 0.2s ease-in-out, text-decoration 0.2s ease-in-out;
 }
 
 .project-author a:hover {
-    text-decoration: underline; /* Add underline on hover for better UX */
+    text-decoration: underline;
+    color: #0056b3; /* Darker blue on hover */
 }
 
 /* Ensure footer is pushed down */
@@ -861,14 +870,14 @@ footer {
     margin-top: 50px;
     padding: 20px;
     text-align: center;
-    background-color: #f8f9fa; /* Light background for footer */
+    background-color: #f8f9fa;
     color: #6c757d;
     border-top: 1px solid #e9ecef;
 }
 
 /* Basic header search and user menu dropdown styling */
 .search-bar .form-control {
-    padding-right: 40px; /* Make space for the filter button */
+    padding-right: 40px;
 }
 
 .user-menu .profile-container {
@@ -891,40 +900,12 @@ footer {
     color: #333;
 }
 
-.user-menu .dropdown-menu {
-    position: absolute;
-    top: 100%; /* Below the profile container */
-    right: 0;
-    background-color: #fff;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    z-index: 1000;
-    min-width: 160px;
-    display: none; /* Hidden by default */
-    flex-direction: column;
-    padding: 10px 0;
-}
-
-.user-menu .dropdown-menu a {
-    padding: 8px 15px;
-    text-decoration: none;
-    color: #333;
-    display: block;
-}
-
-.user-menu .dropdown-menu a:hover {
-    background-color: #f2f2f2;
-}
-
-.user-menu .profile-container.active .dropdown-menu {
-    display: flex; /* Show when active */
-}
 /* Autocomplete Container */
 .search-bar-container {
-    flex-grow: 1; /* Allow it to take up available space */
-    max-width: 600px; /* Optional: limit width for larger screens */
-    margin: 0 20px; /* Adjust spacing around the search bar */
+    flex-grow: 1;
+    max-width: 600px;
+    margin: 0 20px;
+    position: relative; /* Crucial for absolute positioning of suggestions */
 }
 
 .autocomplete-suggestions {
@@ -932,22 +913,23 @@ footer {
     background-color: #fff;
     border: 1px solid #ddd;
     border-radius: 4px;
-    width: calc(100% - 2px); /* Match search input width, accounting for border */
+    width: 100%; /* Make it span the full width of its parent (.search-bar-container) */
     max-height: 300px;
     overflow-y: auto;
-    z-index: 1000; /* Ensure it appears above other content */
+    z-index: 1000;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    display: none; /* Hidden by default */
-    top: 100%; /* Position right below the search input */
+    display: none;
+    top: calc(100% + 5px); /* Position slightly below the search input */
     left: 0;
 }
 
 .autocomplete-item {
     display: flex;
     align-items: center;
-    padding: 8px 15px;
+    padding: 10px 15px; /* More padding */
     cursor: pointer;
     border-bottom: 1px solid #eee;
+    transition: background-color 0.15s ease-in-out;
 }
 
 .autocomplete-item:last-child {
@@ -955,43 +937,38 @@ footer {
 }
 
 .autocomplete-item:hover {
-    background-color: #f8f9fa;
+    background-color: #f0f8ff; /* Light blue hover */
 }
 
 .autocomplete-item img {
-    width: 30px;
-    height: 30px;
+    width: 35px; /* Slightly larger image */
+    height: 35px;
     border-radius: 50%;
     object-fit: cover;
-    margin-right: 10px;
+    margin-right: 12px; /* More margin */
     border: 1px solid #007bff;
 }
 
 .autocomplete-item span {
-    font-size: 0.95em;
+    font-size: 1em; /* Standard font size */
     color: #333;
     font-weight: 500;
 }
 
 .autocomplete-item .user-detail {
-    font-size: 0.8em;
+    font-size: 0.85em; /* Slightly larger detail font */
     color: #666;
     margin-left: 8px;
     font-weight: 400;
 }
 
-/* Ensure search input and filter button are aligned */
-.search-bar-container .input-group .form-control {
+/* Adjust header search bar layout if needed */
+header .search-bar-container .input-group .form-control { /* Specific target for Bootstrap input */
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
 }
 
-.search-bar-container .input-group .btn {
+header .search-bar-container .input-group .btn { /* Specific target for Bootstrap button */
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
-}
-
-/* Adjust header search bar layout if needed */
-header .search-bar { /* Old search bar, might conflict */
-    display: none; /* Hide if still present */
 }
