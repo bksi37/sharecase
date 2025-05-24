@@ -371,94 +371,341 @@ footer p {
 }
 
 /* Profile Page Styles */
+/* --- Profile Page Specific Styles --- */
+
+/* Overall Page Layout Adjustment */
+body {
+    /* Adjust padding-top to account for fixed header, ensuring content doesn't get hidden behind it. */
+    /* If your header is 60px tall (as per your global styles), 70px or 80px is a good start. */
+    padding-top: 80px; 
+    background-color: #f0f2f5; /* A subtle, softer grey background for content areas */
+}
+
+/* Main Profile Container - Adjust margin for better spacing */
 .profile-container {
-    margin-top: 0px;
+    margin-top: 25px; /* Adjust from 0px for better top spacing */
+    margin-bottom: 50px; /* More space at the bottom of the page */
 }
 
+/* Profile Sidebar (Left Column) */
 .profile-sidebar {
-    background: #ffffff; /* White sidebar background */
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* Softer shadow */
+    background: #ffffff;
+    padding: 30px; /* Increased padding for more internal space */
+    border-radius: 12px; /* Slightly more rounded corners for a modern look */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); /* Deeper, softer shadow for a more premium feel */
+    text-align: center;
+    margin-bottom: 25px; /* Adjust spacing below sidebar if on small screens */
+    border: 1px solid #e0e0e0; /* Subtle border for definition */
 }
 
-.profile-sidebar img {
-    width: 100px;
-    height: 100px;
+.profile-sidebar img#profilePic {
+    width: 140px; /* Slightly larger profile picture */
+    height: 140px;
     border-radius: 50%;
     object-fit: cover;
-    margin: 0 auto 10px;
+    margin: 0 auto 15px; /* More space below image */
     display: block;
+    border: 4px solid #007bff; /* Add a subtle blue border for emphasis */
+    padding: 3px; /* Small padding inside the border */
+    transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out; /* Smooth hover effect */
+    box-shadow: 0 0 10px rgba(0, 123, 255, 0.2); /* Soft blue glow around image */
 }
 
-.profile-sidebar h2 {
-    font-size: 24px;
-    text-align: center;
-    color: #555555; /* Soft grey text */
+.profile-sidebar img#profilePic:hover {
+    transform: scale(1.03); /* Slightly zoom on hover */
+    box-shadow: 0 0 15px rgba(0, 123, 255, 0.4); /* Enhanced glow on hover */
+}
+
+.profile-sidebar h2#profileName {
+    font-size: 1.8rem; /* Larger, more prominent name */
+    font-weight: 700; /* Bolder font for name */
+    color: #212529; /* Darker, more professional name color */
+    margin-top: 15px;
+    margin-bottom: 5px;
+}
+
+.profile-sidebar p#profileMajor,
+.profile-sidebar p#profileEmail {
+    font-size: 0.95rem; /* Slightly larger text for details */
+    color: #6c757d; /* Consistent muted grey for details */
+    margin-bottom: 5px;
+}
+
+.profile-sidebar .btn-outline-primary {
+    border-color: #007bff;
+    color: #007bff;
+    padding: 10px 25px; /* More prominent button */
+    border-radius: 25px; /* Pill-shaped button */
+    font-weight: 500;
+    transition: all 0.3s ease;
+    margin-top: 20px; /* More space above button */
+}
+
+.profile-sidebar .btn-outline-primary:hover {
+    background-color: #007bff;
+    color: white;
+    transform: translateY(-2px); /* Subtle lift effect on hover */
+    box-shadow: 0 4px 10px rgba(0, 123, 255, 0.2); /* Gentle shadow on hover */
+}
+
+.profile-sidebar hr {
+    border-top: 1px solid rgba(0, 0, 0, 0.08); /* Lighter, subtle horizontal rule */
+    margin: 30px 0; /* More vertical spacing for sections */
+}
+
+.profile-sidebar h5 {
+    font-size: 1.15rem; /* Slightly larger heading for sections */
+    font-weight: 600; /* Bolder heading */
+    color: #343a40; /* Darker heading color */
+    text-align: left; /* Ensure left alignment */
     margin-bottom: 15px;
 }
 
-.profile-main {
-    background: #ffffff; /* White main content background */
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* Softer shadow */
+.profile-sidebar p#profileBio {
+    font-size: 0.95rem;
+    color: #555555; /* Slightly darker grey for bio text */
+    line-height: 1.6; /* Improved readability for long text */
+    text-align: left; /* Ensure left alignment */
+    margin-bottom: 20px;
 }
 
-.project-list {
-    list-style: none;
-    padding: 0;
+/* My Projects List in Sidebar */
+.profile-sidebar .list-group-flush {
+    border-top: none;
+    border-bottom: none;
+    margin-top: 10px; /* Space from "My Projects" heading */
 }
 
-.project-list a {
+.profile-sidebar .list-group-flush li {
+    padding: 8px 0; /* Vertical padding for list items */
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05); /* Light separator */
+}
+
+.profile-sidebar .list-group-flush li:last-child {
+    border-bottom: none; /* No border for the last item */
+}
+
+.profile-sidebar .list-group-flush a {
     color: #007bff; /* Blue link */
     text-decoration: none;
-    font-size: 14px;
+    font-size: 0.9rem; /* Slightly smaller for sidebar list */
     display: block;
-    padding: 5px 0;
+    transition: color 0.2s ease, text-decoration 0.2s ease;
 }
 
-.project-list a:hover {
+.profile-sidebar .list-group-flush a:hover {
+    color: #0056b3; /* Darker blue on hover */
     text-decoration: underline;
 }
 
-.add-project {
-    font-size: 50px;
-    cursor: pointer;
-    color: #007bff; /* Blue plus sign */
-    text-align: center;
-    background: #f5f5f5; /* Very light grey background */
-    width: 80px;
-    height: 80px;
-    line-height: 80px;
-    border-radius: 50%;
-    margin: 20px auto;
+/* Profile Main Content (Right Column - Projects) */
+.profile-main {
+    background: #ffffff;
+    padding: 30px; /* Consistent padding */
+    border-radius: 12px; /* Consistent rounded corners */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); /* Consistent deeper shadow */
+    border: 1px solid #e0e0e0; /* Subtle border */
 }
 
+/* Navigation Tabs (Work/Drafts) */
+.profile-main .nav-tabs {
+    border-bottom: 2px solid #e0e0e0; /* Thicker, lighter bottom border */
+    margin-bottom: 25px; /* More space below tabs */
+}
+
+.profile-main .nav-tabs .nav-item .nav-link {
+    color: #6c757d; /* Muted text for inactive tabs */
+    font-weight: 500;
+    padding: 12px 20px; /* More padding for tabs */
+    border: none; /* Remove default tab borders */
+    border-bottom: 3px solid transparent; /* Prepare for active indicator */
+    transition: all 0.3s ease;
+    font-size: 1.05rem; /* Slightly larger tab text */
+}
+
+.profile-main .nav-tabs .nav-item .nav-link.active {
+    color: #007bff; /* Blue for active tab */
+    border-bottom-color: #007bff; /* Blue underline for active tab */
+    background-color: transparent; /* No background change */
+    font-weight: 600; /* Bolder active tab */
+}
+
+.profile-main .nav-tabs .nav-item .nav-link:hover:not(.active) {
+    color: #333333; /* Darker on hover for inactive */
+    border-bottom-color: rgba(0, 123, 255, 0.2); /* Light blue underline on hover */
+}
+
+/* Add New Project Button */
+.profile-main .btn-success {
+    background-color: #28a745; /* Standard success green */
+    border-color: #28a745;
+    padding: 10px 25px;
+    border-radius: 25px; /* Pill-shaped button */
+    font-weight: 500;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.2); /* Subtle green glow */
+}
+
+.profile-main .btn-success:hover {
+    background-color: #218838; /* Darker green on hover */
+    border-color: #1e7e34;
+    transform: translateY(-2px); /* Lift effect on hover */
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3); /* More pronounced shadow */
+}
+
+/* Project Cards Grid */
+.profile-main .row.g-4 {
+    margin-top: 20px; /* More space above the project grid */
+}
+
+.profile-main .card {
+    border: none; /* Remove default card border */
+    border-radius: 12px; /* Rounded corners for cards, consistent with main containers */
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08); /* Consistent softer shadow for cards */
+    transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+    cursor: pointer; /* Indicate clickability */
+    overflow: hidden; /* Ensures rounded corners clip content */
+    background-color: #ffffff; /* White card background */
+}
+
+.profile-main .card:hover {
+    transform: translateY(-5px); /* Lift effect on hover */
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15); /* More pronounced shadow on hover */
+}
+
+.profile-main .card-img-top {
+    height: 180px; /* Fixed height for consistent image size */
+    object-fit: cover; /* Ensure images cover the area without distortion */
+    border-top-left-radius: 12px; /* Match card border radius */
+    border-top-right-radius: 12px; /* Match card border radius */
+}
+
+.profile-main .card-body {
+    padding: 20px; /* Ample padding inside card body */
+}
+
+.profile-main .card-title {
+    font-size: 1.3rem; /* Slightly larger and bolder title */
+    font-weight: 600;
+    color: #333333;
+    margin-bottom: 8px;
+    line-height: 1.3;
+}
+
+.profile-main .card-text {
+    font-size: 0.9rem;
+    color: #666666;
+    line-height: 1.6;
+    margin-bottom: 0; /* Remove default margin from last paragraph */
+}
+
+/* Card Buttons (Edit/Delete) */
 .card-buttons {
     position: absolute;
-    top: 10px;
-    right: 10px;
+    top: 15px; /* Adjust position */
+    right: 15px; /* Adjust position */
     display: flex;
     gap: 8px;
+    background-color: rgba(255, 255, 255, 0.9); /* Semi-transparent background for button group */
+    border-radius: 15px; /* Pill shape for container */
+    padding: 5px 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Subtle shadow for buttons */
 }
 
 .delete-btn, .edit-btn {
-    background: #dc3545; /* Red delete button */
-    color: white;
+    background: none; /* No background fill */
+    color: #007bff; /* Default blue icons */
     border: none;
-    border-radius: 50%;
     width: 30px;
     height: 30px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 1rem; /* Standard icon size */
+    transition: color 0.2s ease, transform 0.2s ease;
 }
 
-.edit-btn {
-    background: #007bff; /* Blue edit button */
+.edit-btn:hover {
+    color: #28a745; /* Green on hover for edit */
+    transform: scale(1.1);
+}
+
+.delete-btn:hover {
+    color: #dc3545; /* Red on hover for delete */
+    transform: scale(1.1);
+}
+
+/* Collaborator Badge */
+.badge.bg-secondary {
+    background-color: #6c757d !important; /* Ensure Bootstrap secondary color */
+    font-size: 0.75rem;
+    padding: 0.4em 0.8em;
+    border-radius: 0.25rem;
+}
+
+/* Generate Portfolio Button */
+.btn-primary.btn-lg {
+    background-color: #007bff;
+    border-color: #007bff;
+    padding: 15px 35px; /* Larger padding for a more prominent button */
+    font-size: 1.2rem; /* Larger text */
+    border-radius: 30px; /* More rounded */
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 10px rgba(0, 123, 255, 0.2); /* Subtle blue glow */
+    margin-top: 30px; /* More space above the button */
+}
+
+.btn-primary.btn-lg:hover {
+    background-color: #0056b3;
+    border-color: #0056b3;
+    transform: translateY(-3px); /* More pronounced lift */
+    box-shadow: 0 8px 15px rgba(0, 123, 255, 0.3); /* Enhanced glow */
+}
+
+/* --- Responsive Adjustments --- */
+@media (max-width: 767.98px) {
+    .profile-container {
+        margin-top: 20px;
+        margin-bottom: 30px;
+    }
+    .profile-sidebar {
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .profile-sidebar img#profilePic {
+        width: 100px;
+        height: 100px;
+        margin-bottom: 10px;
+    }
+    .profile-sidebar h2#profileName {
+        font-size: 1.5rem;
+    }
+    .profile-main {
+        padding: 20px;
+    }
+    .profile-main .nav-tabs .nav-link {
+        padding: 10px 15px;
+        font-size: 0.95rem;
+    }
+    .profile-main .card-img-top {
+        height: 150px;
+    }
+    .profile-main .card-title {
+        font-size: 1.1rem;
+    }
+    .btn-primary.btn-lg {
+        padding: 10px 20px;
+        font-size: 1rem;
+    }
+}
+
+/* Clean up any orphaned styles that might conflict */
+.project-list, .add-project {
+    /* These styles might be from older iterations and could conflict */
+    /* If you still use them, integrate them into the new scheme */
+    /* For now, assume they are not needed for the main project display */
+    /* display: none; */ /* Temporarily hide if causing issues or remove completely */
 }
 
 /* Project Page Styles */
