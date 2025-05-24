@@ -61,28 +61,18 @@ router.post('/signup', async (req, res) => {
             console.log('Signup failed: Email already exists:', { email });
             return res.status(400).json({ success: false, error: 'Email already exists' });
         }
-        console.log('Signup: Hashing password:', { password });
-        const saltRounds = 10;
-        const hashedPassword = await bcrypt.hash(password, saltRounds);
-        console.log('Signup: Hashed password (full):', hashedPassword);
-
-        // Verify hash immediately
-        const isMatch = await bcrypt.compare(password, hashedPassword);
-        console.log('Signup: bcrypt.compare self-test result:', isMatch);
-        if (!isMatch) {
-            console.error('Signup: Hash verification failed for:', { email });
-            return res.status(500).json({ success: false, error: 'Server error: Password hashing failed' });
-        }
-
+//removed password hashing from here
         const user = new User({
             email,
-            password: hashedPassword,
+            // --- Set plain password here. The pre('save') hook will hash it. ---
+            password: password, // Store the plain text password temporarily
             name,
             isProfileComplete: false
         });
-        await user.save();
+        await user.save(); // The pre('save') hook will now hash 'password' before saving
         console.log('Signup: User created:', { userId: user._id });
 
+        // ... rest of your session handling ...
         req.session.userId = user._id.toString();
         req.session.userName = user.name;
         await new Promise((resolve, reject) => {
