@@ -259,6 +259,43 @@ router.post('/project/:id/comment', isAuthenticated, isProfileComplete, async (r
     }
 });
 
+// DELETE /project/:projectId/comment/:commentId
+router.delete('/project/:projectId/comment/:commentId', isAuthenticated, async (req, res) => {
+    try {
+        const { projectId, commentId } = req.params;
+        const currentUserId = req.session.userId; // Get logged-in user's ID
+
+        const project = await Project.findById(projectId);
+
+        if (!project) {
+            return res.status(404).json({ message: 'Project not found' });
+        }
+
+        const comment = project.comments.id(commentId); // Find the subdocument comment
+        if (!comment) {
+            return res.status(404).json({ message: 'Comment not found' });
+        }
+
+        // Authorization check: Only original commenter OR project owner can delete
+        const isCommenter = comment.userId.toString() === currentUserId;
+        const isProjectOwner = project.userId.toString() === currentUserId; // Assuming project has a userId field
+
+        if (!isCommenter && !isProjectOwner) {
+            return res.status(403).json({ message: 'Unauthorized to delete this comment' });
+        }
+
+        // Remove the comment (Mongoose array subdocument removal)
+        comment.remove(); // OR project.comments.pull(commentId);
+        await project.save();
+
+        res.json({ success: true, message: 'Comment deleted successfully' });
+
+    } catch (error) {
+        console.error('Error deleting comment:', error);
+        res.status(500).json({ message: 'Server error during comment deletion' });
+    }
+});
+
 // Delete Project (Keeping your existing code for this route)
 router.delete('/project/:id', isAuthenticated, isProfileComplete, async (req, res) => {
     try {

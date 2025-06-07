@@ -151,7 +151,7 @@
 
         async function loadPublicUserProfileAndProjects() {
             const urlParams = new URLSearchParams(window.location.search);
-            let userId = urlParams.get('id'); // Use 'id' to match project.html links
+            let userId = urlParams.get('userId'); // Use 'id' to match project.html links
 
             // If no userId in URL and user is authenticated, use current user's ID
             if (!userId) {

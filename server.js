@@ -101,8 +101,8 @@ app.use('/', projectRoutes);
 app.get('/dynamic-filter-options', (req, res) => {
     res.json({
         // Change these keys to match what the frontend expects
-        courses: tags.OU_ENGINEERING_COURSES || [],
-        categories: tags.PROJECT_CATEGORIES || [],
+        courses: tags.courses || [],
+        categories: tags.categories || [],
         
         // These are already correct
         years: tags.years || [],

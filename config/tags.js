@@ -21,6 +21,8 @@ const OU_ENGINEERING_COURSES = [
     'CS 4853 - Introduction to Cybersecurity', // Common elective
 
     // Aerospace & Mechanical Engineering (AME)
+    'ENGR 1413 - Engineering Thinking and Design', // Foundational course
+    'ENGR 2002 - Professional Development for Engineers', // Foundational course
     'AME 2113 - Statics',
     'AME 2213 - Dynamics',
     'AME 2613 - Fundamentals of Fluid Mechanics', // More precise title
@@ -34,6 +36,7 @@ const OU_ENGINEERING_COURSES = [
     'AME 4453 - Aerospace Structures', // Common AE course
     'AME 4553 - Aerodynamics', // Common AE course
     'AME 4723 - Vibrations', // Common course
+    'Capstone Project', // Common course
 
     // Chemical Engineering (CHE)
     'CHE 2003 - Chemical Engineering Principles', // More precise title
@@ -56,7 +59,7 @@ const OU_ENGINEERING_COURSES = [
     'CE 4113 - Reinforced Concrete Design', // Common CE course
     'CE 4213 - Water and Wastewater Treatment', // Common CE course
     'CE 4313 - Foundation Engineering', // Common CE course
-    'CE 4413 - Senior Design Project (Civil Engineering)', // Common Capstone
+    
 
     // Electrical & Computer Engineering (ECE)
     'ECE 2523 - Digital Logic Design',
@@ -70,37 +73,8 @@ const OU_ENGINEERING_COURSES = [
     'ECE 4303 - Power Systems Analysis', // Common EE course
     'ECE 4403 - Communication Systems', // Common EE course
     'ECE 4503 - Microprocessors and Embedded Systems', // Common CE course
-    'ECE 4703 - Senior Design Project (ECE)', // Common Capstone
 
-    // Other relevant foundational courses
-    'MATH 2924 - Multivariable Calculus',
-    'MATH 3413 - Differential Equations', // Very common for engineering
-    'PHYS 2514 - General Physics for Engineering Students', // More precise title
-    'CHEM 1315 - General Chemistry',
-    'ENGR 1410 - Engineering Orientation', // Foundational course
-    'ENGR 1500 - Introduction to Engineering Computing', // Foundational course
-    'ENGR 2002 - Engineering Statistics', // Common for many engineering disciplines
 ];
-
-const OU_CLUBS = [
-    'IEEE (Institute of Electrical and Electronics Engineers)',
-    'ACM (Association for Computing Machinery)',
-    'ASME (American Society of Mechanical Engineers)',
-    'AIChE (American Institute of Chemical Engineers)',
-    'ASCE (American Society of Civil Engineers)',
-    'Engineers Without Borders',
-    'Sooner Rover Team',
-    'OU Game Developers Association',
-    'Cyber Security Club',
-    'OU Data Science Club',
-    'National Society of Black Engineers (NSBE)',
-    'Society of Hispanic Professional Engineers (SHPE)',
-    'Society of Women Engineers (SWE)',
-    'Robotics Club',
-    '3D Printing Club',
-    'Makerspace Community',
-];
-
 const PROJECT_CATEGORIES = [
     'Class Project',
     'Research Project',
@@ -134,9 +108,8 @@ const PROJECT_TYPES = ['Project', 'Assignment', 'Lab', 'Report', 'Presentation',
 const ENGINEERING_DEPARTMENTS = ['Computer Science', 'Aerospace & Mechanical Engineering', 'Chemical Engineering', 'Civil Engineering', 'Electrical & Computer Engineering'];
 
 module.exports = {
-    OU_ENGINEERING_COURSES,
-    OU_CLUBS,
-    PROJECT_CATEGORIES,
+    courses: OU_ENGINEERING_COURSES,
+    categories: PROJECT_CATEGORIES,
     years: PROJECT_YEARS,
     types: PROJECT_TYPES,
     departments: ENGINEERING_DEPARTMENTS,
