@@ -8,15 +8,26 @@ const projectSchema = new mongoose.Schema({
     userName: { type: String, required: true }, // Store userName directly for display
     problemStatement: { type: String, default: '' },
     tags: [{ type: String }],
-  
-    // MODIFIED: Collaborators to reference User IDs (signed-up users)
+    
     collaborators: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-  
-  // NEW: For non-registered collaborators (the "and others" names)
     otherCollaborators: [{ type: String }],
     resources: [{ type: String }],
+    
     likes: { type: Number, default: 0 },
     views: { type: Number, default: 0 },
+    
+    // --- NEW FIELDS FOR PROJECT ANALYTICS & POINTS ---
+    projectType: { // For Milestone 2: Diversified Project Content
+        type: String,
+        enum: ['Engineering', 'Art & Design', 'Essay/Research Paper', 'Code/Software', 'Multimedia', 'Other'], // Example types
+        default: 'Engineering' // Default for existing projects or if not specified
+    },
+    points: { // For Milestone 3: Project Recognition Points (Academic NIL)
+        type: Number,
+        default: 0
+    },
+    // --- END NEW FIELDS ---
+
     comments: [
         {
             userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },

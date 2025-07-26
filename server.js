@@ -61,11 +61,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Debug Session
 app.use((req, res, next) => {
-    console.log('Session middleware:', { 
-        sessionId: req.sessionID, 
-        userId: req.session.userId, 
-        cookies: req.cookies, 
-        path: req.path 
+    console.log('Session middleware:', {
+        sessionId: req.sessionID,
+        userId: req.session.userId,
+        cookies: req.cookies,
+        path: req.path
     });
     next();
 });
@@ -77,7 +77,7 @@ app.use((req, res, next) => {
         console.log(`Response: ${req.method} ${req.url} ${res.statusCode} ${JSON.stringify(body)}`);
         return originalJson.call(this, body);
     };
-    console.log(`Request: ${req.method} ${req.url} ${JSON.stringify(req.body)} Session: ${(req.session && req.session.userId) || 'none'}`);
+    console.log(`Request: ${req.method} ${req.url} ${JSON.body ? JSON.stringify(req.body) : ''} Session: ${(req.session && req.session.userId) || 'none'}`); // Added req.body check
     next();
 });
 
@@ -92,19 +92,19 @@ cloudinary.config({
 const authRoutes = require('./routes/auth');
 const profileRoutes = require('./routes/profile');
 const projectRoutes = require('./routes/projects');
+const adminRoutes = require('./routes/admin'); // --- NEW: Import admin routes ---
 
 app.use('/', authRoutes);
 app.use('/', profileRoutes);
 app.use('/', projectRoutes);
+app.use('/', adminRoutes); // --- NEW: Use admin routes ---
 
-// Dynamic Filter Options
+
+// Dynamic Filter Options (Keep this here for now, as it uses 'tags' from config)
 app.get('/dynamic-filter-options', (req, res) => {
     res.json({
-        // Change these keys to match what the frontend expects
         courses: tags.courses || [],
         categories: tags.categories || [],
-        
-        // These are already correct
         years: tags.years || [],
         types: tags.types || [],
         departments: tags.departments || [],
@@ -124,6 +124,17 @@ app.get('/settings.html', isAuthenticated, isProfileComplete, (req, res) => res.
 app.get('/about.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'about.html')));
 app.get('/edit-project.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'edit-project.html')));
 app.get('/public-profile.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'public-profile.html')));
+// --- NEW: Add route for admin dashboard HTML page ---
+app.get('/admin/dashboard.html', isAuthenticated, async (req, res) => {
+    // --- IMPORTANT: Add proper role-based authorization here for the HTML page ---
+    // This will be handled by a new middleware in middleware/auth.js
+    // For now, it's just isAuthenticated, but we'll refine this.
+    // if (req.session.userRole !== 'admin' && req.session.userRole !== 'sharecase_worker') {
+    //     return res.redirect('/index.html'); // Redirect if not authorized
+    // }
+    res.sendFile(path.join(__dirname, 'views', 'admin-dashboard.html'));
+});
+
 
 // Error Handling
 app.use((err, req, res, next) => {

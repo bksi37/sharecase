@@ -24,10 +24,19 @@
                     <div class="auth-container p-4 shadow-lg rounded">
                         <h2 class="text-center mb-4">Complete Your Profile</h2>
                         <form id="profileForm" enctype="multipart/form-data">
-                            <div class="mb-3">
+                            <!-- Removed personalEmail field as it's no longer in schema -->
+                            <!-- <div class="mb-3">
                                 <label for="personalEmail" class="form-label">Personal Email (Optional)</label>
                                 <input type="email" class="form-control" id="personalEmail" name="personalEmail" placeholder="e.g., yourname@gmail.com">
+                            </div> -->
+
+                            <!-- NEW: University Email field -->
+                            <div class="mb-3">
+                                <label for="universityEmail" class="form-label">University Email (Optional for now)</label>
+                                <input type="email" class="form-control" id="universityEmail" name="universityEmail" placeholder="e.g., yourname@ou.edu">
+                                <small class="form-text text-muted">Provide your university email to unlock full features (e.g., project uploads, commenting).</small>
                             </div>
+
                             <div class="mb-3">
                                 <label for="major" class="form-label">Major</label>
                                 <input type="text" class="form-control" id="major" name="major" placeholder="e.g., Computer Science">
@@ -60,6 +69,7 @@
         <p>© 2025 ShareCase. All rights reserved.</p>
     </footer>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script>
         // Check if redirected due to incomplete profile
         const urlParams = new URLSearchParams(window.location.search);
@@ -74,6 +84,14 @@
         document.getElementById('profileForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const formData = new FormData(e.target);
+
+            // --- NEW: Manually add universityEmail to formData if it exists ---
+            const universityEmail = document.getElementById('universityEmail').value.trim();
+            if (universityEmail) {
+                formData.append('universityEmail', universityEmail);
+            }
+            // --- END NEW ---
+
             try {
                 const response = await fetch('/complete-profile', {
                     method: 'POST',

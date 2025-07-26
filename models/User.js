@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
-    email: { // This is the school email used for signup/login (e.g., user@university.edu)
+    email: {
         type: String,
         required: true,
         unique: true
@@ -15,9 +15,19 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: ''
     },
-    personalEmail: { // Renaming for clarity if possible, otherwise keep 'schoolEmail'
+    role: {
         type: String,
-        default: '' // Default to empty string for optional personal email
+        enum: ['external', 'student', 'alumni', 'faculty', 'sharecase_worker', 'admin'],
+        default: 'external'
+    },
+    universityEmail: {
+        type: String,
+        unique: true,
+        sparse: true
+    },
+    universityEmailVerified: {
+        type: Boolean,
+        default: false
     },
     major: { type: String, default: '' },
     profilePic: { type: String, default: 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg' },
@@ -25,6 +35,17 @@ const userSchema = new mongoose.Schema({
     github: { type: String, default: '' },
     personalWebsite: { type: String, default: '' },
     isProfileComplete: { type: Boolean, default: false },
+
+    // --- NEW FIELDS FOR SOCIAL FEATURES ---
+    followers: [{ // IDs of users who follow this user
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    }],
+    following: [{ // IDs of users this user follows
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    }],
+    // --- END NEW FIELDS ---
 
     notifications: {
         type: String,

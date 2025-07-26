@@ -5,15 +5,17 @@ const cloudinary = require('cloudinary').v2;
 const Project = require('../models/Project');
 const { isAuthenticated, isProfileComplete } = require('../middleware/auth');
 const PDFDocument = require('pdfkit');
-const User = require('../models/User');
+const User = require('../models/User'); // User model is needed for points updates
 const https = require('https');
 const mongoose = require('mongoose');
 const ObjectId = mongoose.Types.ObjectId;
 const tagsConfig = require('../config/tags');
 const upload = require('../middleware/upload');
+const pointsCalculator = require('../utils/pointsCalculator'); // --- NEW: Import points calculator ---
+
 const router = express.Router();
 
-// Add Project (Updated for Multer)
+// Add Project (Updated for Multer and Points)
 router.post('/add-project', isAuthenticated, isProfileComplete, upload.single('image'), async (req, res) => {
     try {
         const { title, description, tags, problemStatement, collaboratorIds, otherCollaborators, resources, isPublished } = req.body;
@@ -22,28 +24,26 @@ router.post('/add-project', isAuthenticated, isProfileComplete, upload.single('i
             return res.status(400).json({ error: 'Title is required' });
         }
 
+        const parsedTags = tags ? tags.split(',').map(t => t.trim()) : [];
         const parsedCollaboratorIds = collaboratorIds
             ? collaboratorIds.split(',').map(id => id.trim()).filter(id => id && ObjectId.isValid(id)).map(id => new ObjectId(id))
             : [];
-
         const parsedOtherCollaborators = otherCollaborators
             ? otherCollaborators.split(',').map(c => c.trim()).filter(c => c !== '')
             : [];
 
         let imageUrl = 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg';
-        // Handle project image upload using req.file (from Multer)
         if (req.file && req.file.path) {
-            imageUrl = req.file.path; // Multer's CloudinaryStorage already gives you the secure_url
+            imageUrl = req.file.path;
             console.log('New project image URL assigned from Multer:', imageUrl);
         } else {
             console.log('No project image uploaded. Using default or existing.');
         }
 
-
         const project = new Project({
             title,
             description,
-            tags: tags ? tags.split(',').map(t => t.trim()) : [],
+            tags: parsedTags,
             image: imageUrl,
             userId: req.session.userId,
             userName: req.session.userName || 'Anonymous',
@@ -51,10 +51,19 @@ router.post('/add-project', isAuthenticated, isProfileComplete, upload.single('i
             collaborators: parsedCollaboratorIds,
             otherCollaborators: parsedOtherCollaborators,
             resources: resources ? resources.split(',').map(r => r.trim()) : [],
-            isPublished: isPublished === 'true'
+            isPublished: isPublished === 'true',
+            projectType: 'Engineering', // Default for now, will be dynamic in Milestone 2
+            points: pointsCalculator.calculateUploadPoints() // --- NEW: Assign points for upload ---
         });
 
         await project.save();
+
+        // --- NEW: Award points to the Uploader's User document ---
+        await User.findByIdAndUpdate(
+            req.session.userId,
+            { $inc: { totalPoints: pointsCalculator.calculateUploadPoints() } } // Assuming a 'totalPoints' field on User model
+        );
+        // --- END NEW ---
 
         if (parsedCollaboratorIds.length > 0) {
             await User.updateMany(
@@ -63,19 +72,19 @@ router.post('/add-project', isAuthenticated, isProfileComplete, upload.single('i
             );
         }
 
-        res.redirect('/index.html'); // Or res.status(200).json({ success: true, projectId: project._id }); if frontend expects JSON
+        res.redirect('/index.html');
     } catch (error) {
         console.error('Add project error:', error);
-        // Handle Multer errors specifically
-        if (error instanceof multer.MulterError) {
-             console.error('Multer Error during add-project:', error.message);
-             return res.status(400).json({ error: `File upload error: ${error.message}` });
-        }
+        // Ensure multer is defined or imported if used here
+        // if (error instanceof multer.MulterError) {
+        //     console.error('Multer Error during add-project:', error.message);
+        //     return res.status(400).json({ error: `File upload error: ${error.message}` });
+        // }
         res.status(500).json({ error: 'Server error', details: error.message });
     }
 });
 
-// GET route to fetch dynamic filter options/tags
+// GET route to fetch dynamic filter options/tags (Keep this here, as it uses tagsConfig)
 router.get('/dynamic-filter-options', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
         res.json(tagsConfig);
@@ -85,7 +94,7 @@ router.get('/dynamic-filter-options', isAuthenticated, isProfileComplete, async 
     }
 });
 
-// Fetch All Projects (Keeping your existing code for this route)
+// Fetch All Projects
 router.get('/projects', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
         const projects = await Project.find({ isPublished: true }).populate('userId', 'name');
@@ -97,7 +106,8 @@ router.get('/projects', isAuthenticated, isProfileComplete, async (req, res) => 
             userId: p.userId._id,
             userName: p.userId.name,
             likes: p.likes || 0,
-            views: p.views || 0
+            views: p.views || 0,
+            points: p.points || 0 // Include points in response
         })));
     } catch (error) {
         console.error('Fetch projects error:', error);
@@ -105,75 +115,67 @@ router.get('/projects', isAuthenticated, isProfileComplete, async (req, res) => 
     }
 });
 
-// Consolidated Search Projects AND Users (Robust version)
-router.get('/search', isAuthenticated, async (req, res) => { // Removed isProfileComplete to allow broader search
+// Consolidated Search Projects AND Users
+router.get('/search', isAuthenticated, async (req, res) => {
     try {
         const { q, course, year, type, department, category } = req.query;
         const projectQuery = {};
         const userQuery = {};
 
-        // Build project search query (using the assumption that 'tags' is an array of strings)
         if (q) {
             projectQuery.$or = [
                 { title: { $regex: q, $options: 'i' } },
                 { description: { $regex: q, $options: 'i' } },
                 { problemStatement: { $regex: q, $options: 'i' } },
-                { tags: { $regex: q, $options: 'i' } } // Search within the tags array
+                { tags: { $regex: q, $options: 'i' } }
             ];
         }
 
-        // Add specific filter parameters if they are provided and not 'All'
-        // This assumes these filter values are also stored as strings within the 'tags' array.
         const filterTags = [course, year, type, department, category].filter(t => t && t !== 'All');
         if (filterTags.length > 0) {
-            projectQuery.tags = { $all: filterTags }; // Requires all specified tags to be present
+            projectQuery.tags = { $all: filterTags };
         }
 
-        projectQuery.isPublished = true; // Only show published projects in search results
+        projectQuery.isPublished = true;
 
-        // Build user search query
         if (q) {
             userQuery.$or = [
                 { name: { $regex: q, $options: 'i' } },
+                { email: { $regex: q, $options: 'i' } },
                 { major: { $regex: q, $options: 'i' } },
-                // Assuming User schema has a department field, if not, remove this:
                 { department: { $regex: q, $options: 'i' } }
             ];
         }
-        // Only fetch users whose profiles are complete (optional, but good for meaningful search results)
         userQuery.isProfileComplete = true;
 
-        // Execute both queries concurrently
         const [projects, users] = await Promise.all([
             Project.find(projectQuery)
-                   .populate('userId', 'name profilePic') // Corrected to userId
-                   .limit(20), // Limit project results for performance
+                   .populate('userId', 'name profilePic')
+                   .limit(20),
             User.find(userQuery)
-                .select('name major department profilePic linkedin') // Select relevant user fields
-                .limit(10) // Limit user results
+                .select('name major department profilePic linkedin')
+                .limit(10)
         ]);
 
-        // Format projects for consistent frontend consumption
         const formattedProjects = projects.map(p => ({
             id: p._id,
             title: p.title,
             description: p.description,
             image: p.image || 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg',
-            userId: p.userId ? p.userId._id : null, // Handle case where userId might not be populated (though it should be)
+            userId: p.userId ? p.userId._id : null,
             userName: p.userId ? p.userId.name : 'Unknown',
             userProfilePic: p.userId ? (p.userId.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg') : 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg',
             likes: p.likes || 0,
             views: p.views || 0,
-            tags: p.tags || [], // Include tags in the response
-            isPublished: p.isPublished // Include publish status
+            points: p.points || 0,
+            tags: p.tags || [],
+            isPublished: p.isPublished
         }));
 
-        // Format users for frontend consumption
         const formattedUsers = users.map(u => ({
             _id: u._id,
             name: u.name,
             major: u.major || 'N/A',
-            // Department might not exist, handle gracefully
             department: u.department || 'N/A',
             profilePic: u.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg',
             linkedin: u.linkedin || ''
@@ -193,11 +195,10 @@ router.get('/search', isAuthenticated, async (req, res) => { // Removed isProfil
     }
 });
 
-// Filter Options (Keeping your existing code for this route, ensure tags are consistent)
+// Filter Options
 router.get('/filter-options', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
         const projects = await Project.find();
-        // These filters assume specific tag values are present in the 'tags' array
         const courses = [...new Set(projects.flatMap(p => p.tags.filter(t => t.startsWith('MECH') || t.startsWith('CS'))))];
         const years = [...new Set(projects.flatMap(p => p.tags.filter(t => /^\d{4}$/.test(t))))];
         const types = [...new Set(projects.flatMap(p => p.tags.filter(t => ['Robotics', 'Software', 'Hardware'].includes(t))))];
@@ -210,18 +211,18 @@ router.get('/filter-options', isAuthenticated, isProfileComplete, async (req, re
     }
 });
 
-// Fetch User Projects (Corrected to include collaborated projects)
+// Fetch User Projects
 router.get('/user-projects', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
         const userId = req.session.userId;
 
         const projects = await Project.find({
             $or: [
-                { userId: userId }, // Projects uploaded by the user
-                { collaborators: userId } // Projects where the user is a collaborator
+                { userId: userId },
+                { collaborators: userId }
             ]
         })
-        .select('title description image isPublished likes views'); // Select necessary fields
+        .select('title description image isPublished likes views points');
 
         res.json(projects.map(p => ({
             id: p._id,
@@ -230,14 +231,16 @@ router.get('/user-projects', isAuthenticated, isProfileComplete, async (req, res
             description: p.description,
             isPublished: p.isPublished,
             likes: p.likes || 0,
-            views: p.views || 0
+            views: p.views || 0,
+            points: p.points || 0
         })));
     } catch (error) {
         console.error('Fetch user projects error:', error);
         res.status(500).json({ error: 'Server error' });
     }
 });
-// Post Comment (Keeping your existing code for this route)
+
+// Post Comment
 router.post('/project/:id/comment', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
         const project = await Project.findById(req.params.id);
@@ -252,6 +255,17 @@ router.post('/project/:id/comment', isAuthenticated, isProfileComplete, async (r
             timestamp: new Date()
         });
         await project.save();
+
+        // --- NEW: Award points to project and user for commenting ---
+        project.points = (project.points || 0) + pointsCalculator.calculateCommentPoints();
+        await project.save(); // Save project again to update points
+
+        await User.findByIdAndUpdate(
+            req.session.userId,
+            { $inc: { totalPoints: pointsCalculator.calculateCommentPoints() } } // Award points to commenter
+        );
+        // --- END NEW ---
+
         res.json({ success: true });
     } catch (error) {
         console.error('Post comment error:', error);
@@ -263,7 +277,7 @@ router.post('/project/:id/comment', isAuthenticated, isProfileComplete, async (r
 router.delete('/project/:projectId/comment/:commentId', isAuthenticated, async (req, res) => {
     try {
         const { projectId, commentId } = req.params;
-        const currentUserId = req.session.userId; // Get logged-in user's ID
+        const currentUserId = req.session.userId;
 
         const project = await Project.findById(projectId);
 
@@ -271,21 +285,34 @@ router.delete('/project/:projectId/comment/:commentId', isAuthenticated, async (
             return res.status(404).json({ message: 'Project not found' });
         }
 
-        const comment = project.comments.id(commentId); // Find the subdocument comment
+        const comment = project.comments.id(commentId);
         if (!comment) {
             return res.status(404).json({ message: 'Comment not found' });
         }
 
-        // Authorization check: Only original commenter OR project owner can delete
         const isCommenter = comment.userId.toString() === currentUserId;
-        const isProjectOwner = project.userId.toString() === currentUserId; // Assuming project has a userId field
+        const isProjectOwner = project.userId.toString() === currentUserId;
 
         if (!isCommenter && !isProjectOwner) {
             return res.status(403).json({ message: 'Unauthorized to delete this comment' });
         }
 
-        // Remove the comment (Mongoose array subdocument removal)
-        comment.remove(); // OR project.comments.pull(commentId);
+        // --- NEW: Deduct points from project and user for deleting a comment ---
+        // Need to ensure points are deducted from the *original commenter* if possible,
+        // but for simplicity here, we'll deduct from the project and the deleter (if they are commenter).
+        // A more robust system might store points per comment to deduct accurately.
+        // For now, if the deleter is the commenter, deduct from their total points.
+        if (isCommenter) {
+            await User.findByIdAndUpdate(
+                currentUserId,
+                { $inc: { totalPoints: -pointsCalculator.calculateCommentPoints() } }
+            );
+        }
+        project.points = Math.max(0, (project.points || 0) - pointsCalculator.calculateCommentPoints());
+        await project.save();
+        // --- END NEW ---
+
+        comment.remove();
         await project.save();
 
         res.json({ success: true, message: 'Comment deleted successfully' });
@@ -296,7 +323,7 @@ router.delete('/project/:projectId/comment/:commentId', isAuthenticated, async (
     }
 });
 
-// Delete Project (Keeping your existing code for this route)
+// Delete Project
 router.delete('/project/:id', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
         const project = await Project.findById(req.params.id);
@@ -310,6 +337,14 @@ router.delete('/project/:id', isAuthenticated, isProfileComplete, async (req, re
             const publicId = project.image.split('/').pop().split('.')[0];
             await cloudinary.uploader.destroy(`sharecase/projects/${publicId}`);
         }
+        
+        // --- NEW: Deduct points from the uploader when a project is deleted ---
+        await User.findByIdAndUpdate(
+            project.userId,
+            { $inc: { totalPoints: -project.points } } // Deduct all points associated with the project
+        );
+        // --- END NEW ---
+
         await project.deleteOne();
         res.status(200).json({ success: true });
     } catch (error) {
@@ -318,8 +353,8 @@ router.delete('/project/:id', isAuthenticated, isProfileComplete, async (req, re
     }
 });
 
-// Edit Project (Modified for Multer)
-router.put('/project/:id', isAuthenticated, isProfileComplete, upload.single('image'), async (req, res) => { // <--- Apply Multer here
+// Edit Project
+router.put('/project/:id', isAuthenticated, isProfileComplete, upload.single('image'), async (req, res) => {
     try {
         const project = await Project.findById(req.params.id);
         if (!project) {
@@ -342,26 +377,21 @@ router.put('/project/:id', isAuthenticated, isProfileComplete, upload.single('im
         const newCollaboratorIds = collaboratorIds
             ? collaboratorIds.split(',').map(id => id.trim()).filter(id => id && ObjectId.isValid(id)).map(id => new ObjectId(id))
             : [];
-
         const newOtherCollaborators = otherCollaborators
             ? otherCollaborators.split(',').map(c => c.trim()).filter(c => c !== '')
             : [];
 
         let imageUrl = project.image;
-        // Handle project image upload using req.file (from Multer)
         if (req.file && req.file.path) {
-            // If a new image is uploaded, destroy the old one (if it's not the default)
             if (imageUrl && !imageUrl.includes('default-project.jpg')) {
                 const publicId = imageUrl.split('/').pop().split('.')[0];
-                await cloudinary.uploader.destroy(`sharecase/projects/${publicId}`); // Ensure public ID matches Cloudinary setup
+                await cloudinary.uploader.destroy(`sharecase/projects/${publicId}`);
             }
-            imageUrl = req.file.path; // Multer's CloudinaryStorage already gives you the secure_url
+            imageUrl = req.file.path;
             console.log('New project image URL assigned from Multer during edit:', imageUrl);
         } else {
-            // If no new image, keep the existing one.
             console.log('No new project image uploaded during edit. Retaining existing.');
         }
-
 
         const oldCollaboratorIds = project.collaborators.map(id => id.toString());
         const addedCollaborators = newCollaboratorIds.filter(id => !oldCollaboratorIds.includes(id.toString()));
@@ -397,14 +427,14 @@ router.put('/project/:id', isAuthenticated, isProfileComplete, upload.single('im
     } catch (error) {
         console.error('Edit project error:', error);
         if (error instanceof multer.MulterError) {
-             console.error('Multer Error during edit-project:', error.message);
-             return res.status(400).json({ error: `File upload error: ${error.message}` });
+            console.error('Multer Error during edit-project:', error.message);
+            return res.status(400).json({ error: `File upload error: ${error.message}` });
         }
         res.status(500).json({ error: 'Server error', details: error.message });
     }
 });
 
-// Like/Unlike Project (Keeping your existing code for this route)
+// Like/Unlike Project (Updated for Points)
 router.post('/project/:id/like', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
         const project = await Project.findById(req.params.id);
@@ -415,8 +445,20 @@ router.post('/project/:id/like', isAuthenticated, isProfileComplete, async (req,
         const hasLiked = project.likedBy.includes(userId);
         if (hasLiked) {
             project.likedBy = project.likedBy.filter(id => id.toString() !== userId);
+            // --- NEW: Deduct points from project and user for unlike ---
+            project.points = Math.max(0, (project.points || 0) - pointsCalculator.calculateLikePoints());
+            await User.findByIdAndUpdate(
+                project.userId, // Award points to the project owner
+                { $inc: { totalPoints: -pointsCalculator.calculateLikePoints() } }
+            );
         } else {
             project.likedBy.push(userId);
+            // --- NEW: Add points to project and user for like ---
+            project.points = (project.points || 0) + pointsCalculator.calculateLikePoints();
+             await User.findByIdAndUpdate(
+                project.userId, // Award points to the project owner
+                { $inc: { totalPoints: pointsCalculator.calculateLikePoints() } }
+            );
         }
         project.likes = project.likedBy.length;
         await project.save();
@@ -427,14 +469,14 @@ router.post('/project/:id/like', isAuthenticated, isProfileComplete, async (req,
     }
 });
 
-// Generate Portfolio (FINAL ATTEMPT FIX for ReferenceError: https is not defined)
+// Generate Portfolio
 router.post('/generate-portfolio', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
         const user = await User.findById(req.session.userId);
         const projects = await Project.find({ userId: req.session.userId, isPublished: true });
         const doc = new PDFDocument({ size: 'A4', margin: 40 });
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', 'attachment; filename=portfolio.pdf'); // Or 'inline' if you prefer
+        res.setHeader('Content-Disposition', 'attachment; filename=portfolio.pdf');
         doc.pipe(res);
 
         // Fonts
@@ -442,17 +484,16 @@ router.post('/generate-portfolio', isAuthenticated, isProfileComplete, async (re
         doc.registerFont('Roboto-Bold', 'public/fonts/Roboto-Bold.ttf');
 
         // Header
-        doc.fillColor('#007bff').font('Roboto-Bold').fontSize(28).text(user.name, { align: 'center' });
+        doc.fillColor('#212529').font('Roboto-Bold').fontSize(28).text(user.name, { align: 'center' });
         doc.moveDown(0.2);
         doc.fillColor('#000000').font('Roboto').fontSize(12).text(user.email || '', { align: 'center' });
         if (user.linkedin) {
             doc.moveDown(0.2);
             let linkedinUrl = user.linkedin;
-            // Ensure proper absolute URL for LinkedIn in PDF
             if (!linkedinUrl.startsWith('http://') && !linkedinUrl.startsWith('https://')) {
                 linkedinUrl = `https://${linkedinUrl}`;
             }
-            doc.fillColor('#000000').font('Roboto').fontSize(12).text(`LinkedIn: ${user.linkedin}`, { align: 'center', link: linkedinUrl });
+            doc.fillColor('#000000').font('Roboto').fontSize(12).text(`LinkedIn: ${linkedinUrl}`, { align: 'center', link: linkedinUrl });
         }
         doc.moveDown(1);
         doc.lineWidth(2).strokeColor('#212529').moveTo(40, doc.y).lineTo(552, doc.y).stroke();
@@ -475,9 +516,9 @@ router.post('/generate-portfolio', isAuthenticated, isProfileComplete, async (re
                 // Image
                 if (p.image && !p.image.includes('default-project.jpg')) {
                     try {
-                        const imageUrl = new URL(p.image); // Parse URL to get hostname and path
+                        const imageUrl = new URL(p.image);
                         const imageBuffer = await new Promise((resolve, reject) => {
-                            const request = https.get(imageUrl, (response) => { // <<< This is the 'https' that must be defined
+                            const request = https.get(imageUrl, (response) => {
                                 if (response.statusCode < 200 || response.statusCode >= 300) {
                                     return reject(new Error(`HTTP Error: ${response.statusCode} for ${imageUrl.href}`));
                                 }
@@ -486,7 +527,7 @@ router.post('/generate-portfolio', isAuthenticated, isProfileComplete, async (re
                                 response.on('end', () => resolve(Buffer.concat(chunks)));
                             });
                             request.on('error', (err) => reject(err));
-                            request.end(); // Important to end the request
+                            request.end();
                         });
 
                         doc.image(imageBuffer, { width: 350, align: 'center', valign: 'center' });
@@ -529,24 +570,31 @@ router.post('/generate-portfolio', isAuthenticated, isProfileComplete, async (re
     }
 });
 
-
-
 // Fetch Single Project
 router.get('/project/:id', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
         const project = await Project.findById(req.params.id)
-            .populate('userId', 'name profilePic') // Populate uploader's name and profilePic
-            .populate('collaborators', 'name email profilePic'); // Populate collaborators' details
+            .populate('userId', 'name profilePic')
+            .populate('collaborators', 'name email profilePic');
 
         if (!project) {
             return res.status(404).json({ error: 'Project not found' });
         }
 
-        // Increment views
+        // Increment views and award points
+        // To prevent multiple points for same user on refresh, consider tracking unique views per session/user
+        // For now, simple increment:
         project.views = (project.views || 0) + 1;
+        project.points = (project.points || 0) + pointsCalculator.calculateViewPoints(); // --- NEW: Award points for view ---
         await project.save();
 
-        // Format populated collaborators for frontend ease
+        // --- NEW: Award points to the project owner for views ---
+        await User.findByIdAndUpdate(
+            project.userId,
+            { $inc: { totalPoints: pointsCalculator.calculateViewPoints() } } // Award points to project owner
+        );
+        // --- END NEW ---
+
         const formattedCollaborators = project.collaborators.map(collab => ({
             _id: collab._id,
             name: collab.name,
@@ -561,16 +609,15 @@ router.get('/project/:id', isAuthenticated, isProfileComplete, async (req, res) 
             image: project.image || 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg',
             userId: project.userId._id,
             userName: project.userId.name,
-            // --- FIX HERE: Ensure userProfilePic is correctly passed from populated userId ---
-            userProfilePic: project.userId.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg', // <-- This line ensures the uploader's profile pic is sent
-            // --- END FIX ---
+            userProfilePic: project.userId.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg',
             problemStatement: project.problemStatement || '',
-            collaborators: formattedCollaborators, // Now contains populated user objects
-            otherCollaborators: project.otherCollaborators || [], // New field
+            collaborators: formattedCollaborators,
+            otherCollaborators: project.otherCollaborators || [],
             tags: project.tags || [],
             resources: project.resources || [],
             likes: project.likes || 0,
             views: project.views || 0,
+            points: project.points || 0,
             comments: project.comments || [],
             likedBy: project.likedBy || [],
             isPublished: project.isPublished
@@ -581,30 +628,26 @@ router.get('/project/:id', isAuthenticated, isProfileComplete, async (req, res) 
     }
 });
 
-// routes/projects.js
-
 // NEW ROUTE: Fetch Projects by User ID (Corrected to include collaborations)
 router.get('/projects-by-user/:userId', isAuthenticated, async (req, res) => {
     try {
         const userId = req.params.userId;
 
-        // Find projects where the user is the uploader OR a collaborator
         const projects = await Project.find({
             isPublished: true,
             $or: [
-                { userId: userId }, // User is the uploader
-                { collaborators: userId } // User is in the collaborators array
+                { userId: userId },
+                { collaborators: userId }
             ]
         })
-        .populate('userId', 'name profilePic') // Populate uploader details
-        .populate('collaborators', 'name profilePic') // Populate collaborator details
-        .select('title description image tags likes views'); // Select relevant fields
+        .populate('userId', 'name profilePic')
+        .populate('collaborators', 'name profilePic')
+        .select('title description image tags likes views points');
 
         if (!projects) {
-            return res.status(200).json([]); // Return empty array if no projects found
+            return res.status(200).json([]);
         }
 
-        // Format the projects for the frontend
         const formattedProjects = projects.map(project => ({
             id: project._id,
             title: project.title,
@@ -615,7 +658,8 @@ router.get('/projects-by-user/:userId', isAuthenticated, async (req, res) => {
             userProfilePic: project.userId.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg',
             tags: project.tags || [],
             likes: project.likes || 0,
-            views: project.views || 0
+            views: project.views || 0,
+            points: project.points || 0
         }));
 
         res.json(formattedProjects);
@@ -623,6 +667,51 @@ router.get('/projects-by-user/:userId', isAuthenticated, async (req, res) => {
     } catch (error) {
         console.error('Error fetching projects by user:', error);
         res.status(500).json({ error: 'Server error', details: error.message });
+    }
+});
+
+// --- NEW ROUTE: Get Overall Project Analytics (for Admins/ShareCase Workers) ---
+router.get('/admin/analytics/projects', isAuthenticated, async (req, res) => {
+    try {
+        // --- Authorization Check: Only 'admin' or 'sharecase_worker' can access ---
+        // This will be handled by a new middleware in middleware/auth.js (e.g., isAdminOrShareCaseWorker)
+        // For now, it's just isAuthenticated, but we'll refine this.
+        if (req.session.userRole !== 'admin' && req.session.userRole !== 'sharecase_worker') {
+            return res.status(403).json({ message: 'Access denied. Insufficient privileges.' });
+        }
+
+        const totalProjects = await Project.countDocuments();
+        const totalPublishedProjects = await Project.countDocuments({ isPublished: true });
+        const projectsByType = await Project.aggregate([
+            { $group: { _id: "$projectType", count: { $sum: 1 } } }
+        ]);
+        const projectsByTag = await Project.aggregate([
+            { $unwind: "$tags" },
+            { $group: { _id: "$tags", count: { $sum: 1 } } },
+            { $sort: { count: -1 } },
+            { $limit: 10 } // Top 10 tags
+        ]);
+        const topProjectsByViews = await Project.find({ isPublished: true })
+            .sort({ views: -1 })
+            .limit(5)
+            .select('title views userId userName');
+        const topProjectsByPoints = await Project.find({ isPublished: true })
+            .sort({ points: -1 })
+            .limit(5)
+            .select('title points userId userName');
+
+        res.json({
+            totalProjects,
+            totalPublishedProjects,
+            projectsByType,
+            projectsByTag,
+            topProjectsByViews,
+            topProjectsByPoints
+        });
+
+    } catch (error) {
+        console.error('Error fetching project analytics:', error);
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
