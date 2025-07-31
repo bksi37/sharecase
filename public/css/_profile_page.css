@@ -1,0 +1,445 @@
+/* public/css/_profile_page.css */
+
+/* --- Profile Page Styles: Flat, Aligned, and Modern --- */
+
+/* Overall container for the top profile section to ensure consistent margins */
+.profile-top-section {
+    padding-top: 40px; /* Space from header */
+    padding-bottom: 30px; /* Space above main content */
+    background-color: #fcfcfc; /* A very light, almost white background for subtle distinction */
+    border-bottom: 1px solid #e0e0e0; /* Subtle line separating from main content */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03); /* Very subtle shadow for depth */
+}
+
+/* Profile Header Banner - Now acts as a flexible container for top info */
+.profile-header-banner {
+    display: flex;
+    align-items: flex-start; /* Align items to the top of the container */
+    gap: 30px; /* Space between profile picture and text info */
+    padding: 0; /* No internal padding, padding is handled by .profile-top-section */
+    background: none; /* Remove background */
+    box-shadow: none; /* Remove shadow */
+    border-radius: 0; /* Remove border radius */
+    color: #333; /* Default text color for this section */
+    position: relative;
+    z-index: 1; /* Keep it in the normal flow */
+}
+
+/* Profile Picture */
+.profile-header-banner img.profile-banner-pic {
+    width: 120px; /* Reduced size for better integration and left alignment */
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+    border: 3px solid #007bff; /* Simple, clean blue border */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    flex-shrink: 0; /* Prevent shrinking */
+    margin-top: 0; /* Reset margin-top from previous version */
+}
+
+.profile-header-banner img.profile-banner-pic:hover {
+    transform: scale(1.03);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Wrapper for Name, Major, Department, Email */
+.profile-info-wrapper {
+    flex-grow: 1; /* Allows it to take up available space */
+    padding-top: 10px; /* Small padding to align with image top more naturally */
+}
+
+.profile-header-banner h2#profileName {
+    font-size: 36px; /* Adjusted size */
+    margin-bottom: 5px;
+    font-weight: 700;
+    color: #222; /* Darker text for better contrast */
+    text-shadow: none; /* Remove text shadow */
+    line-height: 1.2;
+}
+
+.profile-header-banner p {
+    font-size: 16px; /* Slightly smaller for detail */
+    margin-bottom: 4px; /* Tighter spacing */
+    color: #555;
+    opacity: 1; /* Ensure full opacity */
+    font-weight: 400; /* Standard font weight */
+}
+
+/* Follower/Following Counts & Points */
+.profile-stats-banner {
+    display: flex;
+    justify-content: flex-start; /* Align stats to the left */
+    gap: 25px; /* Spacing between stats */
+    margin-top: 15px; /* Space below email/department */
+    font-size: 1rem; /* Standard font size */
+    color: #666; /* Softer text color */
+    padding-left: 0; /* Reset padding-left */
+    width: auto; /* Allow width to be determined by content */
+    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+    border-top: 1px solid #eee; /* Subtle line above stats */
+    padding-top: 15px; /* Space above line */
+}
+
+.profile-stats-banner span {
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+}
+
+.profile-stats-banner span i {
+    margin-right: 6px; /* Adjusted space */
+    font-size: 1.1em;
+    color: #007bff; /* Blue icons */
+}
+
+.profile-stats-banner strong {
+    font-weight: 600; /* Bolder numbers */
+    color: #222; /* Darker color for numbers */
+    margin-left: 3px;
+}
+
+/* Social Links */
+.social-links {
+    margin-top: 20px; /* Space below stats */
+    text-align: left;
+    padding-left: 0; /* Reset padding-left */
+    width: auto; /* Allow width to be determined by content */
+    border-top: 1px solid #eee; /* Subtle line above social links */
+    padding-top: 15px; /* Space above line */
+}
+
+.social-links a {
+    color: #007bff; /* Blue icons */
+    font-size: 22px; /* Adjusted icon size */
+    margin-right: 18px; /* Spacing between icons */
+    transition: transform 0.2s ease-in-out, color 0.2s ease-in-out;
+    text-decoration: none;
+}
+
+.social-links a:hover {
+    color: #0056b3;
+    transform: translateY(-2px) scale(1.1);
+}
+
+/* --- Main Content Layout --- */
+.profile-main-content {
+    background: none; /* No background for main content area */
+    padding: 30px 0; /* Standard padding */
+    margin-top: 0; /* No more overlap */
+    position: relative;
+    z-index: 0;
+    border-radius: 0; /* No border radius */
+    box-shadow: none; /* No shadow */
+}
+
+/* Sections - Now "flat" instead of cards */
+.profile-about-section,
+.my-projects-sidebar-list-section, /* New class for sidebar projects list */
+.profile-project-grid-wrapper {
+    background: none; /* Remove background */
+    padding: 0; /* Remove padding, manage spacing with margins */
+    border-radius: 0; /* Remove border-radius */
+    box-shadow: none; /* Remove shadow */
+    margin-bottom: 40px; /* More spacing between sections */
+    border: none; /* Remove default border */
+    transition: none; /* Remove hover transitions */
+}
+
+/* Headings within sections - add bottom border for separation */
+.profile-about-section h3,
+.my-projects-sidebar-list-section h3,
+.profile-project-grid-wrapper h3 {
+    font-size: 24px;
+    color: #333;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #e0e0e0; /* Subtle line below heading */
+    padding-bottom: 15px; /* Space above line */
+    font-weight: 600;
+}
+
+/* Specific adjustments for profile-about-section text */
+.profile-about-section p {
+    font-size: 16px;
+    color: #555;
+    line-height: 1.6;
+    margin-bottom: 20px; /* Space below bio text */
+}
+
+/* My Projects list in sidebar (now flat) */
+.my-projects-list {
+    list-style: none;
+    padding: 0;
+    margin-top: 0; /* Reset margin */
+}
+
+.my-projects-list li {
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f0f0; /* Subtle line between list items */
+}
+
+.my-projects-list li:last-child {
+    border-bottom: none;
+}
+
+.my-projects-list a {
+    color: #007bff;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s ease-in-out;
+    font-size: 1rem;
+}
+
+.my-projects-list a:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
+
+/* Project Cards within Profile Page - now also flat */
+.profile-project-grid-wrapper .card,
+.profile-main-content .col .card {
+    background: #ffffff; /* Give cards a white background back, but NO SHADOW/BORDER */
+    border: 1px solid #e0e0e0; /* A very light border to define them */
+    border-radius: 8px; /* Slightly rounded corners */
+    overflow: hidden;
+    box-shadow: none; /* Explicitly remove shadow */
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    cursor: pointer;
+}
+
+.profile-project-grid-wrapper .card:hover,
+.profile-main-content .col .card:hover {
+    transform: translateY(-3px); /* Subtle lift on hover */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08); /* Add subtle shadow on hover */
+}
+
+.profile-project-grid-wrapper .card-img-top,
+.profile-main-content .col .card-img-top {
+    height: 180px;
+    object-fit: cover;
+    border-bottom: 1px solid #f5f5f5; /* Subtle separator below image */
+}
+
+.profile-project-grid-wrapper .card-body,
+.profile-main-content .col .card-body {
+    padding: 15px;
+}
+
+.profile-project-grid-wrapper .card-title,
+.profile-main-content .col .card-title {
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.profile-project-grid-wrapper .card-text,
+.profile-main-content .col .card-text {
+    font-size: 0.9rem;
+    color: #777;
+    margin-bottom: 15px;
+}
+
+.profile-project-grid-wrapper .project-stats,
+.profile-project-content .project-stats {
+    font-size: 0.85rem;
+    color: #888;
+    margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.profile-project-grid-wrapper .project-stats span,
+.profile-project-grid-wrapper .project-tags .tag {
+    background-color: #f0f2f5;
+    padding: 4px 8px;
+    border-radius: 5px;
+    font-weight: 500;
+    color: #555;
+}
+
+.profile-project-grid-wrapper .project-stats i {
+    margin-right: 4px;
+    color: #007bff;
+}
+
+/* Edit/Delete Buttons on Project Cards */
+.profile-project-grid-wrapper .card-buttons,
+.profile-main-content .col .card-buttons {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    gap: 8px;
+    z-index: 5;
+}
+
+.profile-project-grid-wrapper .card-buttons button,
+.profile-main-content .col .card-buttons button {
+    background-color: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+    color: #555;
+}
+
+.profile-project-grid-wrapper .card-buttons button:hover,
+.profile-main-content .col .card-buttons button:hover {
+    background-color: rgba(255, 255, 255, 1);
+    transform: scale(1.1);
+}
+
+.profile-project-grid-wrapper .card-buttons .edit-btn:hover {
+    color: #007bff;
+}
+
+.profile-project-grid-wrapper .card-buttons .delete-btn:hover {
+    color: #dc3545;
+}
+
+/* Tab navigation styling */
+.profile-tabs .nav-link {
+    color: #666;
+    font-weight: 500;
+    padding: 12px 25px;
+    border: none;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s ease;
+    font-size: 1.05rem;
+}
+
+.profile-tabs .nav-link.active {
+    color: #007bff;
+    border-color: #007bff;
+    background-color: transparent;
+    font-weight: 600;
+    position: relative;
+}
+
+.profile-tabs .nav-link:hover:not(.active) {
+    color: #007bff;
+    border-color: #cceeff;
+    background-color: #f8faff;
+}
+
+/* Add Project and Generate Portfolio Buttons */
+.add-new-project-btn-main,
+.generate-portfolio-btn-main {
+    font-size: 17px;
+    padding: 10px 22px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.25);
+    transition: all 0.2s ease;
+}
+
+.add-new-project-btn-main:hover,
+.generate-portfolio-btn-main:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 7px 18px rgba(0, 123, 255, 0.35);
+}
+
+.generate-portfolio-btn-main {
+    background-color: #28a745;
+    border-color: #28a745;
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.25);
+}
+
+.generate-portfolio-btn-main:hover {
+    background-color: #218838;
+    border-color: #1e7e34;
+    box-shadow: 0 7px 18px rgba(40, 167, 69, 0.35);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .profile-top-section {
+        padding: 30px 15px; /* Adjust padding for mobile */
+    }
+
+    .profile-header-banner {
+        flex-direction: column; /* Stack items vertically on mobile */
+        align-items: center; /* Center items when stacked */
+        text-align: center; /* Center text on mobile */
+        gap: 15px; /* Reduce gap */
+    }
+
+    .profile-header-banner img.profile-banner-pic {
+        width: 100px;
+        height: 100px;
+        margin-bottom: 10px; /* Space below image when stacked */
+    }
+
+    .profile-info-wrapper {
+        padding-top: 0; /* No extra padding when stacked */
+    }
+
+    .profile-stats-banner,
+    .social-links {
+        padding-left: 0;
+        justify-content: center;
+        margin-top: 15px;
+        border-top: 1px solid #eee; /* Maintain top border for separation */
+        padding-top: 15px;
+        width: 100%; /* Ensure full width when centered */
+    }
+
+    .profile-stats-banner {
+        gap: 15px;
+        font-size: 0.95rem;
+    }
+
+    .social-links a {
+        font-size: 20px;
+        margin: 0 10px;
+    }
+
+    .profile-main-content {
+        padding: 20px 0; /* Reduced padding on mobile */
+    }
+
+    .profile-sidebar-wrapper {
+        position: static;
+        top: auto;
+        padding-right: 0;
+        margin-bottom: 20px; /* Space between sidebar and main content on mobile */
+    }
+
+    .profile-about-section,
+    .my-projects-sidebar-list-section,
+    .profile-project-grid-wrapper {
+        margin-bottom: 30px; /* Reduced spacing between sections on mobile */
+    }
+
+    .profile-section-card h3,
+    .my-projects-sidebar-list-section h3,
+    .profile-project-grid-wrapper h3 {
+        font-size: 20px;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+    }
+
+    .profile-tabs .nav-link {
+        padding: 8px 12px;
+        font-size: 0.9rem;
+    }
+
+    .profile-project-grid-wrapper .d-flex.justify-content-end.mb-3 {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+    .add-new-project-btn-main, .generate-portfolio-btn-main {
+        width: 100%;
+        text-align: center;
+    }
+}

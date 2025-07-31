@@ -1,0 +1,18 @@
+/* public/css/_utilities.css */
+
+/* Add this at the END of your styles.css file (or after all other Bootstrap imports) */
+.bg-primary {
+    /* Choose a light gray color */
+    background-color: #e0e0e0 !important;
+    /* You might want to adjust text color if it's currently white on blue */
+    color: #007bff !important; /* Dark grey text for contrast on light background */
+}
+
+.bg-secondary {
+    --bs-bg-opacity: 1;
+    background-color: #e0e0e0 !important;
+}
+
+.container.mt-4 {
+    margin-top: 0px !important; /* or 0 if you want no space */
+}

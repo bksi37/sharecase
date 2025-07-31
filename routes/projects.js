@@ -6,23 +6,38 @@ const Project = require('../models/Project');
 const { isAuthenticated, isProfileComplete } = require('../middleware/auth');
 const PDFDocument = require('pdfkit');
 const User = require('../models/User'); // User model is needed for points updates
-const https = require('https');
+const https = require('https'); // For fetching images for PDF
 const mongoose = require('mongoose');
 const ObjectId = mongoose.Types.ObjectId;
-const tagsConfig = require('../config/tags');
+const tagsConfig = require('../config/tags'); // Import tags configuration
 const upload = require('../middleware/upload');
-const pointsCalculator = require('../utils/pointsCalculator'); // --- NEW: Import points calculator ---
+const pointsCalculator = require('../utils/pointsCalculator'); // Import points calculator
 
 const router = express.Router();
+
 
 // Add Project (Updated for Multer and Points)
 router.post('/add-project', isAuthenticated, isProfileComplete, upload.single('image'), async (req, res) => {
     try {
-        const { title, description, tags, problemStatement, collaboratorIds, otherCollaborators, resources, isPublished } = req.body;
+        const { title, description, tags, problemStatement, collaboratorIds, otherCollaborators, resources, isPublished, projectType } = req.body;
 
-        if (!title) {
-            return res.status(400).json({ error: 'Title is required' });
+        // --- CRITICAL CHANGE: Validate required fields based on isPublished status ---
+        // If publishing, title and projectType are required.
+        // If saving as draft, only title is strongly recommended, others can be empty.
+        if (isPublished === 'true') { // Check the string value received from FormData
+            if (!title || title.trim() === '') {
+                return res.status(400).json({ error: 'Project Title is required to publish.' });
+            }
+            if (!projectType || projectType.trim() === '') {
+                return res.status(400).json({ error: 'Project Type is required to publish.' });
+            }
+        } else { // For drafts, title is still good to have, but not strictly enforced by backend for saving.
+            if (!title || title.trim() === '') {
+                // If you want to force a title even for drafts, uncomment/adjust this:
+                // return res.status(400).json({ error: 'A Project Title is required even for drafts.' });
+            }
         }
+        // --- END CRITICAL CHANGE ---
 
         const parsedTags = tags ? tags.split(',').map(t => t.trim()) : [];
         const parsedCollaboratorIds = collaboratorIds
@@ -41,8 +56,8 @@ router.post('/add-project', isAuthenticated, isProfileComplete, upload.single('i
         }
 
         const project = new Project({
-            title,
-            description,
+            title: title.trim(), // Ensure title is trimmed before saving
+            description: description || '',
             tags: parsedTags,
             image: imageUrl,
             userId: req.session.userId,
@@ -51,19 +66,19 @@ router.post('/add-project', isAuthenticated, isProfileComplete, upload.single('i
             collaborators: parsedCollaboratorIds,
             otherCollaborators: parsedOtherCollaborators,
             resources: resources ? resources.split(',').map(r => r.trim()) : [],
-            isPublished: isPublished === 'true',
-            projectType: 'Engineering', // Default for now, will be dynamic in Milestone 2
-            points: pointsCalculator.calculateUploadPoints() // --- NEW: Assign points for upload ---
+            isPublished: isPublished === 'true', // Correctly converts string "true"/"false" to boolean
+            projectType: projectType || 'Other',
+            points: pointsCalculator.calculateUploadPoints()
         });
 
         await project.save();
 
-        // --- NEW: Award points to the Uploader's User document ---
+        // Award points to the Uploader's User document (only if published, or if you want drafts to award points too)
+        // You might want to conditionalize this: if (isPublished === 'true') { ... }
         await User.findByIdAndUpdate(
             req.session.userId,
-            { $inc: { totalPoints: pointsCalculator.calculateUploadPoints() } } // Assuming a 'totalPoints' field on User model
+            { $inc: { totalPoints: pointsCalculator.calculateUploadPoints() } }
         );
-        // --- END NEW ---
 
         if (parsedCollaboratorIds.length > 0) {
             await User.updateMany(
@@ -72,22 +87,30 @@ router.post('/add-project', isAuthenticated, isProfileComplete, upload.single('i
             );
         }
 
-        res.redirect('/index.html');
+        // Redirect based on published status
+        const redirectPath = (isPublished === 'true') ? '/index.html' : `/profile.html?tab=drafts`; // Redirect drafts to profile drafts tab if you have one
+        res.status(200).json({ success: true, message: isPublished === 'true' ? 'Project uploaded!' : 'Draft saved!', projectId: project._id, redirect: redirectPath });
+
     } catch (error) {
         console.error('Add project error:', error);
-        // Ensure multer is defined or imported if used here
-        // if (error instanceof multer.MulterError) {
-        //     console.error('Multer Error during add-project:', error.message);
-        //     return res.status(400).json({ error: `File upload error: ${error.message}` });
-        // }
+        // More granular error reporting for validation issues
+        if (error.name === 'ValidationError') {
+            const messages = Object.values(error.errors).map(err => err.message);
+            return res.status(400).json({ error: 'Validation Error', details: messages.join(', ') });
+        }
         res.status(500).json({ error: 'Server error', details: error.message });
     }
 });
-
-// GET route to fetch dynamic filter options/tags (Keep this here, as it uses tagsConfig)
+// GET route to fetch dynamic filter options/tags (now using tagsConfig)
 router.get('/dynamic-filter-options', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
-        res.json(tagsConfig);
+        res.json({
+            courses: tagsConfig.courses,
+            categories: tagsConfig.categories,
+            years: tagsConfig.years,
+            types: tagsConfig.types, // Aligns with PROJECT_TYPES in config/tags.js
+            departments: tagsConfig.departments // Aligns with ALL_DEPARTMENTS in config/tags.js
+        });
     } catch (error) {
         console.error('Error fetching dynamic filter options:', error);
         res.status(500).json({ error: 'Server error' });
@@ -107,7 +130,8 @@ router.get('/projects', isAuthenticated, isProfileComplete, async (req, res) => 
             userName: p.userId.name,
             likes: p.likes || 0,
             views: p.views || 0,
-            points: p.points || 0 // Include points in response
+            // Removed points from general project display: points: p.points || 0,
+            projectType: p.projectType || 'Other'
         })));
     } catch (error) {
         console.error('Fetch projects error:', error);
@@ -118,7 +142,7 @@ router.get('/projects', isAuthenticated, isProfileComplete, async (req, res) => 
 // Consolidated Search Projects AND Users
 router.get('/search', isAuthenticated, async (req, res) => {
     try {
-        const { q, course, year, type, department, category } = req.query;
+        const { q, course, year, type, department, category, projectType } = req.query;
         const projectQuery = {};
         const userQuery = {};
 
@@ -129,16 +153,6 @@ router.get('/search', isAuthenticated, async (req, res) => {
                 { problemStatement: { $regex: q, $options: 'i' } },
                 { tags: { $regex: q, $options: 'i' } }
             ];
-        }
-
-        const filterTags = [course, year, type, department, category].filter(t => t && t !== 'All');
-        if (filterTags.length > 0) {
-            projectQuery.tags = { $all: filterTags };
-        }
-
-        projectQuery.isPublished = true;
-
-        if (q) {
             userQuery.$or = [
                 { name: { $regex: q, $options: 'i' } },
                 { email: { $regex: q, $options: 'i' } },
@@ -146,7 +160,19 @@ router.get('/search', isAuthenticated, async (req, res) => {
                 { department: { $regex: q, $options: 'i' } }
             ];
         }
-        userQuery.isProfileComplete = true;
+
+        projectQuery.isPublished = true;
+
+        // Apply filters to projectQuery based on existing tags and new projectType
+        const filterTags = [course, year, type, department, category].filter(t => t && t !== 'All');
+        if (filterTags.length > 0) {
+            projectQuery.tags = { $all: filterTags };
+        }
+        if (projectType && projectType !== 'All') {
+            projectQuery.projectType = projectType;
+        }
+
+        userQuery.isProfileComplete = true; // Only search complete user profiles
 
         const [projects, users] = await Promise.all([
             Project.find(projectQuery)
@@ -167,9 +193,10 @@ router.get('/search', isAuthenticated, async (req, res) => {
             userProfilePic: p.userId ? (p.userId.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg') : 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg',
             likes: p.likes || 0,
             views: p.views || 0,
-            points: p.points || 0,
+            // Removed points from search results: points: p.points || 0,
             tags: p.tags || [],
-            isPublished: p.isPublished
+            isPublished: p.isPublished,
+            projectType: p.projectType || 'Other'
         }));
 
         const formattedUsers = users.map(u => ({
@@ -195,50 +222,31 @@ router.get('/search', isAuthenticated, async (req, res) => {
     }
 });
 
-// Filter Options
+
+// Filter Options (Adjusted to use tagsConfig for predefined options)
 router.get('/filter-options', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
-        const projects = await Project.find();
-        const courses = [...new Set(projects.flatMap(p => p.tags.filter(t => t.startsWith('MECH') || t.startsWith('CS'))))];
-        const years = [...new Set(projects.flatMap(p => p.tags.filter(t => /^\d{4}$/.test(t))))];
-        const types = [...new Set(projects.flatMap(p => p.tags.filter(t => ['Robotics', 'Software', 'Hardware'].includes(t))))];
-        const departments = [...new Set(projects.flatMap(p => p.tags.filter(t => ['CS', 'MECH', 'EE'].includes(t))))];
-        const projectCategories = [...new Set(projects.flatMap(p => p.tags.filter(t => ['AI', 'IoT', 'Mechanics'].includes(t))))];
-        res.json({ courses, years, types, departments, projectCategories });
+        // Retrieve options from the central tags configuration
+        res.json({
+            courses: tagsConfig.courses,
+            years: tagsConfig.years,
+            types: tagsConfig.types, // Using 'types' from tagsConfig
+            departments: tagsConfig.departments,
+            categories: tagsConfig.categories, // Using 'categories' from tagsConfig
+        });
     } catch (error) {
         console.error('Filter options error:', error);
         res.status(500).json({ error: 'Server error' });
     }
 });
 
-// Fetch User Projects
+
+// Fetch User Projects (This route is now in routes/profile.js as /my-projects)
+// Keeping this comment here for clarity that it was moved.
 router.get('/user-projects', isAuthenticated, isProfileComplete, async (req, res) => {
-    try {
-        const userId = req.session.userId;
-
-        const projects = await Project.find({
-            $or: [
-                { userId: userId },
-                { collaborators: userId }
-            ]
-        })
-        .select('title description image isPublished likes views points');
-
-        res.json(projects.map(p => ({
-            id: p._id,
-            title: p.title,
-            image: p.image || 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg',
-            description: p.description,
-            isPublished: p.isPublished,
-            likes: p.likes || 0,
-            views: p.views || 0,
-            points: p.points || 0
-        })));
-    } catch (error) {
-        console.error('Fetch user projects error:', error);
-        res.status(500).json({ error: 'Server error' });
-    }
+    return res.status(501).json({ message: 'This route has been moved. Please use /profile/my-projects instead.' });
 });
+
 
 // Post Comment
 router.post('/project/:id/comment', isAuthenticated, isProfileComplete, async (req, res) => {
@@ -247,26 +255,32 @@ router.post('/project/:id/comment', isAuthenticated, isProfileComplete, async (r
         if (!project) {
             return res.status(404).json({ error: 'Project not found' });
         }
+        // Populate userId to get profilePic for comments before saving new comment
+        const currentUser = await User.findById(req.session.userId).select('name profilePic');
+        if (!currentUser) {
+            return res.status(404).json({ error: 'Current user not found for commenting' });
+        }
+
         project.comments = project.comments || [];
-        project.comments.push({
+        const newComment = {
             userId: req.session.userId,
-            userName: req.session.userName || 'Anonymous',
+            userName: currentUser.name || 'Anonymous',
+            userProfilePic: currentUser.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg', // Include profile pic
             text: req.body.text,
             timestamp: new Date()
-        });
-        await project.save();
+        };
+        project.comments.push(newComment);
 
-        // --- NEW: Award points to project and user for commenting ---
+        // Award points to project and user for commenting
         project.points = (project.points || 0) + pointsCalculator.calculateCommentPoints();
-        await project.save(); // Save project again to update points
+        await project.save(); // Save project to update points and comments
 
         await User.findByIdAndUpdate(
             req.session.userId,
             { $inc: { totalPoints: pointsCalculator.calculateCommentPoints() } } // Award points to commenter
         );
-        // --- END NEW ---
 
-        res.json({ success: true });
+        res.json({ success: true, comments: project.comments }); // Return updated comments
     } catch (error) {
         console.error('Post comment error:', error);
         res.status(500).json({ error: 'Server error' });
@@ -297,11 +311,7 @@ router.delete('/project/:projectId/comment/:commentId', isAuthenticated, async (
             return res.status(403).json({ message: 'Unauthorized to delete this comment' });
         }
 
-        // --- NEW: Deduct points from project and user for deleting a comment ---
-        // Need to ensure points are deducted from the *original commenter* if possible,
-        // but for simplicity here, we'll deduct from the project and the deleter (if they are commenter).
-        // A more robust system might store points per comment to deduct accurately.
-        // For now, if the deleter is the commenter, deduct from their total points.
+        // Deduct points from project and user for deleting a comment
         if (isCommenter) {
             await User.findByIdAndUpdate(
                 currentUserId,
@@ -310,13 +320,11 @@ router.delete('/project/:projectId/comment/:commentId', isAuthenticated, async (
         }
         project.points = Math.max(0, (project.points || 0) - pointsCalculator.calculateCommentPoints());
         await project.save();
-        // --- END NEW ---
 
         comment.remove();
-        await project.save();
+        await project.save(); // Save project again after comment removal
 
-        res.json({ success: true, message: 'Comment deleted successfully' });
-
+        res.json({ success: true, message: 'Comment deleted successfully', comments: project.comments }); // Return updated comments list
     } catch (error) {
         console.error('Error deleting comment:', error);
         res.status(500).json({ message: 'Server error during comment deletion' });
@@ -334,19 +342,21 @@ router.delete('/project/:id', isAuthenticated, isProfileComplete, async (req, re
             return res.status(403).json({ error: 'Unauthorized' });
         }
         if (project.image && !project.image.includes('default-project.jpg')) {
-            const publicId = project.image.split('/').pop().split('.')[0];
-            await cloudinary.uploader.destroy(`sharecase/projects/${publicId}`);
+            const publicIdMatch = project.image.match(/sharecase\/projects\/(.+)\.\w+$/);
+            if (publicIdMatch && publicIdMatch[1]) {
+                const publicId = `sharecase/projects/${publicIdMatch[1]}`;
+                await cloudinary.uploader.destroy(publicId);
+            }
         }
-        
-        // --- NEW: Deduct points from the uploader when a project is deleted ---
+
+        // Deduct points from the uploader when a project is deleted
         await User.findByIdAndUpdate(
             project.userId,
-            { $inc: { totalPoints: -project.points } } // Deduct all points associated with the project
+            { $inc: { totalPoints: -project.points } }
         );
-        // --- END NEW ---
 
         await project.deleteOne();
-        res.status(200).json({ success: true });
+        res.status(200).json({ success: true, message: 'Project deleted successfully' });
     } catch (error) {
         console.error('Delete project error:', error);
         res.status(500).json({ error: 'Server error' });
@@ -368,7 +378,7 @@ router.put('/project/:id', isAuthenticated, isProfileComplete, upload.single('im
             return res.status(403).json({ error: 'Unauthorized to edit this project.' });
         }
 
-        const { title, description, tags, problemStatement, collaboratorIds, otherCollaborators, resources, isPublished } = req.body;
+        const { title, description, tags, problemStatement, collaboratorIds, otherCollaborators, resources, isPublished, projectType } = req.body;
 
         if (!title) {
             return res.status(400).json({ error: 'Title is required' });
@@ -384,8 +394,11 @@ router.put('/project/:id', isAuthenticated, isProfileComplete, upload.single('im
         let imageUrl = project.image;
         if (req.file && req.file.path) {
             if (imageUrl && !imageUrl.includes('default-project.jpg')) {
-                const publicId = imageUrl.split('/').pop().split('.')[0];
-                await cloudinary.uploader.destroy(`sharecase/projects/${publicId}`);
+                const publicIdMatch = imageUrl.match(/sharecase\/projects\/(.+)\.\w+$/);
+                if (publicIdMatch && publicIdMatch[1]) {
+                    const publicId = `sharecase/projects/${publicIdMatch[1]}`;
+                    await cloudinary.uploader.destroy(publicId);
+                }
             }
             imageUrl = req.file.path;
             console.log('New project image URL assigned from Multer during edit:', imageUrl);
@@ -420,16 +433,13 @@ router.put('/project/:id', isAuthenticated, isProfileComplete, upload.single('im
         project.resources = resources ? resources.split(',').map(r => r.trim()) : [];
         project.isPublished = isPublished === 'true';
         project.image = imageUrl;
+        project.projectType = projectType || project.projectType;
 
         await project.save();
-        res.json({ success: true });
+        res.json({ success: true, message: 'Project updated successfully' });
 
     } catch (error) {
         console.error('Edit project error:', error);
-        if (error instanceof multer.MulterError) {
-            console.error('Multer Error during edit-project:', error.message);
-            return res.status(400).json({ error: `File upload error: ${error.message}` });
-        }
         res.status(500).json({ error: 'Server error', details: error.message });
     }
 });
@@ -443,19 +453,20 @@ router.post('/project/:id/like', isAuthenticated, isProfileComplete, async (req,
         }
         const userId = req.session.userId;
         const hasLiked = project.likedBy.includes(userId);
+
         if (hasLiked) {
             project.likedBy = project.likedBy.filter(id => id.toString() !== userId);
-            // --- NEW: Deduct points from project and user for unlike ---
+            // Deduct points from project and user for unlike
             project.points = Math.max(0, (project.points || 0) - pointsCalculator.calculateLikePoints());
             await User.findByIdAndUpdate(
-                project.userId, // Award points to the project owner
+                project.userId, // Deduct points from the project owner
                 { $inc: { totalPoints: -pointsCalculator.calculateLikePoints() } }
             );
         } else {
             project.likedBy.push(userId);
-            // --- NEW: Add points to project and user for like ---
+            // Add points to project and user for like
             project.points = (project.points || 0) + pointsCalculator.calculateLikePoints();
-             await User.findByIdAndUpdate(
+            await User.findByIdAndUpdate(
                 project.userId, // Award points to the project owner
                 { $inc: { totalPoints: pointsCalculator.calculateLikePoints() } }
             );
@@ -473,13 +484,18 @@ router.post('/project/:id/like', isAuthenticated, isProfileComplete, async (req,
 router.post('/generate-portfolio', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
         const user = await User.findById(req.session.userId);
-        const projects = await Project.find({ userId: req.session.userId, isPublished: true });
+        if (!user) {
+            return res.status(404).json({ error: 'User not found for portfolio generation.' });
+        }
+        // Populate collaborators in projects to get their names for the PDF
+        const projects = await Project.find({ userId: req.session.userId, isPublished: true })
+                                      .populate('collaborators', 'name'); // Populate collaborator names for PDF
         const doc = new PDFDocument({ size: 'A4', margin: 40 });
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', 'attachment; filename=portfolio.pdf');
         doc.pipe(res);
 
-        // Fonts
+        // Fonts - Ensure these paths are correct in your public/fonts directory
         doc.registerFont('Roboto', 'public/fonts/Roboto-Regular.ttf');
         doc.registerFont('Roboto-Bold', 'public/fonts/Roboto-Bold.ttf');
 
@@ -501,7 +517,7 @@ router.post('/generate-portfolio', isAuthenticated, isProfileComplete, async (re
 
         // Projects Section Title
         doc.fillColor('#212529').font('Roboto-Bold').fontSize(22).text('My Projects', { align: 'left' });
-        doc.moveDown(.5);
+        doc.moveDown(0.5);
 
         if (projects.length === 0) {
             doc.font('Roboto').fontSize(12).text('No projects available to display.', { align: 'center' });
@@ -533,7 +549,7 @@ router.post('/generate-portfolio', isAuthenticated, isProfileComplete, async (re
                         doc.image(imageBuffer, { width: 350, align: 'center', valign: 'center' });
                         doc.moveDown(0.5);
                     } catch (error) {
-                        console.error('Image download error:', error);
+                        console.error('Image download error during PDF generation:', error);
                         doc.fontSize(10).fillColor('#e74c3c').text('Image not available or failed to download', { align: 'left' });
                         doc.moveDown(0.5);
                     }
@@ -555,8 +571,12 @@ router.post('/generate-portfolio', isAuthenticated, isProfileComplete, async (re
                 doc.moveDown(0.5);
 
                 // Collaborators
+                const collaboratorNames = p.collaborators && p.collaborators.length > 0
+                    ? p.collaborators.map(collab => collab.name).filter(Boolean).join(', ')
+                    : 'None';
+
                 doc.font('Roboto-Bold').fontSize(12).text('Collaborators:', { align: 'left' });
-                doc.font('Roboto').fontSize(10).text(p.collaborators && p.collaborators.length ? p.collaborators.join(', ') : 'None', { align: 'left', indent: 10 });
+                doc.font('Roboto').fontSize(10).text(collaboratorNames, { align: 'left', indent: 10 });
                 doc.moveDown(1);
             }
         }
@@ -569,32 +589,51 @@ router.post('/generate-portfolio', isAuthenticated, isProfileComplete, async (re
         res.status(500).json({ error: 'Server error' });
     }
 });
-
 // Fetch Single Project
 router.get('/project/:id', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
         const project = await Project.findById(req.params.id)
             .populate('userId', 'name profilePic')
-            .populate('collaborators', 'name email profilePic');
+            .populate('collaborators', 'name email profilePic')
+            // Add this line to populate the userId within each comment
+            .populate({
+                path: 'comments.userId', // Specify the path to the userId inside comments
+                select: 'name profilePic' // Select the fields you need from the User model
+            });
 
         if (!project) {
             return res.status(404).json({ error: 'Project not found' });
         }
 
         // Increment views and award points
-        // To prevent multiple points for same user on refresh, consider tracking unique views per session/user
-        // For now, simple increment:
         project.views = (project.views || 0) + 1;
-        project.points = (project.points || 0) + pointsCalculator.calculateViewPoints(); // --- NEW: Award points for view ---
-        await project.save();
+        project.points = (project.points || 0) + pointsCalculator.calculateViewPoints(); // Award points for view
+        await project.save(); // Save the project to update views and points
 
-        // --- NEW: Award points to the project owner for views ---
-        await User.findByIdAndUpdate(
-            project.userId,
-            { $inc: { totalPoints: pointsCalculator.calculateViewPoints() } } // Award points to project owner
-        );
-        // --- END NEW ---
+        // Award points to the project owner for views
+        // Ensure project.userId exists before trying to access its _id
+        if (project.userId) {
+            await User.findByIdAndUpdate(
+                project.userId._id, // Use project.userId._id when it's populated
+                { $inc: { totalPoints: pointsCalculator.calculateViewPoints() } }
+            );
+        }
 
+        // Format comments to include userProfilePic if populated
+        const formattedComments = project.comments.map(comment => {
+            const commenter = comment.userId; // This will now be a populated User object
+            return {
+                _id: comment._id,
+                userId: commenter ? commenter._id : null,
+                userName: commenter ? commenter.name : comment.userName || 'Unknown', // Fallback to comment.userName if populate fails
+                userProfilePic: commenter ? (commenter.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg') : 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg',
+                text: comment.text,
+                timestamp: comment.timestamp
+            };
+        });
+
+        // This is the JSON response sent to the frontend.
+        // We need to ensure all fields expected by project.html are present and correctly formatted.
         const formattedCollaborators = project.collaborators.map(collab => ({
             _id: collab._id,
             name: collab.name,
@@ -607,7 +646,7 @@ router.get('/project/:id', isAuthenticated, isProfileComplete, async (req, res) 
             title: project.title,
             description: project.description,
             image: project.image || 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg',
-            userId: project.userId._id,
+            userId: project.userId._id, // Ensure project.userId exists and is populated
             userName: project.userId.name,
             userProfilePic: project.userId.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg',
             problemStatement: project.problemStatement || '',
@@ -618,15 +657,21 @@ router.get('/project/:id', isAuthenticated, isProfileComplete, async (req, res) 
             likes: project.likes || 0,
             views: project.views || 0,
             points: project.points || 0,
-            comments: project.comments || [],
+            comments: formattedComments,
             likedBy: project.likedBy || [],
-            isPublished: project.isPublished
+            isPublished: project.isPublished,
+            projectType: project.projectType || 'Other'
         });
     } catch (error) {
         console.error('Fetch project error:', error);
+        // Add specific error handling for CastError if the ID format is bad
+        if (error.name === 'CastError') {
+            return res.status(400).json({ message: 'Invalid project ID format.' });
+        }
         res.status(500).json({ error: 'Server error', details: error.message });
     }
 });
+
 
 // NEW ROUTE: Fetch Projects by User ID (Corrected to include collaborations)
 router.get('/projects-by-user/:userId', isAuthenticated, async (req, res) => {
@@ -642,9 +687,9 @@ router.get('/projects-by-user/:userId', isAuthenticated, async (req, res) => {
         })
         .populate('userId', 'name profilePic')
         .populate('collaborators', 'name profilePic')
-        .select('title description image tags likes views points');
+        .select('title description image tags likes views points projectType'); // Ensure points are selected here too
 
-        if (!projects) {
+        if (!projects) { // Check for projects array, not if it's null (it will be an empty array if no projects)
             return res.status(200).json([]);
         }
 
@@ -659,7 +704,8 @@ router.get('/projects-by-user/:userId', isAuthenticated, async (req, res) => {
             tags: project.tags || [],
             likes: project.likes || 0,
             views: project.views || 0,
-            points: project.points || 0
+            points: project.points || 0, // Points are included in this API response, handled by frontend's renderProjectCard
+            projectType: project.projectType || 'Other'
         }));
 
         res.json(formattedProjects);
@@ -670,49 +716,5 @@ router.get('/projects-by-user/:userId', isAuthenticated, async (req, res) => {
     }
 });
 
-// --- NEW ROUTE: Get Overall Project Analytics (for Admins/ShareCase Workers) ---
-router.get('/admin/analytics/projects', isAuthenticated, async (req, res) => {
-    try {
-        // --- Authorization Check: Only 'admin' or 'sharecase_worker' can access ---
-        // This will be handled by a new middleware in middleware/auth.js (e.g., isAdminOrShareCaseWorker)
-        // For now, it's just isAuthenticated, but we'll refine this.
-        if (req.session.userRole !== 'admin' && req.session.userRole !== 'sharecase_worker') {
-            return res.status(403).json({ message: 'Access denied. Insufficient privileges.' });
-        }
-
-        const totalProjects = await Project.countDocuments();
-        const totalPublishedProjects = await Project.countDocuments({ isPublished: true });
-        const projectsByType = await Project.aggregate([
-            { $group: { _id: "$projectType", count: { $sum: 1 } } }
-        ]);
-        const projectsByTag = await Project.aggregate([
-            { $unwind: "$tags" },
-            { $group: { _id: "$tags", count: { $sum: 1 } } },
-            { $sort: { count: -1 } },
-            { $limit: 10 } // Top 10 tags
-        ]);
-        const topProjectsByViews = await Project.find({ isPublished: true })
-            .sort({ views: -1 })
-            .limit(5)
-            .select('title views userId userName');
-        const topProjectsByPoints = await Project.find({ isPublished: true })
-            .sort({ points: -1 })
-            .limit(5)
-            .select('title points userId userName');
-
-        res.json({
-            totalProjects,
-            totalPublishedProjects,
-            projectsByType,
-            projectsByTag,
-            topProjectsByViews,
-            topProjectsByPoints
-        });
-
-    } catch (error) {
-        console.error('Error fetching project analytics:', error);
-        res.status(500).json({ error: 'Server error' });
-    }
-});
 
 module.exports = router;

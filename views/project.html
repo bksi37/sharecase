@@ -7,30 +7,50 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/styles.css">
+    
+    <link rel="stylesheet" href="/css/_base.css">
+    <link rel="stylesheet" href="/css/_header.css">
+    <link rel="stylesheet" href="/css/_forms.css">
+    <link rel="stylesheet" href="/css/_project_cards.css">
+    <link rel="stylesheet" href="/css/_project_detail_page.css">
+    <link rel="stylesheet" href="/css/_utilities.css">
+
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 </head>
 <body>
     <header class="d-flex justify-content-between align-items-center">
         <div class="logo">
             <a href="/index.html">ShareCase</a>
         </div>
-        <div class="search-bar position-relative">
-            <input type="text" class="form-control" id="searchInput" placeholder="Search projects...">
-            <button class="btn position-absolute" style="right: 5px; top: 50%; transform: translateY(-50%);" id="filterBtn"><i class="fas fa-filter"></i></button>
+        <div class="search-bar-container position-relative">
+            <div class="input-group">
+                <input type="text" class="form-control" id="searchInput" placeholder="Search projects, users...">
+                <button class="btn btn-outline-secondary" id="filterBtn" data-bs-toggle="modal" data-bs-target="#filterModal" type="button">
+                    <i class="fas fa-filter"></i>
+                </button>
+            </div>
+            <div id="autocompleteSuggestions" class="autocomplete-suggestions"></div>
         </div>
         <div class="user-menu">
-            <div class="profile-container" id="userMenuToggle">
+            <div class="profile-container" id="userMenuToggle" style="display: none;">
                 <img id="headerProfilePic" src="https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg" alt="Profile Picture">
                 <span id="headerProfileName">Guest</span>
                 <div class="dropdown-menu" id="userDropdown">
-                    <a href="/profile.html">My Profile</a>
-                    <a href="/settings.html">Settings</a>
-                    <a href="/upload-project.html">Upload Project</a>
-                    <a id="authLink" href="/login.html">Login</a>
-                    <a href="/about.html">About</a>
+                    <a href="/profile.html" class="dropdown-item">Profile</a>
+                    <a href="/settings.html" class="dropdown-item">Settings</a>
+                    <a href="/upload-project.html" class="dropdown-item">Upload Project</a>
+                    <a id="adminDashboardLink" href="/admin/dashboard.html" class="dropdown-item" style="display: none;">Admin Dashboard</a>
+                    <a id="logoutLink" href="/logout" class="dropdown-item">Logout</a>
+                    <a href="/about.html" class="dropdown-item">About</a>
+                    <div class="dropdown-item-text text-muted small mt-2">
+                        Role: <span id="userRoleDisplay"></span><br>
+                        Points: <span id="userPointsDisplay"></span>
+                    </div>
                 </div>
+            </div>
+            <div id="authControls" style="display: none;">
+                <a href="/login.html" class="btn btn-primary btn-sm">Login</a>
+                <a href="/signup.html" class="btn btn-outline-primary btn-sm ms-2">Sign Up</a>
             </div>
         </div>
     </header>
@@ -42,15 +62,20 @@
                     <h1 id="projectTitle" class="card-title text-center mb-4">Loading Project...</h1>
 
                     <div class="mb-4 text-center">
-                        <img id="projectImage" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" class="img-fluid rounded shadow-sm" alt="Project Image" style="max-height: 500px; width: auto; object-fit: contain;">
+                        <img id="projectImage" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" class="img-fluid rounded shadow-sm" alt="Project Image" onerror="this.src='https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'">
                     </div>
 
                     <div class="project-details-content">
                         <h4 class="mb-3">Project Overview</h4>
                         <p id="projectDescription" class="mb-3"></p>
+                        
+                        <div class="d-flex flex-wrap align-items-center mb-3">
+                            <strong class="me-2">Project Type:</strong> <span id="projectTypeDisplay" class="badge bg-secondary"></span>
+                        </div>
+
                         <p class="card-text">
-                            <small class="text-muted">
-                                Uploaded by: <span id="projectUploader"></span>
+                            <small class="text-muted d-flex align-items-center">
+                                Uploaded by: <span id="projectUploader" class="ms-2"></span>
                             </small>
                         </p>
                         <div id="collaboratorsDisplay" class="d-flex flex-wrap align-items-center mb-3"></div>
@@ -66,7 +91,7 @@
                         <div class="project-stats d-flex gap-3">
                             <span id="likes" class="text-muted"><i class="fas fa-heart me-1"></i> 0 Likes</span>
                             <span id="views" class="text-muted"><i class="fas fa-eye me-1"></i> 0 Views</span>
-                        </div>
+                            </div>
                         <button id="likeBtn" class="btn btn-outline-primary"><i class="fas fa-heart me-1"></i> Like</button>
                     </div>
 
@@ -94,206 +119,190 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="/js/scripts.js"></script>
     <script>
-        // Global variable to store current user ID for authorization checks
-        let currentLoggedInUserId = null;
+        // Global variables for search (from scripts.js)
+        // let searchTimeout; 
+        // const DEBOUNCE_DELAY = 300; 
+        // currentLoggedInUserId is global from scripts.js
 
-        async function loadUserProfileInHeader() {
-            try {
-                const response = await fetch('/current-user');
-                if (response.ok) {
-                    const data = await response.json();
-                    const user = data.user;
-
-                    if (user && data.isLoggedIn) {
-                        currentLoggedInUserId = user._id; // Store current user's ID
-                        document.getElementById('headerProfileName').textContent = user.name || 'Guest';
-                        document.getElementById('headerProfilePic').src = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
-                        const authLink = document.getElementById('authLink');
-                        if (authLink) {
-                            authLink.textContent = 'Logout';
-                            authLink.href = '/logout';
-                        }
-                    } else {
-                        currentLoggedInUserId = null; // Ensure null if not logged in
-                        const authLink = document.getElementById('authLink');
-                        if (authLink) {
-                            authLink.textContent = 'Login';
-                            authLink.href = '/login.html';
-                        }
-                    }
-                } else {
-                    currentLoggedInUserId = null; // Ensure null if response not ok
-                    const authLink = document.getElementById('authLink');
-                    if (authLink) {
-                        authLink.textContent = 'Login';
-                        authLink.href = '/login.html';
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading user profile in header:', error);
-                Toastify({
-                    text: 'Error loading user profile in header',
-                    duration: 3000,
-                    style: { background: '#e74c3c' },
-                }).showToast();
-                currentLoggedInUserId = null; // Ensure null on error
-                const authLink = document.getElementById('authLink');
-                if (authLink) {
-                    authLink.textContent = 'Login';
-                    authLink.href = '/login.html';
-                }
-            }
-        }
+        // Functions from scripts.js needed globally:
+        // loadUserProfileInHeader, performGlobalSearch, renderUserSuggestion
 
         async function loadProject() {
             const urlParams = new URLSearchParams(window.location.search);
             const projectId = urlParams.get('id');
+            
             if (!projectId) {
-                Toastify({
-                    text: 'No project ID provided',
-                    duration: 3000,
-                    style: { background: '#e74c3c' },
-                }).showToast();
+                Toastify({ text: 'No project ID provided. Redirecting to home.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
                 setTimeout(() => window.location.href = '/index.html', 3000);
                 return;
             }
 
             try {
                 const response = await fetch(`/project/${projectId}`);
-                if (response.ok) {
-                    const project = await response.json();
-                    document.getElementById('projectTitle').textContent = project.title;
-                    document.getElementById('projectImage').src = project.image;
-                    document.getElementById('projectDescription').textContent = project.description || 'No description provided.';
-                    document.getElementById('problemStatement').textContent = project.problemStatement || 'Not specified.';
+                
+                // If response is not ok, throw an error to be caught below
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ message: response.statusText || 'Unknown error' })); // Attempt to parse JSON error, fallback to status text
+                    if (response.status === 404) {
+                        throw new Error('Project not found or is not published.');
+                    } else if (response.status === 401 || response.status === 403) {
+                        throw new Error('You need to be logged in and authorized to view this project.');
+                    }
+                    throw new Error(errorData.message || 'Failed to load project');
+                }
 
-                    const projectUploaderSpan = document.getElementById('projectUploader');
+                const project = await response.json();
+                
+                // Populate basic project details with defensive checks
+                document.getElementById('projectTitle').textContent = project.title || 'Untitled Project';
+                document.getElementById('projectImage').src = project.image || 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg';
+                document.getElementById('projectDescription').textContent = project.description || 'No description provided.';
+                document.getElementById('problemStatement').textContent = project.problemStatement || 'Not specified.';
+                
+                // Project Type
+                const projectTypeDisplay = document.getElementById('projectTypeDisplay');
+                if (projectTypeDisplay) {
+                    projectTypeDisplay.textContent = project.projectType || 'Other';
+                }
+
+                // Uploader Info
+                const projectUploaderSpan = document.getElementById('projectUploader');
+                if (projectUploaderSpan) {
                     if (project.userId && project.userName) {
                         const uploaderProfilePic = project.userProfilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
                         const uploaderLinkHref = `/public-profile.html?userId=${project.userId}`;
-
                         projectUploaderSpan.innerHTML = `
-                            <a href="${uploaderLinkHref}" class="text-decoration-none d-flex align-items-center">
-                                <img src="${uploaderProfilePic}" alt="Uploader Profile" class="rounded-circle me-2" style="width: 30px; height: 30px; object-fit: cover;">
+                            <a href="${uploaderLinkHref}" class="text-decoration-none text-muted d-flex align-items-center">
+                                <img src="${uploaderProfilePic}" alt="Uploader Profile" class="rounded-circle me-2" style="width: 24px; height: 24px; object-fit: cover; border: 1px solid #eee;">
                                 <strong>${project.userName}</strong>
                             </a>
                         `;
                     } else {
                         projectUploaderSpan.textContent = 'Unknown User';
                     }
+                }
 
-                    const collaboratorsDisplay = document.getElementById('collaboratorsDisplay');
+                // Collaborators
+                const collaboratorsDisplay = document.getElementById('collaboratorsDisplay');
+                if (collaboratorsDisplay) {
                     let allCollaboratorsHtml = [];
+                    let hasCollaborators = false;
 
-                    if (project.collaborators && project.collaborators.length > 0) {
+                    if (project.collaborators && Array.isArray(project.collaborators) && project.collaborators.length > 0) {
+                        hasCollaborators = true;
                         project.collaborators.forEach(collabUser => {
+                            // Check if collabUser is actually populated (an object) or just an ID string
+                            const collabId = collabUser._id || collabUser;
+                            const collabName = collabUser.name || 'Unknown';
                             const collabProfilePic = collabUser.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
-                            const collabLinkHref = `/public-profile.html?userId=${collabUser._id}`;
-
-                            allCollaboratorsHtml.push(
-                                `<li class="d-inline-block me-2 mb-1">
-                                    <a href="${collabLinkHref}" class="badge bg-info text-decoration-none d-flex align-items-center p-2">
+                            const collabLinkHref = `/public-profile.html?userId=${collabId}`;
+                            
+                            allCollaboratorsHtml.push(`
+                                <li class="d-inline-block me-2 mb-1">
+                                    <a href="${collabLinkHref}" class="badge bg-info text-decoration-none d-flex align-items-center p-2 text-white">
                                         <img src="${collabProfilePic}" alt="Profile" class="rounded-circle me-1" style="width: 20px; height: 20px; object-fit: cover;">
-                                        ${collabUser.name}
+                                        ${collabName}
                                     </a>
-                                </li>`
-                            );
+                                </li>
+                            `);
                         });
                     }
 
-                    if (project.otherCollaborators && project.otherCollaborators.length > 0) {
+                    if (project.otherCollaborators && Array.isArray(project.otherCollaborators) && project.otherCollaborators.length > 0) {
+                        hasCollaborators = true;
                         project.otherCollaborators.forEach(otherCollab => {
-                            allCollaboratorsHtml.push(
-                                `<li class="d-inline-block me-2 mb-1">
-                                    <span class="badge bg-secondary p-2">${otherCollab}</span>
-                                </li>`
-                            );
+                            allCollaboratorsHtml.push(`
+                                <li class="d-inline-block me-2 mb-1">
+                                    <span class="badge bg-secondary p-2 text-white">${otherCollab}</span>
+                                </li>
+                            `);
                         });
                     }
 
-                    if (allCollaboratorsHtml.length > 0) {
+                    if (hasCollaborators) {
                         collaboratorsDisplay.innerHTML = `<h6 class="me-2 mb-1">Collaborators:</h6><ul class="list-unstyled d-flex flex-wrap mb-0">${allCollaboratorsHtml.join('')}</ul>`;
                     } else {
                         collaboratorsDisplay.innerHTML = '<p class="text-muted">No collaborators specified.</p>';
                     }
+                }
 
-                    const tagsDiv = document.getElementById('tags');
-                    if (project.tags && project.tags.length > 0) {
-                        tagsDiv.innerHTML = project.tags.map(t => `<span class="badge bg-primary me-1">${t}</span>`).join('');
+                // Tags
+                const tagsDiv = document.getElementById('tags');
+                if (tagsDiv) {
+                    if (project.tags && Array.isArray(project.tags) && project.tags.length > 0) {
+                        tagsDiv.innerHTML = project.tags.map(t => `<span class="badge bg-primary me-1 text-white">${t}</span>`).join('');
                     } else {
                         tagsDiv.innerHTML = '<span class="text-muted">No tags.</span>';
                     }
+                }
 
-                    const resourcesList = document.getElementById('resources');
-                    if (project.resources && project.resources.length > 0) {
-                        resourcesList.innerHTML = project.resources.map(r => `<li class="d-inline-block me-2"><a href="${r}" target="_blank" class="badge bg-secondary text-decoration-none">${r.split('/').pop()}</a></li>`).join('');
+                // Resources
+                const resourcesList = document.getElementById('resources');
+                if (resourcesList) {
+                    if (project.resources && Array.isArray(project.resources) && project.resources.length > 0) {
+                        resourcesList.innerHTML = project.resources.map(r => `
+                            <li class="d-inline-block me-2">
+                                <a href="${r}" target="_blank" class="badge bg-secondary text-decoration-none text-white">
+                                    <i class="fas fa-link me-1"></i> ${r.split('/').pop().substring(0, 30)}${r.split('/').pop().length > 30 ? '...' : ''}
+                                </a>
+                            </li>
+                        `).join('');
                     } else {
                         resourcesList.innerHTML = '<li class="d-inline-block text-muted">No resources.</li>';
                     }
+                }
 
-                    document.getElementById('likes').innerHTML = `<i class="fas fa-heart"></i> ${project.likes} Likes`;
-                    document.getElementById('views').innerHTML = `<i class="fas fa-eye"></i> ${project.views} Views`;
+                // Likes and Views
+                document.getElementById('likes').innerHTML = `<i class="fas fa-heart"></i> ${project.likes || 0} Likes`;
+                document.getElementById('views').innerHTML = `<i class="fas fa-eye"></i> ${project.views || 0} Views`;
 
-                    const likeBtn = document.getElementById('likeBtn');
-                    // Current user ID for like functionality is already captured globally by loadUserProfileInHeader()
-                    const hasLiked = currentLoggedInUserId && project.likedBy.includes(currentLoggedInUserId);
+                // Like Button functionality
+                const likeBtn = document.getElementById('likeBtn');
+                if (likeBtn) {
+                    // currentLoggedInUserId is a global variable set by loadUserProfileInHeader from scripts.js
+                    const hasLiked = currentLoggedInUserId && (project.likedBy || []).includes(currentLoggedInUserId); // Ensure likedBy is an array
                     likeBtn.textContent = hasLiked ? 'Unlike' : 'Like';
                     likeBtn.className = hasLiked ? 'btn btn-primary' : 'btn btn-outline-primary';
                     likeBtn.onclick = () => toggleLike(projectId);
-
-                    // Pass project.userId (the project owner's ID) to loadComments for authorization
-                    await loadComments(projectId, project.comments, project.userId); 
-                } else {
-                    const errorData = await response.json();
-                    throw new Error(errorData.message || 'Failed to load project');
                 }
+
+                // Load Comments
+                await loadComments(projectId, project.comments || [], project.userId); 
             } catch (error) {
                 console.error('Error loading project:', error);
-                Toastify({
-                    text: error.message || 'Error loading project',
-                    duration: 3000,
-                    style: { background: '#e74c3c' },
-                }).showToast();
-                setTimeout(() => window.location.href = '/index.html', 3000);
+                Toastify({ text: error.message || 'Error loading project', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                setTimeout(() => window.location.href = '/index.html', 3000); // Redirect on any error
             }
         }
 
-        // Updated loadComments function
-        async function loadComments(projectId, commentsData, projectOwnerId) { // Added projectOwnerId parameter
+        // loadComments function (no changes needed here from previous version, as it's robust)
+        async function loadComments(projectId, commentsData, projectOwnerId) { 
             const commentsListDiv = document.getElementById('commentsList');
             const commentCountSpan = document.getElementById('commentCount');
             const noCommentsMessage = document.getElementById('noCommentsMessage');
 
-            if (!noCommentsMessage) {
-                console.error("Error: The 'noCommentsMessage' element was not found in the DOM. Comments display may be affected.");
-            }
-
-            if (commentsListDiv) {
-                commentsListDiv.innerHTML = '';
-            } else {
-                console.error("Error: The 'commentsList' element was not found in the DOM.");
+            if (!commentsListDiv || !noCommentsMessage || !commentCountSpan) {
+                console.error("Comments display elements not found in the DOM.");
                 return;
             }
 
-            if (commentsData && commentsData.length > 0) {
-                if (noCommentsMessage) {
-                    noCommentsMessage.style.display = 'none';
-                }
+            commentsListDiv.innerHTML = ''; // Clear previous comments
+
+            if (commentsData && Array.isArray(commentsData) && commentsData.length > 0) {
+                noCommentsMessage.style.display = 'none';
                 commentsData.forEach(c => {
                     const commentElement = document.createElement('div');
-                    // Add position-relative for positioning the delete button
                     commentElement.classList.add('comment-item', 'card', 'p-3', 'mb-2', 'shadow-sm', 'position-relative'); 
                     
-                    // Make username clickable
                     const userNameHtml = c.userId
                         ? `<a href="/public-profile.html?userId=${c.userId}" class="text-decoration-none" style="color: inherit;"><strong>${c.userName}</strong></a>`
                         : `<strong>${c.userName}</strong>`; // Fallback if userId is missing
 
                     let deleteButtonHtml = '';
                     // Display delete button if current user is the commenter OR the project owner
-                    // currentLoggedInUserId is populated by loadUserProfileInHeader()
                     if (currentLoggedInUserId && (currentLoggedInUserId === c.userId || currentLoggedInUserId === projectOwnerId)) {
                         deleteButtonHtml = `
                             <button class="btn btn-sm btn-outline-danger delete-comment-btn" data-comment-id="${c._id}" title="Delete Comment" style="position: absolute; top: 8px; right: 8px; border-radius: 50%;">
@@ -323,20 +332,14 @@
                     });
                 });
 
-                if (commentCountSpan) {
-                    commentCountSpan.textContent = commentsData.length;
-                }
+                commentCountSpan.textContent = commentsData.length;
             } else {
-                if (noCommentsMessage) {
-                    noCommentsMessage.style.display = 'block';
-                }
-                if (commentCountSpan) {
-                    commentCountSpan.textContent = '0';
-                }
+                noCommentsMessage.style.display = 'block';
+                commentCountSpan.textContent = '0';
             }
         }
 
-        // New function to handle comment deletion
+        // deleteComment function (no changes needed here, as it's robust)
         async function deleteComment(projectId, commentId) {
             if (!confirm('Are you sure you want to delete this comment?')) {
                 return;
@@ -345,14 +348,11 @@
             try {
                 const response = await fetch(`/project/${projectId}/comment/${commentId}`, {
                     method: 'DELETE',
+                    credentials: 'include'
                 });
 
                 if (response.ok) {
-                    Toastify({
-                        text: 'Comment deleted successfully!',
-                        duration: 3000,
-                        style: { background: '#28a745' },
-                    }).showToast();
+                    Toastify({ text: 'Comment deleted successfully!', duration: 3000, style: { background: '#28a745' } }).showToast();
                     loadProject(); // Reload the project to refresh comments
                 } else {
                     const errorData = await response.json();
@@ -360,19 +360,17 @@
                 }
             } catch (error) {
                 console.error('Error deleting comment:', error);
-                Toastify({
-                    text: error.message || 'Error deleting comment',
-                    duration: 3000,
-                    style: { background: '#e74c3c' },
-                }).showToast();
+                Toastify({ text: error.message || 'Error deleting comment', duration: 3000, style: { background: '#e74c3c' } }).showToast();
             }
         }
 
+        // toggleLike function (no changes needed here, as it's robust)
         async function toggleLike(projectId) {
             try {
                 const response = await fetch(`/project/${projectId}/like`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include'
                 });
                 if (response.ok) {
                     const { likes, hasLiked } = await response.json();
@@ -380,69 +378,82 @@
                     document.getElementById('likes').innerHTML = `<i class="fas fa-heart"></i> ${likes} Likes`;
                     likeBtn.textContent = hasLiked ? 'Unlike' : 'Like';
                     likeBtn.className = hasLiked ? 'btn btn-primary' : 'btn btn-outline-primary';
-                    Toastify({
-                        text: hasLiked ? 'Project liked!' : 'Project unliked!',
-                        duration: 3000,
-                        style: { background: '#28a745' },
-                    }).showToast();
+                    Toastify({ text: hasLiked ? 'Project liked!' : 'Project unliked!', duration: 3000, style: { background: '#28a745' } }).showToast();
                 } else {
                     const errorData = await response.json();
                     throw new Error(errorData.message || 'Failed to toggle like');
                 }
             } catch (error) {
                 console.error('Error toggling like:', error);
-                Toastify({
-                    text: error.message || 'Error toggling like',
-                    duration: 3000,
-                    style: { background: '#e74c3c' },
-                }).showToast();
+                Toastify({ text: error.message || 'Error toggling like', duration: 3000, style: { background: '#e74c3c' } }).showToast();
             }
         }
 
+        // Comment form submission (no changes needed here, as it's robust)
         document.getElementById('commentForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const urlParams = new URLSearchParams(window.location.search);
             const projectId = urlParams.get('id');
             const commentText = document.getElementById('commentText').value.trim();
             if (!commentText) {
-                Toastify({
-                    text: 'Comment cannot be empty',
-                    duration: 3000,
-                    style: { background: '#e74c3c' },
-                }).showToast();
+                Toastify({ text: 'Comment cannot be empty', duration: 3000, style: { background: '#e74c3c' } }).showToast();
                 return;
             }
             try {
                 const response = await fetch(`/project/${projectId}/comment`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: commentText })
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify({ text: commentText }),
+                    credentials: 'include'
                 });
                 if (response.ok) {
                     document.getElementById('commentText').value = '';
-                    Toastify({
-                        text: 'Comment posted successfully!',
-                        duration: 3000,
-                        style: { background: '#28a745' },
-                    }).showToast();
-                    loadProject();
+                    Toastify({ text: 'Comment posted successfully!', duration: 3000, style: { background: '#28a745' } }).showToast();
+                    loadProject(); // Reload project to update comments and counts
                 } else {
                     const errorData = await response.json();
                     throw new Error(errorData.message || 'Failed to post comment');
                 }
             } catch (error) {
                 console.error('Error posting comment:', error);
-                Toastify({
-                    text: error.message || 'Error posting comment',
-                    duration: 3000,
-                    style: { background: '#e74c3c' },
-                }).showToast();
+                Toastify({ text: error.message || 'Error posting comment', duration: 3000, style: { background: '#e74c3c' } }).showToast();
             }
         });
 
         document.addEventListener('DOMContentLoaded', () => {
-            loadUserProfileInHeader();
-            loadProject();
+            // Header search bar functionality (using global functions from scripts.js)
+            const searchInput = document.getElementById('searchInput');
+            const autocompleteSuggestions = document.getElementById('autocompleteSuggestions');
+            if (searchInput && autocompleteSuggestions) {
+                searchInput.addEventListener('input', () => {
+                    // searchTimeout and performGlobalSearch come from scripts.js
+                    clearTimeout(window.searchTimeout); 
+                    window.searchTimeout = setTimeout(() => performGlobalSearch(), DEBOUNCE_DELAY);
+                });
+                searchInput.addEventListener('focus', () => {
+                    if (searchInput.value.trim() && autocompleteSuggestions.children.length > 0) {
+                        autocompleteSuggestions.style.display = 'block';
+                    }
+                });
+                document.addEventListener('click', (event) => {
+                    if (!autocompleteSuggestions.contains(event.target) && event.target !== searchInput) {
+                        autocompleteSuggestions.style.display = 'none';
+                    }
+                });
+            }
+
+            // Filter button in header (if you plan to use a modal on this page's header)
+            const filterBtn = document.getElementById('filterBtn');
+            if (filterBtn) {
+                filterBtn.addEventListener('click', () => {
+                    // You might need to add a filter modal to this HTML file if you want it to work
+                    Toastify({ text: 'Filter modal not implemented on this page.', duration: 2000, style: { background: "#ffc107" } }).showToast();
+                });
+            }
+            
+            // Initial loads on DOMContentLoaded for proper ordering
+            loadUserProfileInHeader(); // from scripts.js
+            loadProject(); // specific to this page
         });
     </script>
 </body>

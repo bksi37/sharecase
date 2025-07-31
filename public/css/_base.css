@@ -1,0 +1,82 @@
+/* public/css/_base.css */
+
+/* General styles for ShareCase */
+* {
+    box-sizing: border-box;
+    /* Consider adding: font-variant-numeric: tabular-nums; for consistent number spacing */
+}
+
+body {
+    font-family: 'Roboto', 'Arial', sans-serif;
+    background-color: #f9f9f9; /* Very light grey background */
+    margin: 0;
+    padding-top: 60px; /* Adjusted to match header height, ensuring content starts below fixed header */
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column; /* Ensure content and footer stack vertically */
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px 15px; /* Added vertical padding, adjusted horizontal */
+    flex: 1; /* Allows main content to grow and push footer down */
+}
+
+/* Button Styles */
+.btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+    color: #fff;
+    font-weight: 500; /* Slightly bolder text */
+    border-radius: 5px; /* Consistent rounded corners */
+    transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+    border-color: #0056b3;
+    box-shadow: 0 2px 5px rgba(0, 123, 255, 0.2); /* Subtle hover shadow */
+}
+
+.btn-secondary {
+    background: #e0e0e0; /* A bit lighter grey */
+    border: none;
+    color: #555; /* Darker text for contrast */
+    font-weight: 500;
+    border-radius: 5px;
+    transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+}
+
+.btn-secondary:hover {
+    background: #cccccc;
+    color: #333;
+}
+
+.btn-outline-primary {
+    border-color: #007bff;
+    color: #007bff;
+    font-weight: 500;
+    border-radius: 5px;
+    transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+}
+
+.btn-outline-primary:hover {
+    background: #007bff;
+    color: #fff;
+    box-shadow: 0 2px 5px rgba(0, 123, 255, 0.2);
+}
+
+footer {
+    background: #f8f9fa; /* Lighter background for footer */
+    padding: 20px;
+    text-align: center;
+    border-top: 1px solid #e9ecef; /* Lighter border */
+    margin-top: auto; /* Pushes footer to the bottom */
+}
+
+footer p {
+    margin: 0;
+    color: #777777; /* Slightly darker soft grey text */
+    font-size: 14px;
+}

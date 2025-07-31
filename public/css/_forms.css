@@ -1,0 +1,152 @@
+/* public/css/_forms.css */
+
+/* Auth Container (for signup/login/create-profile) */
+.auth-container {
+    max-width: 600px; /* Consistent width for auth forms */
+    margin: 0 auto;
+    padding: 40px; /* Increased padding */
+    background: #ffffff;
+    border-radius: 12px; /* More rounded */
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08); /* More prominent but still soft shadow */
+    border: 1px solid #f0f0f0; /* Subtle border */
+}
+
+.auth-container h2 {
+    color: #444444; /* Darker heading */
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+/* Upload project styles */
+.upload-container {
+    max-width: 800px;
+    margin: 80px auto 50px; /* Adjusted top margin for fixed header */
+    padding: 40px; /* Increased padding */
+    background: #ffffff;
+    border-radius: 12px; /* More rounded */
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08); /* More prominent but still soft shadow */
+}
+
+.upload-container h2 {
+    color: #444444; /* Darker heading */
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.drop-zone {
+    border: 2px dashed #cccccc; /* Slightly darker dashed border */
+    padding: 30px; /* More padding */
+    text-align: center;
+    cursor: pointer;
+    border-radius: 10px; /* More rounded */
+    margin-bottom: 25px;
+    background: #fdfdfd; /* Very subtle off-white */
+    transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+}
+
+.drop-zone.dragover {
+    background: #e9f0ff; /* Light blue on drag */
+    border-color: #007bff; /* Blue border on drag */
+}
+
+.image-preview img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 10px; /* Consistent rounded corners */
+    border: 1px solid #e0e0e0; /* Subtle border */
+}
+
+/* Filter Form Styles (for modals or dedicated filter pages) */
+.filter-form {
+    max-width: 600px;
+    margin: 30px auto; /* Adjusted margin */
+    background: #ffffff; /* White background for filters */
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    display: none; /* Hidden by default, shown by JS */
+}
+
+.filter-form.active {
+    display: block;
+}
+
+/* Settings Page Styles */
+.settings-form {
+    max-width: 700px; /* Slightly wider settings form */
+    margin: 80px auto 50px; /* Adjusted top margin */
+    background: #ffffff;
+    padding: 40px; /* Increased padding */
+    border-radius: 12px;
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+}
+
+.settings-form h2 {
+    color: #444444;
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.form-group {
+    margin-bottom: 20px; /* Spacing between form groups */
+}
+
+.password-section {
+    display: none;
+    margin-top: 30px; /* Space above password section */
+    padding-top: 20px;
+    border-top: 1px solid #f0f0f0;
+}
+
+.danger-zone {
+    border: 1px solid #dc3545;
+    padding: 25px; /* More padding */
+    border-radius: 8px;
+    background-color: #fffafa; /* Very light red background */
+    margin-top: 40px;
+}
+
+.danger-zone h3 {
+    color: #dc3545;
+    margin-bottom: 15px;
+}
+
+.activity-log ul {
+    list-style: none;
+    padding: 0;
+    margin-top: 20px;
+}
+
+.activity-log li {
+    padding: 12px 0; /* Slightly more padding */
+    border-bottom: 1px solid #eeeeee; /* Lighter border */
+    font-size: 15px;
+    color: #555;
+}
+.activity-log li:last-child {
+    border-bottom: none;
+}
+
+/* Comment Input Box Styles */
+.comment-input-box {
+    background-color: #ffffff;
+    border-radius: 12px;
+    padding: 25px; /* More padding */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e0e0e0;
+}
+
+#commentText {
+    min-height: 90px; /* Taller textarea */
+    max-height: 180px;
+    resize: vertical;
+    font-size: 16px;
+    border-color: #ced4da;
+    border-radius: 8px;
+    padding: 12px;
+}
+
+#commentText:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.25rem rgba(0, 123, 255, 0.25);
+}

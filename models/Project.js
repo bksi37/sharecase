@@ -1,11 +1,13 @@
 const mongoose = require('mongoose');
+const tagsConfig = require('../config/tags'); // <--- ADD THIS LINE to import tagsConfig
 
 const projectSchema = new mongoose.Schema({
     title: { type: String, required: true },
     description: { type: String, default: '' },
     image: { type: String, default: 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg' },
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    userName: { type: String, required: true }, // Store userName directly for display
+    userName: { type: String, required: true },
+    userProfilePic: { type: String, default: 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg' }, // Added from previous advice
     problemStatement: { type: String, default: '' },
     tags: [{ type: String }],
     
@@ -16,18 +18,17 @@ const projectSchema = new mongoose.Schema({
     likes: { type: Number, default: 0 },
     views: { type: Number, default: 0 },
     
-    // --- NEW FIELDS FOR PROJECT ANALYTICS & POINTS ---
-    projectType: { // For Milestone 2: Diversified Project Content
+    projectType: { 
         type: String,
-        enum: ['Engineering', 'Art & Design', 'Essay/Research Paper', 'Code/Software', 'Multimedia', 'Other'], // Example types
-        default: 'Engineering' // Default for existing projects or if not specified
+        // CRITICAL FIX: Use the types from your config/tags.js
+        enum: tagsConfig.types, // <--- THIS IS THE CHANGE
+        default: 'Other' // Set a default that is definitely in your tagsConfig.types
     },
-    points: { // For Milestone 3: Project Recognition Points (Academic NIL)
+    points: { 
         type: Number,
         default: 0
     },
-    // --- END NEW FIELDS ---
-
+    
     comments: [
         {
             userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },

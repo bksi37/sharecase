@@ -1,0 +1,72 @@
+/* public/css/_project_cards.css */
+
+/* Project Grid Styles (for general project display, like on index.html) */
+.project-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); /* Slightly wider min width for cards */
+    gap: 30px; /* Increased gap between cards for more breathing room */
+    padding: 20px 0;
+}
+
+.card {
+    background: #ffffff;
+    border-radius: 12px; /* More rounded */
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08); /* Stronger, softer shadow */
+    overflow: hidden;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border: 1px solid #e9ecef; /* Slightly more defined border */
+    position: relative; /* Added for potential internal elements */
+    cursor: pointer; /* Indicate clickability */
+}
+
+.card:hover {
+    transform: translateY(-8px); /* More pronounced lift effect */
+    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.15); /* Stronger hover shadow */
+}
+
+.card-img-top {
+    height: 200px; /* Slightly taller image area */
+    object-fit: cover;
+    border-bottom: 1px solid #f0f0f0; /* Subtle separation */
+}
+
+.card-body {
+    padding: 20px; /* Adjusted padding inside card body for more space */
+}
+
+.card-body h5 {
+    font-size: 20px; /* Slightly larger title */
+    margin-top: 0;
+    margin-bottom: 10px; /* Adjusted margin */
+    color: #333333; /* Darker title text */
+    line-height: 1.4;
+    font-weight: 600; /* Bolder title */
+}
+
+.card-body p {
+    font-size: 15px; /* Slightly larger description text */
+    color: #666666; /* Darker grey text */
+    margin-bottom: 15px;
+    line-height: 1.6;
+}
+
+.project-stats {
+    font-size: 14px; /* Consistent stats font */
+    color: #888888;
+    margin-top: 15px; /* More space above stats */
+    margin-bottom: 0; /* Remove bottom margin if not needed */
+    display: flex;
+    align-items: center;
+    gap: 15px; /* More space between stat items */
+    flex-wrap: wrap; /* Allow stats to wrap on smaller screens */
+}
+.project-stats span {
+    display: flex;
+    align-items: center;
+}
+.project-stats .fas {
+    margin-right: 6px; /* Slightly more space for icon */
+    color: #007bff; /* Blue icons */
+    font-size: 1.1em; /* Slightly larger icons */
+}
+/* IMPORTANT: Remove the .card-buttons and .delete-btn, .edit-btn styles from here */

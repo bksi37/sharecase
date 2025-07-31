@@ -1,0 +1,143 @@
+/* public/css/_about_pages.css */
+
+/* Styles for the main content container on About page */
+.about-container {
+    background-color: #ffffff; /* White background for the "box" */
+    border-radius: 12px; /* Softly rounded corners */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); /* A nice, subtle shadow */
+    padding: 40px; /* Generous internal padding */
+    margin-top: 40px; /* Space from the header */
+    margin-bottom: 40px; /* Space above the next section */
+    /* Max width to prevent stretching too wide, centers automatically */
+    max-width: 900px; /* Adjust this value as needed for your desired width */
+    margin-left: auto; /* Center the box horizontally */
+    margin-right: auto; /* Center the box horizontally */
+}
+
+/* Styles for the "Meet the Creator" section */
+.team-section {
+    background-color: #ffffff; /* White background for the "box" */
+    border-radius: 12px; /* Softly rounded corners */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); /* A nice, subtle shadow */
+    padding: 40px; /* Generous internal padding */
+    margin-top: 40px; /* Space from the previous section */
+    margin-bottom: 40px; /* Space from the footer */
+    /* Max width to prevent stretching too wide, centers automatically */
+    max-width: 900px; /* Adjust this value to match about-container */
+    margin-left: auto; /* Center the box horizontally */
+    margin-right: auto; /* Center the box horizontally */
+}
+
+/* General headings within these sections */
+.about-container h1,
+.about-container h3,
+.team-section h3 {
+    color: #212529; /* Darker heading color for better contrast */
+    font-weight: 600;
+    margin-bottom: 1.5rem; /* Consistent spacing below headings */
+}
+
+/* Paragraphs within these sections */
+.about-container p,
+.team-section p,
+.accordion-body {
+    line-height: 1.7; /* Increased line height for readability */
+    color: #444444; /* Slightly darker text color */
+    margin-bottom: 1rem;
+}
+
+/* List items for 'Protecting Your Work' section */
+.about-container ul {
+    list-style: disc; /* Use standard disc bullets */
+    padding-left: 25px; /* Indent list items */
+    margin-bottom: 1.5rem;
+}
+
+.about-container ul li {
+    margin-bottom: 0.5rem;
+    color: #444444;
+}
+
+.about-container ul li strong {
+    color: #007bff; /* Highlight strong text in blue */
+}
+
+/* Accordion specific styling within the about section */
+.accordion-item {
+    border: 1px solid #e9ecef; /* Light border for each accordion item */
+    border-radius: 8px; /* Rounded corners for accordion items */
+    margin-bottom: 10px; /* Space between accordion items */
+    overflow: hidden; /* Ensures border-radius applies correctly */
+}
+
+.accordion-button {
+    background-color: #f8f9fa; /* Very light background for buttons */
+    color: #333333; /* Darker text */
+    font-weight: 500;
+    padding: 15px 20px; /* More padding */
+    transition: background-color 0.2s ease;
+}
+
+.accordion-button:hover {
+    background-color: #e9ecef; /* Slightly darker on hover */
+}
+
+.accordion-button:not(.collapsed) {
+    color: #007bff; /* Blue text when open */
+    background-color: #cfe2ff; /* Light blue background when open */
+    border-bottom: 1px solid #007bff; /* Blue line when open */
+    box-shadow: inset 0 -1px 0 rgba(0, 0, 0, .08); /* Subtle shadow effect */
+}
+
+.accordion-button:focus {
+    box-shadow: 0 0 0 .25rem rgba(0, 123, 255, .25); /* Standard Bootstrap focus ring */
+}
+
+.accordion-body {
+    padding: 20px; /* Padding inside the accordion body */
+    background-color: #ffffff; /* White background for content */
+    border-top: 1px solid #eee; /* Thin line above content */
+}
+
+/* Link styling for email */
+.team-section p a {
+    color: #007bff;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.team-section p a:hover {
+    text-decoration: underline;
+    color: #0056b3;
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 768px) {
+    .about-container,
+    .team-section {
+        padding: 25px; /* Reduced padding on smaller screens */
+        margin-top: 25px;
+        margin-bottom: 25px;
+        border-radius: 8px; /* Slightly less rounded corners */
+    }
+
+    .about-container h1 {
+        font-size: 2rem; /* Adjust heading size */
+    }
+
+    .about-container h3,
+    .team-section h3 {
+        font-size: 1.5rem; /* Adjust subheading size */
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+    }
+
+    .accordion-button {
+        padding: 12px 15px; /* Adjust accordion padding */
+        font-size: 0.95rem;
+    }
+
+    .accordion-body {
+        padding: 15px;
+    }
+}

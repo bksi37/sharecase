@@ -23,13 +23,14 @@ const userSchema = new mongoose.Schema({
     universityEmail: {
         type: String,
         unique: true,
-        sparse: true
+        sparse: true // Allows null values to not violate unique constraint
     },
     universityEmailVerified: {
         type: Boolean,
         default: false
     },
     major: { type: String, default: '' },
+    department: { type: String, default: '' }, // Added department field as per roadmap/auth.js
     profilePic: { type: String, default: 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg' },
     linkedin: { type: String, default: '' },
     github: { type: String, default: '' },
@@ -46,6 +47,13 @@ const userSchema = new mongoose.Schema({
         ref: 'User'
     }],
     // --- END NEW FIELDS ---
+
+    // --- NEW FIELD FOR POINTS SYSTEM ---
+    totalPoints: { // Track user's accumulated points
+        type: Number,
+        default: 0
+    },
+    // --- END NEW FIELD ---
 
     notifications: {
         type: String,
@@ -74,8 +82,9 @@ const userSchema = new mongoose.Schema({
     projectsCollaboratedOn: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Project' }]
 }, { timestamps: true });
 
+// Pre-save hook to hash password only if it's modified
 userSchema.pre('save', async function(next) {
-    if (this.isModified('password')) {
+    if (this.isModified('password') && this.password) { // Ensure password exists before hashing
         this.password = await bcrypt.hash(this.password, 10);
     }
     next();

@@ -7,7 +7,12 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/styles.css">
+
+    <link rel="stylesheet" href="/css/_base.css">
+    <link rel="stylesheet" href="/css/_header.css">
+    <link rel="stylesheet" href="/css/_forms.css">
+    <link rel="stylesheet" href="/css/_project_cards.css">
+    <link rel="stylesheet" href="/css/_utilities.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
 </head>
 <body>
@@ -25,27 +30,38 @@
             <div id="autocompleteSuggestions" class="autocomplete-suggestions"></div>
         </div>
         <div class="user-menu">
-            <div class="profile-container" id="userMenuToggle">
+            <div class="profile-container" id="userMenuToggle" style="display: none;">
                 <img id="headerProfilePic" src="https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg" alt="Profile Picture">
                 <span id="headerProfileName">Guest</span>
                 <div class="dropdown-menu" id="userDropdown">
-                    <a href="/profile.html">Profile</a>
-                    <a href="/settings.html">Settings</a>
-                    <a href="/upload-project.html">Upload Project</a>
-                    <a id="authLink" href="/login.html">Login</a>
-                    <a href="/about.html">About</a>
+                    <a href="/profile.html" class="dropdown-item">Profile</a>
+                    <a href="/settings.html" class="dropdown-item">Settings</a>
+                    <a href="/upload-project.html" class="dropdown-item">Upload Project</a>
+                    <a id="adminDashboardLink" href="/admin/dashboard.html" class="dropdown-item" style="display: none;">Admin Dashboard</a>
+                    <a id="logoutLink" href="/logout" class="dropdown-item">Logout</a>
+                    <a href="/about.html" class="dropdown-item">About</a>
+                    <div class="dropdown-item-text text-muted small mt-2">
+                        Role: <span id="userRoleDisplay"></span><br>
+                        Points: <span id="userPointsDisplay"></span>
+                    </div>
                 </div>
+            </div>
+            <div id="authControls" style="display: none;">
+                <a href="/login.html" class="btn btn-primary btn-sm">Login</a>
+                <a href="/signup.html" class="btn btn-outline-primary btn-sm ms-2">Sign Up</a>
             </div>
         </div>
     </header>
     <main>
         <div class="container mt-4">
-            <h2 id="projectGridHeader" class="mt-4" style="display: none;">Latest Projects</h2> <div class="row row-cols-1 row-cols-md-3 g-4" id="projectGrid">
+            <h2 id="projectGridHeader" class="mt-4">Latest Projects</h2>
+            <div class="row row-cols-1 row-cols-md-3 g-4" id="projectGrid">
                 <p id="noProjectsFoundSearchMessage" class="text-center w-100 mt-5" style="display: none;">No projects found matching your search or filters.</p>
                 <p id="initialLoadingMessage" class="text-center w-100 mt-5">Loading projects...</p>
             </div>
         </div>
     </main>
+
     <div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -92,330 +108,96 @@
             </div>
         </div>
     </div>
+
     <footer>
         <p>© 2025 ShareCase. All rights reserved.</p>
     </footer>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="/js/scripts.js"></script>
     <script>
-        // Global variables for debounce
-        let searchTimeout;
-        const DEBOUNCE_DELAY = 300; // ms
-
-        // Get DOM elements once when the script loads
+        // Get DOM elements specific to index.html and its search/filters
+        // These are accessed by the global functions from scripts.js,
+        // so defining them here makes them easily accessible within this script block.
         const searchInput = document.getElementById('searchInput');
-        const projectGrid = document.getElementById('projectGrid');
-        const projectGridHeader = document.getElementById('projectGridHeader'); // New
-        const noProjectsFoundSearchMessage = document.getElementById('noProjectsFoundSearchMessage'); // Renamed for clarity
-        const initialLoadingMessage = document.getElementById('initialLoadingMessage'); // New
         const autocompleteSuggestions = document.getElementById('autocompleteSuggestions');
+        const courseFilter = document.getElementById('courseFilter');
+        const yearFilter = document.getElementById('yearFilter');
+        const typeFilter = document.getElementById('typeFilter');
+        const departmentFilter = document.getElementById('departmentFilter');
+        const categoryFilter = document.getElementById('categoryFilter');
 
-        async function loadUserProfile() {
-            try {
-                console.log('loadUserProfile: Fetching /current-user...');
-                const response = await fetch('/current-user');
-                if (response.ok) {
-                    const data = await response.json(); // Renamed 'user' to 'data' to avoid confusion
-                    console.log('loadUserProfile: Received user data:', data); // Log the full data object
+        // --- Event Listeners and Initial Load Logic for Index Page ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Event listeners for search input and filter button
+            if (searchInput) {
+                searchInput.addEventListener('input', () => {
+                    clearTimeout(searchTimeout); // searchTimeout is global from scripts.js
+                    searchTimeout = setTimeout(performGlobalSearch, DEBOUNCE_DELAY); // DEBOUNCE_DELAY & performGlobalSearch are global from scripts.js
+                });
 
-                    // The key change is here: Access data.user.name and data.user.profilePic
-                    const userName = data.user ? data.user.name : null; // Safely access nested property
-                    const userProfilePic = data.user ? data.user.profilePic : null; // Safely access nested property
-                    
-                    const headerProfileName = document.getElementById('headerProfileName');
-                    const headerProfilePic = document.getElementById('headerProfilePic');
-                    const authLink = document.getElementById('authLink');
-
-                    if (headerProfileName) {
-                        headerProfileName.textContent = userName || 'Guest'; // Use userName
-                        console.log('loadUserProfile: Updated headerProfileName to:', headerProfileName.textContent);
-                    } else {
-                        console.warn('loadUserProfile: headerProfileName element not found!');
-                    }
-
-                    if (headerProfilePic) {
-                        headerProfilePic.src = userProfilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'; // Use userProfilePic
-                        console.log('loadUserProfile: Updated headerProfilePic src to:', headerProfilePic.src);
-                    } else {
-                        console.warn('loadUserProfile: headerProfilePic element not found!');
-                    }
-                    
-                    if (authLink && data.isLoggedIn) { // Only set to Logout if isLoggedIn is true
-                        authLink.textContent = 'Logout';
-                        authLink.href = '/logout';
-                        console.log('loadUserProfile: Updated authLink to Logout.');
-                    } else if (authLink && !data.isLoggedIn) {
-                        authLink.textContent = 'Login';
-                        authLink.href = '/login.html';
-                        console.log('loadUserProfile: Updated authLink to Login.');
-                    } else {
-                        console.warn('loadUserProfile: authLink element not found!');
-                    }
-
-                } else {
-                    console.error('loadUserProfile: Failed to fetch user profile:', response.status, response.statusText);
-                    // If fetch fails, ensure it defaults to Guest/Login
-                    document.getElementById('headerProfileName').textContent = 'Guest';
-                    document.getElementById('headerProfilePic').src = 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
-                    const authLink = document.getElementById('authLink');
-                    if (authLink) {
-                        authLink.textContent = 'Login';
-                        authLink.href = '/login.html';
-                    }
-                }
-            } catch (error) {
-                console.error('loadUserProfile: Error loading user profile (catch block):', error);
-                // If there's an error, ensure it defaults to Guest/Login
-                document.getElementById('headerProfileName').textContent = 'Guest';
-                document.getElementById('headerProfilePic').src = 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
-                const authLink = document.getElementById('authLink');
-                if (authLink) {
-                    authLink.textContent = 'Login';
-                    authLink.href = '/login.html';
-                }
-            }
-        }
-        async function loadDynamicFilterOptions() {
-            try {
-                const response = await fetch('/dynamic-filter-options');
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const tagsData = await response.json();
-
-                const courseFilter = document.getElementById('courseFilter');
-                const yearFilter = document.getElementById('yearFilter');
-                const typeFilter = document.getElementById('typeFilter');
-                const departmentFilter = document.getElementById('departmentFilter');
-                const categoryFilter = document.getElementById('categoryFilter');
-
-                populateDropdown(courseFilter, ['All', ...(tagsData.courses || [])]);
-                populateDropdown(yearFilter, ['All', ...(tagsData.years || [])]);
-                populateDropdown(typeFilter, ['All', ...(tagsData.types || [])]);
-                populateDropdown(departmentFilter, ['All', ...(tagsData.departments || [])]);
-                populateDropdown(categoryFilter, ['All', ...(tagsData.categories || [])]);
-
-            } catch (error) {
-                console.error('Error loading dynamic filter options:', error);
-                Toastify({
-                    text: 'Error loading filter options',
-                    duration: 3000,
-                    style: { background: '#e74c3c' },
-                }).showToast();
-            }
-        }
-
-        function populateDropdown(selectElement, options) {
-            selectElement.innerHTML = ''; // Clear existing options
-            options.forEach(optionValue => {
-                const option = document.createElement('option');
-                option.value = optionValue;
-                option.textContent = optionValue;
-                selectElement.appendChild(option);
-            });
-        }
-
-        function renderProjectCard(p) {
-            const projectId = p.id || p._id;
-            const authorId = p.userId;
-            const authorName = p.userName;
-
-            return `
-                <div class="col">
-                    <div class="card h-100" style="cursor: pointer;" onclick="window.location.href='/project.html?id=${projectId}'">
-                        <img src="${p.image || 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'}" class="card-img-top" alt="${p.title}" onerror="this.src='https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'">
-                        <div class="card-body">
-                            <h5 class="card-title">${p.title}</h5>
-                            <p class="card-text">${p.description ? p.description.substring(0, 100) + '...' : 'No description'}</p>
-                            <div class="project-stats">
-                                <span><i class="fas fa-heart"></i> ${p.likes || 0} Likes</span>
-                                <span><i class="fas fa-eye"></i> ${p.views || 0} Views</span>
-                            </div>
-                            <div class="project-author"> By: <a href="/public-profile.html?userId=${authorId}">${authorName}</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function renderUserSuggestion(user) {
-            return `
-                <div class="autocomplete-item" onclick="window.location.href='/public-profile.html?userId=${user._id}'">
-                    <img src="${user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'}" alt="${user.name}">
-                    <span>${user.name}</span>
-                    <span class="user-detail">${user.major || user.department ? `(${user.major || ''}${user.major && user.department ? ', ' : ''}${user.department || ''})` : ''}</span>
-                </div>
-            `;
-        }
-
-        // New function to load all projects (for initial load / clear search)
-        async function loadAllProjects() {
-            projectGrid.innerHTML = ''; // Clear existing projects
-            noProjectsFoundSearchMessage.style.display = 'none'; // Hide search-specific message
-            initialLoadingMessage.textContent = 'Loading latest projects...';
-            initialLoadingMessage.style.display = 'block'; // Show general loading message
-            projectGridHeader.style.display = 'block'; // Show "Latest Projects" header
-
-            autocompleteSuggestions.innerHTML = '';
-            autocompleteSuggestions.style.display = 'none'; // Hide autocomplete
-
-            try {
-                // Ensure your backend has a route like /projects that returns all published projects
-                const response = await fetch('/projects'); // Assuming this route exists and works
-                if (response.ok) {
-                    const projects = await response.json();
-                    if (projects.length > 0) {
-                        projectGrid.innerHTML = projects.map(p => renderProjectCard(p)).join('');
-                        initialLoadingMessage.style.display = 'none'; // Hide loading message
-                    } else {
-                        projectGrid.innerHTML = '';
-                        initialLoadingMessage.textContent = 'No projects found in the database.';
-                        initialLoadingMessage.style.display = 'block'; // Show message if no projects at all
-                    }
-                } else {
-                    throw new Error('Failed to load all projects');
-                }
-            } catch (error) {
-                console.error('Error loading all projects:', error);
-                Toastify({
-                    text: 'Error loading projects',
-                    duration: 3000,
-                    style: { background: '#e74c3c' },
-                }).showToast();
-                projectGrid.innerHTML = '';
-                initialLoadingMessage.textContent = 'Error loading projects. Please try again.';
-                initialLoadingMessage.style.display = 'block'; // Show error message
-            }
-        }
-
-
-        async function performGlobalSearch() {
-            const query = searchInput.value.trim();
-            const course = document.getElementById('courseFilter').value;
-            const year = document.getElementById('yearFilter').value;
-            const type = document.getElementById('typeFilter').value;
-            const department = document.getElementById('departmentFilter').value;
-            const category = document.getElementById('categoryFilter').value;
-
-            const params = new URLSearchParams();
-            if (query) params.append('q', query);
-            if (course && course !== 'All') params.append('course', course);
-            if (year && year !== 'All') params.append('year', year);
-            if (type && type !== 'All') params.append('type', type);
-            if (department && department !== 'All') params.append('department', department);
-            if (category && category !== 'All') params.append('category', category);
-
-            // Determine if a search is active (query or any filter other than 'All')
-            const isSearchActive = query ||
-                                   (course && course !== 'All') ||
-                                   (year && year !== 'All') ||
-                                   (type && type !== 'All') ||
-                                   (department && department !== 'All') ||
-                                   (category && category !== 'All');
-
-            if (!isSearchActive) {
-                // If no search/filters, load all projects and clear autocomplete
-                loadAllProjects();
-                autocompleteSuggestions.innerHTML = '';
-                autocompleteSuggestions.style.display = 'none';
-                return;
-            }
-
-            // Hide general messages and show search-specific area
-            initialLoadingMessage.style.display = 'none';
-            projectGridHeader.style.display = 'none'; // Hide "Latest Projects" header during search
-            noProjectsFoundSearchMessage.style.display = 'none'; // Hide "No projects found" message initially
-
-            try {
-                const response = await fetch(`/search?${params.toString()}`);
-                if (response.ok) {
-                    const data = await response.json(); // Expects { results: { projects: [], users: [] } }
-                    const projects = data.results.projects;
-                    const users = data.results.users;
-
-                    // Handle Autocomplete Suggestions for Users
-                    if (query && users.length > 0) {
-                        autocompleteSuggestions.innerHTML = users.map(u => renderUserSuggestion(u)).join('');
+                // Re-show autocomplete if input is refocused and has text
+                searchInput.addEventListener('focus', () => {
+                    const query = searchInput.value.trim();
+                    if (query && autocompleteSuggestions && autocompleteSuggestions.children.length > 0) {
                         autocompleteSuggestions.style.display = 'block';
-                    } else {
-                        autocompleteSuggestions.innerHTML = '';
-                        autocompleteSuggestions.style.display = 'none';
                     }
+                });
+            }
 
-                    // Display Project Results
-                    if (projects.length > 0) {
-                        projectGrid.innerHTML = projects.map(p => renderProjectCard(p)).join('');
-                        noProjectsFoundSearchMessage.style.display = 'none'; // Hide if projects are found
-                    } else {
-                        projectGrid.innerHTML = '';
-                        noProjectsFoundSearchMessage.textContent = 'No projects found matching your search or filters.';
-                        noProjectsFoundSearchMessage.style.display = 'block'; // Show "No projects found" message
+            const applyFiltersBtn = document.getElementById('applyFilters');
+            if (applyFiltersBtn) {
+                applyFiltersBtn.addEventListener('click', () => {
+                    performGlobalSearch(); // performGlobalSearch is global from scripts.js
+                    // Hide the modal using Bootstrap's API
+                    const filterModal = bootstrap.Modal.getInstance(document.getElementById('filterModal'));
+                    if (filterModal) {
+                        filterModal.hide();
                     }
+                });
+            }
 
-                } else {
-                    throw new Error('Failed to perform search');
+            // Hide autocomplete when clicking outside (global listener)
+            document.addEventListener('click', (event) => {
+                if (autocompleteSuggestions && !autocompleteSuggestions.contains(event.target) && event.target !== searchInput) {
+                    autocompleteSuggestions.style.display = 'none';
                 }
-            } catch (error) {
-                console.error('Error performing global search:', error);
-                Toastify({
-                    text: 'Error performing search',
-                    duration: 3000,
-                    style: { background: '#e74c3c' },
-                }).showToast();
-                projectGrid.innerHTML = '';
-                noProjectsFoundSearchMessage.textContent = 'Error loading search results. Please try again.';
-                noProjectsFoundSearchMessage.style.display = 'block'; // Show error message
-                autocompleteSuggestions.innerHTML = '';
-                autocompleteSuggestions.style.display = 'none';
-            }
-        }
+            });
 
-        // Event Listeners
-        searchInput.addEventListener('input', () => {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(performGlobalSearch, DEBOUNCE_DELAY);
+            // Initial page load logic
+            // Using 'load' to ensure all resources (including images and external scripts) are fully loaded
+            window.addEventListener('load', () => {
+                console.log('index.html: window.load event triggered for initial project and filter loading.');
+
+                loadDynamicFilterOptions(); // loadDynamicFilterOptions is global from scripts.js
+
+                // Check URL for existing search query/filters
+                const urlParams = new URLSearchParams(window.location.search);
+                const initialQuery = urlParams.get('q');
+                const initialCourse = urlParams.get('course');
+                const initialYear = urlParams.get('year');
+                const initialType = urlParams.get('type');
+                const initialDepartment = urlParams.get('department');
+                const initialCategory = urlParams.get('category');
+
+                // Set filter dropdowns if params exist (must happen after loadDynamicFilterOptions populates them)
+                if (initialCourse && courseFilter) courseFilter.value = initialCourse;
+                if (initialYear && yearFilter) yearFilter.value = initialYear;
+                if (initialType && typeFilter) typeFilter.value = initialType;
+                if (initialDepartment && departmentFilter) departmentFilter.value = initialDepartment;
+                if (initialCategory && categoryFilter) categoryFilter.value = initialCategory;
+
+                // If there's an initial query or any filter from URL, perform search
+                if (initialQuery || initialCourse || initialYear || initialType || initialDepartment || initialCategory) {
+                    if (searchInput) searchInput.value = initialQuery || ''; // Populate search input
+                    performGlobalSearch(); // Calls the function from scripts.js
+                } else {
+                    // Otherwise, load all projects by default
+                    loadAllProjects(); // Calls the function from scripts.js
+                }
+            });
         });
-
-        document.getElementById('applyFilters').addEventListener('click', () => {
-            performGlobalSearch();
-            bootstrap.Modal.getInstance(document.getElementById('filterModal')).hide();
-        });
-
-        // Hide autocomplete when clicking outside
-        document.addEventListener('click', (event) => {
-            if (!autocompleteSuggestions.contains(event.target) && event.target !== searchInput) {
-                autocompleteSuggestions.style.display = 'none';
-            }
-        });
-
-        // Re-show autocomplete if input is refocused and has text
-        searchInput.addEventListener('focus', () => {
-            const query = searchInput.value.trim();
-            if (query && autocompleteSuggestions.children.length > 0) {
-                autocompleteSuggestions.style.display = 'block';
-            }
-        });
-
-
-        window.onload = () => {
-            // ADDED LOG HERE
-            console.log('window.onload: Triggered.');
-            loadUserProfile();
-            loadDynamicFilterOptions();
-            const urlParams = new URLSearchParams(window.location.search);
-            const initialQuery = urlParams.get('q');
-
-            // If there's an initial query from URL, perform search
-            if (initialQuery) {
-                searchInput.value = initialQuery;
-                performGlobalSearch();
-            } else {
-                // Otherwise, load all projects by default
-                loadAllProjects();
-            }
-        };
     </script>
 </body>
 </html>
