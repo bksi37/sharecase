@@ -23,7 +23,8 @@
     "multer": "^2.0.0",
     "multer-storage-cloudinary": "^4.0.0",
     "node-fetch": "^3.3.2",
-    "pdfkit": "^0.17.1"
+    "pdfkit": "^0.17.1",
+    "resend": "^4.7.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
