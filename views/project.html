@@ -91,28 +91,72 @@
                         <div class="project-stats d-flex gap-3">
                             <span id="likes" class="text-muted"><i class="fas fa-heart me-1"></i> 0 Likes</span>
                             <span id="views" class="text-muted"><i class="fas fa-eye me-1"></i> 0 Views</span>
-                            </div>
+                        </div>
                         <button id="likeBtn" class="btn btn-outline-primary"><i class="fas fa-heart me-1"></i> Like</button>
                     </div>
 
-                    <div class="comments-section mt-4 pt-4 border-top">
-                        <h4 class="mb-3"><i class="fas fa-comments me-2"></i>Comments (<span id="commentCount">0</span>)</h4>
-                        <div id="commentsList" class="mb-4">
-                            <p class="text-muted text-center" id="noCommentsMessage">No comments yet. Be the first to comment!</p>
-                        </div>
-
-                        <div class="comment-input-box card p-3 shadow-sm">
-                            <h5 class="mb-3">Leave a Comment</h5>
-                            <form id="commentForm">
-                                <textarea id="commentText" class="form-control mb-3" rows="3" placeholder="Write your comment here..."></textarea>
-                                <button type="submit" class="btn btn-primary">Post Comment</button>
-                            </form>
-                        </div>
+                <div class="comments-section mt-4 pt-4 border-top">
+                    <h4 class="mb-3"><i class="fas fa-comments me-2"></i>Comments (<span id="commentCount">0</span>)</h4>
+                    <div id="commentsList" class="mb-4">
+                        <p class="text-muted text-center" id="noCommentsMessage">No comments yet. Be the first to comment!</p>
                     </div>
+                    <div class="comment-input-area">
+                        <input type="text" id="commentText" class="form-control" placeholder="Write a comment..." aria-label="Write a comment">
+                        <button class="btn btn-primary btn-sm ms-2" id="postCommentBtn">Post</button>
+                    </div>
+                </div>
+                </div>
                 </div>
             </div>
         </div>
     </main>
+
+    <div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="filterModalLabel">Filter Projects</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="courseFilter" class="form-label">Course</label>
+                        <select id="courseFilter" class="form-select">
+                            <option value="">All Courses</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="yearFilter" class="form-label">Year</label>
+                        <select id="yearFilter" class="form-select">
+                            <option value="">All Years</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="typeFilter" class="form-label">Type</label>
+                        <select id="typeFilter" class="form-select">
+                            <option value="">All Types</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="departmentFilter" class="form-label">Department</label>
+                        <select id="departmentFilter" class="form-select">
+                            <option value="">All Departments</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="categoryFilter" class="form-label">Category</label>
+                        <select id="categoryFilter" class="form-select">
+                            <option value="">All Categories</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="applyFilters">Apply Filters</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <footer>
         <p>© 2025 ShareCase. All rights reserved.</p>
@@ -122,18 +166,32 @@
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="/js/scripts.js"></script>
     <script>
-        // Global variables for search (from scripts.js)
-        // let searchTimeout; 
-        // const DEBOUNCE_DELAY = 300; 
-        // currentLoggedInUserId is global from scripts.js
-
-        // Functions from scripts.js needed globally:
-        // loadUserProfileInHeader, performGlobalSearch, renderUserSuggestion
-
+        // --- Custom functions for this page ---
+        async function postComment(projectId, commentText) {
+            try {
+                const response = await fetch(`/project/${projectId}/comment`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify({ text: commentText }),
+                    credentials: 'include'
+                });
+                if (response.ok) {
+                    document.getElementById('commentText').value = '';
+                    Toastify({ text: 'Comment posted successfully!', duration: 3000, style: { background: '#28a745' } }).showToast();
+                    loadProject();
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Failed to post comment');
+                }
+            } catch (error) {
+                console.error('Error posting comment:', error);
+                Toastify({ text: error.message || 'Error posting comment', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+            }
+        }
+        
         async function loadProject() {
             const urlParams = new URLSearchParams(window.location.search);
             const projectId = urlParams.get('id');
-            
             if (!projectId) {
                 Toastify({ text: 'No project ID provided. Redirecting to home.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
                 setTimeout(() => window.location.href = '/index.html', 3000);
@@ -142,10 +200,8 @@
 
             try {
                 const response = await fetch(`/project/${projectId}`);
-                
-                // If response is not ok, throw an error to be caught below
                 if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({ message: response.statusText || 'Unknown error' })); // Attempt to parse JSON error, fallback to status text
+                    const errorData = await response.json().catch(() => ({ message: response.statusText || 'Unknown error' }));
                     if (response.status === 404) {
                         throw new Error('Project not found or is not published.');
                     } else if (response.status === 401 || response.status === 403) {
@@ -156,19 +212,16 @@
 
                 const project = await response.json();
                 
-                // Populate basic project details with defensive checks
                 document.getElementById('projectTitle').textContent = project.title || 'Untitled Project';
                 document.getElementById('projectImage').src = project.image || 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg';
                 document.getElementById('projectDescription').textContent = project.description || 'No description provided.';
                 document.getElementById('problemStatement').textContent = project.problemStatement || 'Not specified.';
                 
-                // Project Type
                 const projectTypeDisplay = document.getElementById('projectTypeDisplay');
                 if (projectTypeDisplay) {
                     projectTypeDisplay.textContent = project.projectType || 'Other';
                 }
 
-                // Uploader Info
                 const projectUploaderSpan = document.getElementById('projectUploader');
                 if (projectUploaderSpan) {
                     if (project.userId && project.userName) {
@@ -185,7 +238,6 @@
                     }
                 }
 
-                // Collaborators
                 const collaboratorsDisplay = document.getElementById('collaboratorsDisplay');
                 if (collaboratorsDisplay) {
                     let allCollaboratorsHtml = [];
@@ -194,7 +246,6 @@
                     if (project.collaborators && Array.isArray(project.collaborators) && project.collaborators.length > 0) {
                         hasCollaborators = true;
                         project.collaborators.forEach(collabUser => {
-                            // Check if collabUser is actually populated (an object) or just an ID string
                             const collabId = collabUser._id || collabUser;
                             const collabName = collabUser.name || 'Unknown';
                             const collabProfilePic = collabUser.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
@@ -229,7 +280,6 @@
                     }
                 }
 
-                // Tags
                 const tagsDiv = document.getElementById('tags');
                 if (tagsDiv) {
                     if (project.tags && Array.isArray(project.tags) && project.tags.length > 0) {
@@ -239,7 +289,6 @@
                     }
                 }
 
-                // Resources
                 const resourcesList = document.getElementById('resources');
                 if (resourcesList) {
                     if (project.resources && Array.isArray(project.resources) && project.resources.length > 0) {
@@ -255,31 +304,26 @@
                     }
                 }
 
-                // Likes and Views
                 document.getElementById('likes').innerHTML = `<i class="fas fa-heart"></i> ${project.likes || 0} Likes`;
                 document.getElementById('views').innerHTML = `<i class="fas fa-eye"></i> ${project.views || 0} Views`;
 
-                // Like Button functionality
                 const likeBtn = document.getElementById('likeBtn');
                 if (likeBtn) {
-                    // currentLoggedInUserId is a global variable set by loadUserProfileInHeader from scripts.js
-                    const hasLiked = currentLoggedInUserId && (project.likedBy || []).includes(currentLoggedInUserId); // Ensure likedBy is an array
+                    const hasLiked = window.currentLoggedInUserId && (project.likedBy || []).includes(window.currentLoggedInUserId);
                     likeBtn.textContent = hasLiked ? 'Unlike' : 'Like';
                     likeBtn.className = hasLiked ? 'btn btn-primary' : 'btn btn-outline-primary';
-                    likeBtn.onclick = () => toggleLike(projectId);
+                    likeBtn.onclick = () => window.toggleLike(projectId);
                 }
 
-                // Load Comments
-                await loadComments(projectId, project.comments || [], project.userId); 
+                await loadComments(projectId, project.comments || [], project.userId);
             } catch (error) {
                 console.error('Error loading project:', error);
                 Toastify({ text: error.message || 'Error loading project', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                setTimeout(() => window.location.href = '/index.html', 3000); // Redirect on any error
+                setTimeout(() => window.location.href = '/index.html', 3000);
             }
         }
 
-        // loadComments function (no changes needed here from previous version, as it's robust)
-        async function loadComments(projectId, commentsData, projectOwnerId) { 
+        async function loadComments(projectId, commentsData, projectOwnerId) {
             const commentsListDiv = document.getElementById('commentsList');
             const commentCountSpan = document.getElementById('commentCount');
             const noCommentsMessage = document.getElementById('noCommentsMessage');
@@ -289,8 +333,7 @@
                 return;
             }
 
-            commentsListDiv.innerHTML = ''; // Clear previous comments
-
+            commentsListDiv.innerHTML = '';
             if (commentsData && Array.isArray(commentsData) && commentsData.length > 0) {
                 noCommentsMessage.style.display = 'none';
                 commentsData.forEach(c => {
@@ -299,11 +342,10 @@
                     
                     const userNameHtml = c.userId
                         ? `<a href="/public-profile.html?userId=${c.userId}" class="text-decoration-none" style="color: inherit;"><strong>${c.userName}</strong></a>`
-                        : `<strong>${c.userName}</strong>`; // Fallback if userId is missing
+                        : `<strong>${c.userName}</strong>`;
 
                     let deleteButtonHtml = '';
-                    // Display delete button if current user is the commenter OR the project owner
-                    if (currentLoggedInUserId && (currentLoggedInUserId === c.userId || currentLoggedInUserId === projectOwnerId)) {
+                    if (window.currentLoggedInUserId && (window.currentLoggedInUserId === c.userId || window.currentLoggedInUserId === projectOwnerId)) {
                         deleteButtonHtml = `
                             <button class="btn btn-sm btn-outline-danger delete-comment-btn" data-comment-id="${c._id}" title="Delete Comment" style="position: absolute; top: 8px; right: 8px; border-radius: 50%;">
                                 <i class="fas fa-trash"></i>
@@ -324,11 +366,10 @@
                     commentsListDiv.appendChild(commentElement);
                 });
 
-                // Add event listeners for the delete buttons after they are added to the DOM
                 commentsListDiv.querySelectorAll('.delete-comment-btn').forEach(button => {
                     button.addEventListener('click', () => {
                         const commentId = button.dataset.commentId;
-                        deleteComment(projectId, commentId); // Call the new deleteComment function
+                        window.deleteComment(projectId, commentId);
                     });
                 });
 
@@ -339,96 +380,13 @@
             }
         }
 
-        // deleteComment function (no changes needed here, as it's robust)
-        async function deleteComment(projectId, commentId) {
-            if (!confirm('Are you sure you want to delete this comment?')) {
-                return;
-            }
-
-            try {
-                const response = await fetch(`/project/${projectId}/comment/${commentId}`, {
-                    method: 'DELETE',
-                    credentials: 'include'
-                });
-
-                if (response.ok) {
-                    Toastify({ text: 'Comment deleted successfully!', duration: 3000, style: { background: '#28a745' } }).showToast();
-                    loadProject(); // Reload the project to refresh comments
-                } else {
-                    const errorData = await response.json();
-                    throw new Error(errorData.message || 'Failed to delete comment');
-                }
-            } catch (error) {
-                console.error('Error deleting comment:', error);
-                Toastify({ text: error.message || 'Error deleting comment', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-            }
-        }
-
-        // toggleLike function (no changes needed here, as it's robust)
-        async function toggleLike(projectId) {
-            try {
-                const response = await fetch(`/project/${projectId}/like`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include'
-                });
-                if (response.ok) {
-                    const { likes, hasLiked } = await response.json();
-                    const likeBtn = document.getElementById('likeBtn');
-                    document.getElementById('likes').innerHTML = `<i class="fas fa-heart"></i> ${likes} Likes`;
-                    likeBtn.textContent = hasLiked ? 'Unlike' : 'Like';
-                    likeBtn.className = hasLiked ? 'btn btn-primary' : 'btn btn-outline-primary';
-                    Toastify({ text: hasLiked ? 'Project liked!' : 'Project unliked!', duration: 3000, style: { background: '#28a745' } }).showToast();
-                } else {
-                    const errorData = await response.json();
-                    throw new Error(errorData.message || 'Failed to toggle like');
-                }
-            } catch (error) {
-                console.error('Error toggling like:', error);
-                Toastify({ text: error.message || 'Error toggling like', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-            }
-        }
-
-        // Comment form submission (no changes needed here, as it's robust)
-        document.getElementById('commentForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const urlParams = new URLSearchParams(window.location.search);
-            const projectId = urlParams.get('id');
-            const commentText = document.getElementById('commentText').value.trim();
-            if (!commentText) {
-                Toastify({ text: 'Comment cannot be empty', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                return;
-            }
-            try {
-                const response = await fetch(`/project/${projectId}/comment`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                    body: JSON.stringify({ text: commentText }),
-                    credentials: 'include'
-                });
-                if (response.ok) {
-                    document.getElementById('commentText').value = '';
-                    Toastify({ text: 'Comment posted successfully!', duration: 3000, style: { background: '#28a745' } }).showToast();
-                    loadProject(); // Reload project to update comments and counts
-                } else {
-                    const errorData = await response.json();
-                    throw new Error(errorData.message || 'Failed to post comment');
-                }
-            } catch (error) {
-                console.error('Error posting comment:', error);
-                Toastify({ text: error.message || 'Error posting comment', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-            }
-        });
-
         document.addEventListener('DOMContentLoaded', () => {
-            // Header search bar functionality (using global functions from scripts.js)
             const searchInput = document.getElementById('searchInput');
             const autocompleteSuggestions = document.getElementById('autocompleteSuggestions');
             if (searchInput && autocompleteSuggestions) {
                 searchInput.addEventListener('input', () => {
-                    // searchTimeout and performGlobalSearch come from scripts.js
                     clearTimeout(window.searchTimeout); 
-                    window.searchTimeout = setTimeout(() => performGlobalSearch(), DEBOUNCE_DELAY);
+                    window.searchTimeout = setTimeout(() => window.performGlobalSearch(), window.DEBOUNCE_DELAY);
                 });
                 searchInput.addEventListener('focus', () => {
                     if (searchInput.value.trim() && autocompleteSuggestions.children.length > 0) {
@@ -442,18 +400,38 @@
                 });
             }
 
-            // Filter button in header (if you plan to use a modal on this page's header)
             const filterBtn = document.getElementById('filterBtn');
             if (filterBtn) {
                 filterBtn.addEventListener('click', () => {
-                    // You might need to add a filter modal to this HTML file if you want it to work
                     Toastify({ text: 'Filter modal not implemented on this page.', duration: 2000, style: { background: "#ffc107" } }).showToast();
                 });
             }
+
+            const postCommentBtn = document.getElementById('postCommentBtn');
+            const commentTextarea = document.getElementById('commentText');
+
+            if (postCommentBtn && commentTextarea) {
+                postCommentBtn.addEventListener('click', () => {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const projectId = urlParams.get('id');
+                    const commentText = commentTextarea.value.trim();
+                    if (commentText) {
+                        postComment(projectId, commentText);
+                    } else {
+                        Toastify({ text: 'Comment cannot be empty.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                    }
+                });
+                commentTextarea.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        postCommentBtn.click();
+                    }
+                });
+            }
             
-            // Initial loads on DOMContentLoaded for proper ordering
-            loadUserProfileInHeader(); // from scripts.js
-            loadProject(); // specific to this page
+            window.loadUserProfileInHeader().then(() => {
+                loadProject();
+            });
         });
     </script>
 </body>

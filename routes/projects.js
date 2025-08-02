@@ -16,29 +16,27 @@ const pointsCalculator = require('../utils/pointsCalculator'); // Import points 
 const router = express.Router();
 
 
-// Add Project (Updated for Multer and Points)
+// Add Project (Updated for Multer and Conditional Points)
 router.post('/add-project', isAuthenticated, isProfileComplete, upload.single('image'), async (req, res) => {
     try {
         const { title, description, tags, problemStatement, collaboratorIds, otherCollaborators, resources, isPublished, projectType } = req.body;
 
-        // --- CRITICAL CHANGE: Validate required fields based on isPublished status ---
-        // If publishing, title and projectType are required.
-        // If saving as draft, only title is strongly recommended, others can be empty.
-        if (isPublished === 'true') { // Check the string value received from FormData
+        // CRITICAL CHANGE: Validate required fields based on isPublished status
+        if (isPublished === 'true') {
             if (!title || title.trim() === '') {
                 return res.status(400).json({ error: 'Project Title is required to publish.' });
             }
             if (!projectType || projectType.trim() === '') {
                 return res.status(400).json({ error: 'Project Type is required to publish.' });
             }
-        } else { // For drafts, title is still good to have, but not strictly enforced by backend for saving.
+        } else {
             if (!title || title.trim() === '') {
-                // If you want to force a title even for drafts, uncomment/adjust this:
-                // return res.status(400).json({ error: 'A Project Title is required even for drafts.' });
+                // Return a less severe message or just proceed.
+                // You can add a check here if you want to require a title even for drafts.
             }
         }
-        // --- END CRITICAL CHANGE ---
-
+        
+        // Prepare data for project creation
         const parsedTags = tags ? tags.split(',').map(t => t.trim()) : [];
         const parsedCollaboratorIds = collaboratorIds
             ? collaboratorIds.split(',').map(id => id.trim()).filter(id => id && ObjectId.isValid(id)).map(id => new ObjectId(id))
@@ -55,8 +53,14 @@ router.post('/add-project', isAuthenticated, isProfileComplete, upload.single('i
             console.log('No project image uploaded. Using default or existing.');
         }
 
+        // CONDITIONAL POINT CALCULATION
+        let projectPoints = 0;
+        if (isPublished === 'true') {
+            projectPoints = pointsCalculator.calculateUploadPoints();
+        }
+
         const project = new Project({
-            title: title.trim(), // Ensure title is trimmed before saving
+            title: title.trim(),
             description: description || '',
             tags: parsedTags,
             image: imageUrl,
@@ -66,20 +70,22 @@ router.post('/add-project', isAuthenticated, isProfileComplete, upload.single('i
             collaborators: parsedCollaboratorIds,
             otherCollaborators: parsedOtherCollaborators,
             resources: resources ? resources.split(',').map(r => r.trim()) : [],
-            isPublished: isPublished === 'true', // Correctly converts string "true"/"false" to boolean
+            isPublished: isPublished === 'true',
             projectType: projectType || 'Other',
-            points: pointsCalculator.calculateUploadPoints()
+            points: projectPoints // Assign the calculated points (0 for drafts)
         });
 
         await project.save();
 
-        // Award points to the Uploader's User document (only if published, or if you want drafts to award points too)
-        // You might want to conditionalize this: if (isPublished === 'true') { ... }
-        await User.findByIdAndUpdate(
-            req.session.userId,
-            { $inc: { totalPoints: pointsCalculator.calculateUploadPoints() } }
-        );
+        // CONDITIONAL POINT AWARDING TO USER
+        if (isPublished === 'true') {
+            await User.findByIdAndUpdate(
+                req.session.userId,
+                { $inc: { totalPoints: projectPoints } }
+            );
+        }
 
+        // Add to collaborators' projects list
         if (parsedCollaboratorIds.length > 0) {
             await User.updateMany(
                 { _id: { $in: parsedCollaboratorIds } },
@@ -87,13 +93,12 @@ router.post('/add-project', isAuthenticated, isProfileComplete, upload.single('i
             );
         }
 
-        // Redirect based on published status
-        const redirectPath = (isPublished === 'true') ? '/index.html' : `/profile.html?tab=drafts`; // Redirect drafts to profile drafts tab if you have one
-        res.status(200).json({ success: true, message: isPublished === 'true' ? 'Project uploaded!' : 'Draft saved!', projectId: project._id, redirect: redirectPath });
+        const message = (isPublished === 'true') ? 'Project uploaded successfully!' : 'Project saved as draft!';
+        const redirectPath = (isPublished === 'true') ? '/index.html' : `/profile.html?tab=drafts`; 
+        res.status(200).json({ success: true, message: message, projectId: project._id, redirect: redirectPath });
 
     } catch (error) {
         console.error('Add project error:', error);
-        // More granular error reporting for validation issues
         if (error.name === 'ValidationError') {
             const messages = Object.values(error.errors).map(err => err.message);
             return res.status(400).json({ error: 'Validation Error', details: messages.join(', ') });
@@ -101,6 +106,7 @@ router.post('/add-project', isAuthenticated, isProfileComplete, upload.single('i
         res.status(500).json({ error: 'Server error', details: error.message });
     }
 });
+
 // GET route to fetch dynamic filter options/tags (now using tagsConfig)
 router.get('/dynamic-filter-options', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
@@ -331,7 +337,8 @@ router.delete('/project/:projectId/comment/:commentId', isAuthenticated, async (
     }
 });
 
-// Delete Project
+// DELETE /project/:id
+// This route now correctly deducts all points accumulated by the project from the user's total.
 router.delete('/project/:id', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
         const project = await Project.findById(req.params.id);
@@ -341,6 +348,21 @@ router.delete('/project/:id', isAuthenticated, isProfileComplete, async (req, re
         if (project.userId.toString() !== req.session.userId) {
             return res.status(403).json({ error: 'Unauthorized' });
         }
+        
+        // --- CRITICAL CHANGE: Deduct ALL project points from the user's total ---
+        if (project.points > 0) {
+            await User.findByIdAndUpdate(
+                project.userId,
+                { $inc: { totalPoints: -project.points } }
+            );
+        }
+        // --- END CRITICAL CHANGE ---
+
+        // Also delete points earned from other interactions (likes, comments, views)
+        // Note: This logic is a bit more complex and would need to be stored in an activity log.
+        // For now, deducting the total project.points is the correct approach.
+
+        // Optional: Delete image from Cloudinary
         if (project.image && !project.image.includes('default-project.jpg')) {
             const publicIdMatch = project.image.match(/sharecase\/projects\/(.+)\.\w+$/);
             if (publicIdMatch && publicIdMatch[1]) {
@@ -348,12 +370,6 @@ router.delete('/project/:id', isAuthenticated, isProfileComplete, async (req, re
                 await cloudinary.uploader.destroy(publicId);
             }
         }
-
-        // Deduct points from the uploader when a project is deleted
-        await User.findByIdAndUpdate(
-            project.userId,
-            { $inc: { totalPoints: -project.points } }
-        );
 
         await project.deleteOne();
         res.status(200).json({ success: true, message: 'Project deleted successfully' });
@@ -364,6 +380,7 @@ router.delete('/project/:id', isAuthenticated, isProfileComplete, async (req, re
 });
 
 // Edit Project
+// This route now awards initial points when a draft is first published.
 router.put('/project/:id', isAuthenticated, isProfileComplete, upload.single('image'), async (req, res) => {
     try {
         const project = await Project.findById(req.params.id);
@@ -371,26 +388,41 @@ router.put('/project/:id', isAuthenticated, isProfileComplete, upload.single('im
             return res.status(404).json({ error: 'Project not found' });
         }
 
+        // Check user permissions
         const isUploader = project.userId.toString() === req.session.userId;
         const isCollaborator = project.collaborators.some(collabId => collabId.toString() === req.session.userId);
-
         if (!isUploader && !isCollaborator) {
             return res.status(403).json({ error: 'Unauthorized to edit this project.' });
         }
 
         const { title, description, tags, problemStatement, collaboratorIds, otherCollaborators, resources, isPublished, projectType } = req.body;
 
-        if (!title) {
-            return res.status(400).json({ error: 'Title is required' });
+        const newIsPublished = isPublished === 'true';
+
+        // --- CRITICAL CHANGE: Award initial points only on first publish ---
+        // We check if the project was previously a draft and is now being published, AND has no points yet.
+        if (!project.isPublished && newIsPublished && project.points === 0) {
+            const uploadPoints = pointsCalculator.calculateUploadPoints();
+            project.points = project.points + uploadPoints;
+            await User.findByIdAndUpdate(
+                project.userId,
+                { $inc: { totalPoints: uploadPoints } }
+            );
         }
+        // --- END CRITICAL CHANGE ---
 
-        const newCollaboratorIds = collaboratorIds
-            ? collaboratorIds.split(',').map(id => id.trim()).filter(id => id && ObjectId.isValid(id)).map(id => new ObjectId(id))
-            : [];
-        const newOtherCollaborators = otherCollaborators
-            ? otherCollaborators.split(',').map(c => c.trim()).filter(c => c !== '')
-            : [];
+        // Update project fields
+        project.title = title || project.title;
+        project.description = description || '';
+        project.problemStatement = problemStatement || '';
+        project.tags = tags ? tags.split(',').map(t => t.trim()) : [];
+        project.collaborators = collaboratorIds ? collaboratorIds.split(',').map(id => new ObjectId(id)) : [];
+        project.otherCollaborators = otherCollaborators ? otherCollaborators.split(',').map(c => c.trim()) : [];
+        project.resources = resources ? resources.split(',').map(r => r.trim()) : [];
+        project.isPublished = newIsPublished;
+        project.projectType = projectType || project.projectType;
 
+        // Handle image upload logic
         let imageUrl = project.image;
         if (req.file && req.file.path) {
             if (imageUrl && !imageUrl.includes('default-project.jpg')) {
@@ -401,39 +433,29 @@ router.put('/project/:id', isAuthenticated, isProfileComplete, upload.single('im
                 }
             }
             imageUrl = req.file.path;
-            console.log('New project image URL assigned from Multer during edit:', imageUrl);
-        } else {
-            console.log('No new project image uploaded during edit. Retaining existing.');
         }
+        project.image = imageUrl;
 
+        // Update collaborators' project lists in User model
         const oldCollaboratorIds = project.collaborators.map(id => id.toString());
-        const addedCollaborators = newCollaboratorIds.filter(id => !oldCollaboratorIds.includes(id.toString()));
-        const removedCollaborators = oldCollaboratorIds.filter(id => !newCollaboratorIds.map(oId => oId.toString()).includes(id));
-
+        const newCollaboratorIds = collaboratorIds ? collaboratorIds.split(',').map(id => id.trim()).filter(id => id && ObjectId.isValid(id)) : [];
+        
+        const addedCollaborators = newCollaboratorIds.filter(id => !oldCollaboratorIds.includes(id));
+        const removedCollaborators = oldCollaboratorIds.filter(id => !newCollaboratorIds.includes(id));
+        
         if (addedCollaborators.length > 0) {
             await User.updateMany(
                 { _id: { $in: addedCollaborators } },
                 { $addToSet: { projectsCollaboratedOn: project._id } }
             );
         }
-
         if (removedCollaborators.length > 0) {
             await User.updateMany(
-                { _id: { $in: removedCollaborators.map(id => new ObjectId(id)) } },
+                { _id: { $in: removedCollaborators } },
                 { $pull: { projectsCollaboratedOn: project._id } }
             );
         }
-
-        project.title = title;
-        project.description = description || '';
-        project.problemStatement = problemStatement || '';
-        project.tags = tags ? tags.split(',').map(t => t.trim()) : [];
         project.collaborators = newCollaboratorIds;
-        project.otherCollaborators = newOtherCollaborators;
-        project.resources = resources ? resources.split(',').map(r => r.trim()) : [];
-        project.isPublished = isPublished === 'true';
-        project.image = imageUrl;
-        project.projectType = projectType || project.projectType;
 
         await project.save();
         res.json({ success: true, message: 'Project updated successfully' });
@@ -687,7 +709,7 @@ router.get('/projects-by-user/:userId', isAuthenticated, async (req, res) => {
         })
         .populate('userId', 'name profilePic')
         .populate('collaborators', 'name profilePic')
-        .select('title description image tags likes views points projectType'); // Ensure points are selected here too
+        .select('title description image tags likes views projectType'); // Ensure points are selected here too
 
         if (!projects) { // Check for projects array, not if it's null (it will be an empty array if no projects)
             return res.status(200).json([]);

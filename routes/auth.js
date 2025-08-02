@@ -1,11 +1,14 @@
 const express = require('express');
-const bcrypt = require('bcryptjs');
-const cloudinary = require('cloudinary').v2;
-const User = require('../models/User');
-const { isAuthenticated, isProfileComplete } = require('../middleware/auth'); // Ensure this path is correct
-const upload = require('../middleware/upload'); // Multer for file uploads
-
 const router = express.Router();
+const User = require('../models/User');
+const Project = require('../models/Project'); // This import may not be strictly needed here, but keeping for completeness
+const bcrypt = require('bcryptjs');
+const { isAuthenticated, isProfileComplete } = require('../middleware/auth');
+const upload = require('../middleware/upload');
+const cloudinary = require('cloudinary').v2; // Multer for file uploads
+const crypto = require('crypto');
+const { Resend } = require('resend');
+const resend = new Resend('re_VjGVXkMU_NtKjGfDrm5pE1UQPbjJGbEVv');
 
 // Current User (Requires Authentication)
 router.get('/current-user', isAuthenticated, async (req, res) => {
@@ -53,82 +56,75 @@ router.get('/current-user', isAuthenticated, async (req, res) => {
     }
 });
 
-// Signup Route
+// --- User Signup ---
 router.post('/signup', async (req, res) => {
     try {
         const { email, password, name } = req.body;
+        const existingUser = await User.findOne({ email });
 
         if (!email || !password || !name) {
             return res.status(400).json({ success: false, error: 'All fields are required' });
         }
 
-        const existingUser = await User.findOne({ email });
         if (existingUser) {
-            return res.status(400).json({ success: false, error: 'Email already exists' });
+            return res.status(409).json({ error: 'User with that email already exists.' });
         }
 
-        const hashedPassword = await bcrypt.hash(password, 10);
-
+        const emailVerificationToken = crypto.randomBytes(32).toString('hex');
         const user = new User({
             email,
-            password: hashedPassword,
+            password,
             name,
-            isProfileComplete: false,
             role: 'external',
-            universityEmail: null,
-            universityEmailVerified: false,
-            followers: [],
-            following: [],
-            totalPoints: 0
+            isProfileComplete: false,
+            emailVerificationToken,
+            isVerified: false
         });
 
         await user.save();
-        console.log('Signup: User created:', { userId: user._id, role: user.role });
 
-        req.session.userId = user._id.toString();
-        req.session.userName = user.name;
-        req.session.isProfileComplete = user.isProfileComplete;
-        req.session.userRole = user.role;
+        const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${emailVerificationToken}`;
 
-        await new Promise((resolve, reject) => {
-            req.session.save(err => {
-                if (err) {
-                    console.error('Signup: Session save error:', err);
-                    reject(err);
-                } else {
-                    console.log('Signup: Session saved:', { userId: user._id, sessionId: req.sessionID, userRole: req.session.userRole });
-                    resolve();
-                }
-            });
+        await resend.emails.send({
+            from: 'onboarding@resend.dev',
+            to: email,
+            subject: 'Verify your ShareCase account',
+            html: `
+                <p>Hello,</p>
+                <p>Thank you for signing up for ShareCase. Please click the link below to verify your account:</p>
+                <a href="${verificationUrl}">Verify Account</a>
+                <p>If you did not sign up for ShareCase, you can safely ignore this email.</p>
+            `,
         });
-        res.json({ success: true, redirect: '/create-profile.html' });
+
+        res.status(201).json({
+            success: true,
+            message: 'User created successfully. Please check your email to verify your account.'
+        });
+
     } catch (error) {
         console.error('Signup error:', error);
-        if (error.code === 11000) {
-            return res.status(400).json({ success: false, error: 'Email already exists' });
-        }
-        res.status(500).json({ success: false, error: 'Server error' });
+        res.status(500).json({ error: 'Server error during signup.' });
     }
 });
 
-// Login Route
+// --- User Login ---
 router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
-
-        if (!email || !password) {
-            return res.status(400).json({ success: false, error: 'Email and password are required' });
-        }
-
         const user = await User.findOne({ email });
+
         if (!user) {
-            return res.status(401).json({ success: false, error: 'Invalid email or password' });
+            return res.status(401).json({ error: 'Invalid credentials.' });
         }
 
-        const isMatch = await bcrypt.compare(password, user.password);
+        if (!user.isVerified) {
+            return res.status(401).json({ error: 'Please verify your email before logging in.' });
+        }
 
+        const isMatch = await user.comparePassword(password);
         if (!isMatch) {
-            return res.status(401).json({ success: false, error: 'Invalid email or password' });
+            return res.status(401).json({ error: 'Invalid credentials.' });
         }
 
         req.session.userId = user._id.toString();
@@ -136,24 +132,37 @@ router.post('/login', async (req, res) => {
         req.session.isProfileComplete = user.isProfileComplete;
         req.session.userRole = user.role;
 
-        await new Promise((resolve, reject) => {
-            req.session.save(err => {
-                if (err) {
-                    console.error('Login (backend): Session save error:', err);
-                    reject(err);
-                } else {
-                    console.log('Login (backend): Session saved:', { userId: user._id, sessionId: req.sessionID, userRole: req.session.userRole });
-                    resolve();
-                }
-            });
-        });
-
         const redirect = user.isProfileComplete ? '/index.html' : '/create-profile.html';
-        console.log('Login successful (backend):', { userId: user._id, redirect });
-        res.json({ success: true, redirect });
+        res.json({ success: true, message: 'Logged in successfully.', redirect });
+
     } catch (error) {
-        console.error('Login error (backend):', error);
-        res.status(500).json({ success: false, error: 'Server error' });
+        console.error('Login error:', error);
+        res.status(500).json({ error: 'Server error during login.' });
+    }
+});
+
+// --- Email Verification Route ---
+router.get('/verify-email', async (req, res) => {
+    try {
+        const { token } = req.query;
+        if (!token) {
+            return res.status(400).send('Verification token is missing.');
+        }
+
+        const user = await User.findOne({ emailVerificationToken: token });
+        if (!user) {
+            return res.status(404).send('Invalid or expired verification token.');
+        }
+
+        user.isVerified = true;
+        user.emailVerificationToken = null;
+        await user.save();
+
+        res.redirect('/login.html?verified=true');
+
+    } catch (error) {
+        console.error('Email verification error:', error);
+        res.status(500).send('An error occurred during email verification.');
     }
 });
 
@@ -323,42 +332,42 @@ router.get('/users/search', isAuthenticated, async (req, res) => {
     }
 });
 
-// Follow/Unfollow User
+// Route to toggle a follow/unfollow action
 router.post('/user/:id/follow', isAuthenticated, async (req, res) => {
     try {
-        const targetUserId = req.params.id;
-        const currentUserId = req.session.userId;
+        const targetUserId = req.params.id; // The user to be followed/unfollowed
+        const currentUserId = req.session.userId; // The user performing the action
 
-        if (targetUserId === currentUserId) {
-            return res.status(400).json({ message: 'Cannot follow yourself.' });
+        // Prevent a user from following themselves
+        if (currentUserId === targetUserId) {
+            return res.status(400).json({ error: 'You cannot follow yourself.' });
         }
 
-        const currentUser = await User.findById(currentUserId);
         const targetUser = await User.findById(targetUserId);
+        const currentUser = await User.findById(currentUserId);
 
-        if (!currentUser || !targetUser) {
-            return res.status(404).json({ message: 'User not found.' });
+        if (!targetUser || !currentUser) {
+            return res.status(404).json({ error: 'User not found.' });
         }
 
         const isFollowing = currentUser.following.includes(targetUserId);
 
         if (isFollowing) {
-            currentUser.following.pull(targetUserId);
+            // Unfollow logic: remove from both arrays
+            currentUser.following.pull(targetUserId); // Use Mongoose's .pull() method
             targetUser.followers.pull(currentUserId);
-            await currentUser.save();
-            await targetUser.save();
-            res.json({ success: true, message: 'Unfollowed user.', isFollowing: false });
+            await Promise.all([currentUser.save(), targetUser.save()]);
+            res.json({ success: true, isFollowing: false, followersCount: targetUser.followers.length });
         } else {
+            // Follow logic: add to both arrays
             currentUser.following.push(targetUserId);
             targetUser.followers.push(currentUserId);
-            await currentUser.save();
-            await targetUser.save();
-            res.json({ success: true, message: 'Followed user.', isFollowing: true });
+            await Promise.all([currentUser.save(), targetUser.save()]);
+            res.json({ success: true, isFollowing: true, followersCount: targetUser.followers.length });
         }
-
     } catch (error) {
-        console.error('Error following/unfollowing user:', error);
-        res.status(500).json({ message: 'Server error' });
+        console.error('Error toggling follow status:', error);
+        res.status(500).json({ error: 'Server error toggling follow status.' });
     }
 });
 

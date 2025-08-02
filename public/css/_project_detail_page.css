@@ -1,174 +1,90 @@
-/* public/css/_project_detail_page.css */
-
-/* Main content wrapper (replaces .project-container's role for width) */
-main.container-fluid {
-    padding-top: 30px; /* More space from header */
-    padding-bottom: 30px;
-}
-
-/* Styles for the main project detail card */
-.project-detail-card {
-    margin: 0 auto;
-    background: #ffffff;
-    padding: 30px; /* More padding */
-    border-radius: 12px;
-    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08); /* More prominent shadow */
-    border: 1px solid #f0f0f0; /* Subtle border */
-}
-
-.project-detail-card h1, #projectTitle {
-    font-size: 34px; /* Larger title */
-    color: #333333;
-    margin-bottom: 20px;
-    font-weight: 700;
-}
-
-/* Project Image styles */
-#projectImage {
-    width: 100%;
-    height: 450px; /* Taller image area */
-    object-fit: cover;
-    border-radius: 10px;
-    margin-bottom: 25px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); /* Subtle shadow for image */
-}
-
-.project-detail-card p, #projectDescription, #problemStatement {
-    font-size: 17px; /* Slightly larger text */
-    color: #555555;
-    line-height: 1.7;
-    margin-bottom: 1em;
-}
-
-/* General h3 styling */
-h3 {
-    margin-top: 30px; /* More space above subheadings */
-    margin-bottom: 15px;
-    color: #007bff;
-    font-size: 24px;
-    font-weight: 600;
-}
-
-/* Tag styling */
-.tags .badge {
-    display: inline-block;
-    background-color: #e9f0ff; /* Light blue tag background */
-    color: #007bff; /* Blue text */
-    padding: 8px 12px; /* More padding */
-    border-radius: 5px;
-    margin-right: 8px;
-    margin-bottom: 8px;
-    font-size: 0.95em;
-    font-weight: 500;
-    transition: background-color 0.2s ease-in-out;
-}
-
-.tags .badge:hover {
-    background-color: #cfe2ff; /* Slightly darker blue on hover */
-}
-
-/* Collaborators and Resources list items */
-#collaborators li,
-#resources li {
-    padding: 5px 0; /* Adjusted padding */
-    margin-bottom: 5px;
-    font-size: 16px;
-    color: #666;
-}
-
-#collaborators li a,
-#resources li a {
-    color: #007bff;
-    text-decoration: none;
-    transition: text-decoration 0.2s ease-in-out;
-}
-
-#collaborators li a:hover,
-#resources li a:hover {
-    text-decoration: underline;
-}
-
-/* Project Stats */
-.project-stats {
-    font-size: 15px; /* Slightly larger stats font */
-    color: #777777;
-    margin-top: 20px;
-    margin-bottom: 20px;
-    display: flex; /* Align items */
-    gap: 20px; /* Space between stats */
-}
-.project-stats span {
-    display: flex;
-    align-items: center;
-}
-.project-stats .fas {
-    margin-right: 8px;
-    color: #007bff; /* Blue icons */
-}
-
-/* Like Button */
-#likeBtn {
-    margin-bottom: 30px;
-    font-size: 18px; /* Larger button text */
-    padding: 10px 20px;
-}
-
-/* Comments Section Styles */
+/* Refine Comments Section */
 .comments-section {
-    padding-top: 30px;
-    margin-top: 30px;
+    padding-top: 20px;
+    margin-top: 20px;
     border-top: 1px solid #e0e0e0;
+    position: relative;
 }
 
 #commentsList {
-    max-height: 450px; /* Slightly more height for comments */
+    max-height: 400px;
     overflow-y: auto;
-    padding-right: 15px; /* More space for scrollbar */
-    margin-bottom: 25px;
+    padding-right: 10px;
+    margin-bottom: 15px;
 }
 
 .comment-item {
-    background-color: #fcfcfc; /* Even lighter background */
-    border: 1px solid #e9ecef; /* Lighter, subtle border */
-    border-radius: 8px;
-    padding: 18px; /* More padding */
-    margin-bottom: 12px; /* More space between comments */
-    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.02); /* Very subtle shadow */
+    background-color: #fff;
+    border: 1px solid #eee;
+    border-radius: 6px;
+    padding: 10px;
+    margin-bottom: 8px;
+    box-shadow: none;
+    display: flex;
+    flex-direction: column;
+}
+
+.comment-item .d-flex {
+    align-items: flex-start;
+}
+
+.comment-item img {
+    width: 32px;
+    height: 32px;
+    margin-right: 10px;
+    flex-shrink: 0;
 }
 
 .comment-item p {
     margin-bottom: 5px;
-    font-size: 16px;
-    color: #444;
+    font-size: 14px;
+    color: #333;
+    flex-grow: 1;
 }
 
 .comment-item strong {
-    color: #20c997; /* A vibrant green for username */
+    color: #20c997;
     font-weight: 600;
+    margin-right: 5px;
 }
 
 .comment-item small {
-    color: #888888;
-    margin-left: 10px;
-    font-size: 0.85em;
+    color: #888;
+    font-size: 0.75em;
+    margin-left: 5px;
 }
 
-/* Author styles */
-.project-author {
-    font-size: 1em; /* Slightly larger font size */
-    color: #6c757d;
-    margin-top: 15px; /* More space above the author name */
-    font-weight: 400;
+/* New Input Area Styling at Bottom */
+.comment-input-area {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-top: 10px;
+    border-top: 1px solid #e0e0e0; /* Subtle separation */
 }
 
-.project-author a {
-    color: #007bff;
-    text-decoration: none;
-    font-weight: 600; /* Bolder for prominence */
-    transition: color 0.2s ease-in-out, text-decoration 0.2s ease-in-out;
+.comment-input-area .form-control {
+    flex: 1;
+    border-radius: 20px;
+    padding: 0.25rem 1rem;
+    font-size: 0.9rem;
+    border: 1px solid #ced4da;
+    box-shadow: none;
+    background: #f8f9fa; /* Light background for contrast */
 }
 
-.project-author a:hover {
-    text-decoration: underline;
-    color: #0056b3; /* Darker blue on hover */
+.comment-input-area .btn-sm {
+    padding: 0.25rem 1rem;
+    font-size: 0.9rem;
+    border-radius: 20px;
+    height: 34px;
+}
+
+/* Ensure delete button aligns properly */
+.comment-item .delete-comment-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    padding: 2px 6px;
+    font-size: 0.75rem;
 }

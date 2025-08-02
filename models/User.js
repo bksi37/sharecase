@@ -23,37 +23,33 @@ const userSchema = new mongoose.Schema({
     universityEmail: {
         type: String,
         unique: true,
-        sparse: true // Allows null values to not violate unique constraint
+        sparse: true
     },
     universityEmailVerified: {
         type: Boolean,
         default: false
     },
     major: { type: String, default: '' },
-    department: { type: String, default: '' }, // Added department field as per roadmap/auth.js
+    department: { type: String, default: '' },
     profilePic: { type: String, default: 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg' },
     linkedin: { type: String, default: '' },
     github: { type: String, default: '' },
     personalWebsite: { type: String, default: '' },
     isProfileComplete: { type: Boolean, default: false },
 
-    // --- NEW FIELDS FOR SOCIAL FEATURES ---
-    followers: [{ // IDs of users who follow this user
+    followers: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     }],
-    following: [{ // IDs of users this user follows
+    following: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     }],
-    // --- END NEW FIELDS ---
 
-    // --- NEW FIELD FOR POINTS SYSTEM ---
-    totalPoints: { // Track user's accumulated points
+    totalPoints: {
         type: Number,
         default: 0
     },
-    // --- END NEW FIELD ---
 
     notifications: {
         type: String,
@@ -79,12 +75,24 @@ const userSchema = new mongoose.Schema({
         action: { type: String, required: true },
         timestamp: { type: Date, default: Date.now }
     }],
-    projectsCollaboratedOn: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Project' }]
+    projectsCollaboratedOn: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Project' }],
+
+    // --- NEW FIELDS FOR EMAIL VERIFICATION ---
+    emailVerificationToken: {
+        type: String,
+        required: false,
+        unique: true,
+        sparse: true
+    },
+    isVerified: {
+        type: Boolean,
+        default: false
+    }
+    // --- END NEW FIELDS ---
 }, { timestamps: true });
 
-// Pre-save hook to hash password only if it's modified
 userSchema.pre('save', async function(next) {
-    if (this.isModified('password') && this.password) { // Ensure password exists before hashing
+    if (this.isModified('password') && this.password) {
         this.password = await bcrypt.hash(this.password, 10);
     }
     next();

@@ -63,7 +63,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-
 /**
  * Fetches current user data and updates the header UI.
  * This function should be called on every page load to ensure header is consistent.
@@ -156,7 +155,7 @@ function renderProjectCard(project) {
                         <span class="project-author">By <a href="/public-profile.html?userId=${project.userId}">${project.userName}</a></span>
                         <span class="project-views"><i class="fas fa-eye"></i> ${project.views || 0}</span>
                         <span class="project-likes"><i class="fas fa-heart"></i> ${project.likes || 0}</span>
-                        </div>
+                    </div>
                     <div class="project-tags">
                         ${(project.tags || []).map(tag => `<span class="tag">${tag}</span>`).join('')}
                     </div>
@@ -184,7 +183,6 @@ function renderUserSuggestion(user) {
     return userSuggestionHtml;
 }
 
-
 /**
  * Toggles follow status for a user.
  * Assumes currentLoggedInUserId is globally available.
@@ -211,7 +209,7 @@ async function toggleFollow(targetUserId, followButton, callback) {
     }
 
     try {
-        const response = await fetch(`/user/${targetUserId}/follow`, { // Path is /user/:id/follow as defined in routes/auth.js
+        const response = await fetch(`/user/${targetUserId}/follow`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -230,19 +228,18 @@ async function toggleFollow(targetUserId, followButton, callback) {
 
             // Update UI based on new status
             if (followButton) {
-                if (data.isFollowing) {
+                const isFollowing = data.isFollowing;
+                if (isFollowing) {
                     followButton.textContent = 'Unfollow';
-                    followButton.classList.add('btn-primary');
                     followButton.classList.remove('btn-outline-primary');
-                    // Add to global following list
+                    followButton.classList.add('btn-primary');
                     if (!currentLoggedInUserFollowing.includes(targetUserId)) {
                         currentLoggedInUserFollowing.push(targetUserId);
                     }
                 } else {
                     followButton.textContent = 'Follow';
-                    followButton.classList.add('btn-outline-primary');
                     followButton.classList.remove('btn-primary');
-                    // Remove from global following list
+                    followButton.classList.add('btn-outline-primary');
                     currentLoggedInUserFollowing = currentLoggedInUserFollowing.filter(id => id !== targetUserId);
                 }
             }
@@ -347,7 +344,6 @@ async function loadDynamicFilterOptions() {
     }
 }
 
-
 /**
  * Loads all projects for the main grid.
  * This function is specific to the index.html page and assumes elements exist.
@@ -425,7 +421,6 @@ async function performGlobalSearch() {
         console.warn('One or more search/project grid elements not found. Skipping global search.');
         // Allow partial execution if filters are missing (e.g., on pages without a filter modal)
     }
-
 
     const query = searchInput ? searchInput.value.trim() : '';
     const course = courseFilter ? courseFilter.value : '';
@@ -507,18 +502,15 @@ async function performGlobalSearch() {
     }
 }
 
-
 // public/js/scripts.js (or your upload.html script if searchUsers is defined there)
 
-async function searchUsers(query, resultsContainer, addChipCallback, selectedIds) { // Updated function signature from previous suggestions
+async function searchUsers(query, resultsContainer, addChipCallback, selectedIds) {
     if (!query) {
         resultsContainer.style.display = 'none';
         return;
     }
     try {
-        // --- CRITICAL CHANGE HERE ---
-        // Change '/users/search' to '/search' or whatever path your global search route is mounted under
-        const response = await fetch(`/search?q=${encodeURIComponent(query)}`); // Assuming '/search' is your global route for users and projects
+        const response = await fetch(`/search?q=${encodeURIComponent(query)}`);
         
         if (!response.ok) {
             const errorData = await response.json();
@@ -529,7 +521,6 @@ async function searchUsers(query, resultsContainer, addChipCallback, selectedIds
         const data = await response.json();
         const users = data.results && Array.isArray(data.results.users) ? data.results.users : [];
 
-        // Now, pass the users array to your rendering function
         renderCollaboratorSearchResults(users, resultsContainer, addChipCallback, selectedIds); 
     } catch (error) {
         console.error('Error searching users:', error);
@@ -538,9 +529,8 @@ async function searchUsers(query, resultsContainer, addChipCallback, selectedIds
     }
 }
 
-// Ensure renderCollaboratorSearchResults is defined and uses the passed arguments
 function renderCollaboratorSearchResults(users, resultsContainer, addChipCallback, selectedIds) {
-    resultsContainer.innerHTML = ''; // Clear previous results
+    resultsContainer.innerHTML = '';
 
     if (users.length === 0) {
         resultsContainer.style.display = 'none';
@@ -548,7 +538,6 @@ function renderCollaboratorSearchResults(users, resultsContainer, addChipCallbac
     }
 
     users.forEach(user => {
-        // Prevent showing users already selected in the chip list
         if (!selectedIds.includes(user._id)) { 
             const resultItem = document.createElement('a');
             resultItem.href = '#'; 
@@ -564,6 +553,10 @@ function renderCollaboratorSearchResults(users, resultsContainer, addChipCallbac
                     ${user.major ? `<br><small class="text-muted">${user.major}</small>` : ''}
                 </div>
             `;
+            resultItem.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (addChipCallback) addChipCallback(user);
+            });
             resultsContainer.appendChild(resultItem);
         }
     });
@@ -575,5 +568,4 @@ function renderCollaboratorSearchResults(users, resultsContainer, addChipCallbac
     }
 }
 
-// Make sure searchUsers is exposed globally in scripts.js if called from upload.html
 window.searchUsers = searchUsers;
