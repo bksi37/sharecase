@@ -10,7 +10,8 @@
     
     <link rel="stylesheet" href="/css/_base.css">
     <link rel="stylesheet" href="/css/_header.css">
-    <link rel="stylesheet" href="/css/_forms.css"> <link rel="stylesheet" href="/css/_utilities.css">
+    <link rel="stylesheet" href="/css/_forms.css">
+    <link rel="stylesheet" href="/css/_utilities.css">
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
 </head>
@@ -64,6 +65,13 @@
                 <div class="mb-3">
                     <label for="profileEmail" class="form-label">Email</label>
                     <input type="email" class="form-control" id="profileEmail" name="email" readonly>
+                </div>
+                <div class="mb-3">
+                    <label for="profileUniversityEmail" class="form-label">University Email</label>
+                    <input type="email" class="form-control" id="profileUniversityEmail" name="universityEmail" placeholder="e.g., yourname@university.edu">
+                    <div id="universityEmailInfo" class="form-text text-muted">
+                        Adding a valid .edu email will grant you student privileges.
+                    </div>
                 </div>
                 <div class="mb-3">
                     <label for="profileMajor" class="form-label">Major</label>
@@ -178,39 +186,34 @@
     <script src="/js/scripts.js"></script>
     <script>
         // Global variables for search (from scripts.js)
-        // let searchTimeout;
-        // const DEBOUNCE_DELAY = 300; 
+        let searchTimeout;
+        const DEBOUNCE_DELAY = 300; 
 
-        // Function to load user settings into the form fields from /current-user
         async function loadSettings() {
             try {
-                console.log("loadSettings: Attempting to fetch user data for settings...");
                 const response = await fetch('/current-user');
                 const data = await response.json();
-                console.log("loadSettings: Received data for settings:", data);
 
                 if (data.isLoggedIn && data.user) {
                     const user = data.user;
                     
-                    // Populate Profile Information form
                     document.getElementById('profileName').value = user.name || '';
                     document.getElementById('profileEmail').value = user.email || '';
+                    // NEW: Populate university email field
+                    document.getElementById('profileUniversityEmail').value = user.universityEmail || '';
                     document.getElementById('profileMajor').value = user.major || '';
                     document.getElementById('profileDepartment').value = user.department || '';
 
-                    // Social links (now correctly part of socialLinks object from backend)
                     document.getElementById('profileLinkedin').value = (user.socialLinks && user.socialLinks.linkedin) || '';
                     document.getElementById('profileGithub').value = (user.socialLinks && user.socialLinks.github) || '';
-                    document.getElementById('profilePersonalWebsite').value = (user.socialLinks && user.socialLinks.website) || ''; // 'website' from backend
+                    document.getElementById('profilePersonalWebsite').value = (user.socialLinks && user.socialLinks.website) || '';
 
-                    // Populate Security and Preferences
                     document.getElementById('twoFactorAuth').checked = user.twoFactorAuth || false;
                     document.getElementById('notifications').value = user.notifications || 'all';
                     document.getElementById('theme').value = user.theme || 'light';
                     document.getElementById('profilePrivacy').value = user.privacy || 'public';
 
                 } else {
-                    console.error('loadSettings: User not logged in or user data not found. Redirecting to login.');
                     Toastify({
                         text: 'Please log in to manage settings',
                         duration: 3000,
@@ -229,13 +232,10 @@
             }
         }
 
-        // Function to load activity log
         async function loadActivityLog() {
             try {
-                console.log("loadActivityLog: Attempting to fetch activity log...");
-                const response = await fetch('/profile/activity-log'); // Assuming this route exists and returns JSON
+                const response = await fetch('/profile/activity-log');
                 const data = await response.json();
-                console.log("loadActivityLog: Received activity log:", data);
 
                 const activityLogList = document.getElementById('activityLog');
                 if (activityLogList) {
@@ -249,8 +249,6 @@
                     } else {
                         activityLogList.innerHTML = '<li class="text-muted small">No activity recorded.</li>';
                     }
-                } else {
-                    console.warn("loadActivityLog: Element with ID 'activityLog' not found.");
                 }
             } catch (error) {
                 console.error('loadActivityLog: Error loading activity log:', error);
@@ -262,9 +260,7 @@
             }
         }
 
-
         document.addEventListener('DOMContentLoaded', () => {
-            // Event listener for the Profile form (settings page)
             const profileSettingsForm = document.getElementById('profileSettingsForm');
             if (profileSettingsForm) {
                 profileSettingsForm.addEventListener('submit', async e => {
@@ -272,10 +268,10 @@
                     const formData = new FormData(e.target);
                     
                     try {
-                        const response = await fetch('/profile/update-profile', { // Path changed to /profile/update-profile
+                        const response = await fetch('/profile/update-profile', {
                             method: 'POST',
                             body: formData,
-                            credentials: 'include' // Important for sending cookies
+                            credentials: 'include'
                         });
                         const result = await response.json();
                         if (response.ok && result.success) {
@@ -284,14 +280,8 @@
                                 duration: 3000,
                                 style: { background: '#28a745' },
                             }).showToast();
-                            // Update header profile pic and name instantly
-                            if (result.profilePic) {
-                                document.getElementById('headerProfilePic').src = result.profilePic;
-                            }
-                            if (result.name) {
-                                document.getElementById('headerProfileName').textContent = result.name;
-                            }
-                            // Reload settings to ensure all fields are fresh (especially if backend sanitizes input)
+                            // NEW: Reload the user data in the header to show the new role immediately
+                            loadUserProfileInHeader();
                             loadSettings();
                         } else {
                             Toastify({
@@ -311,7 +301,6 @@
                 });
             }
 
-            // Event listener for the Security (password) form
             const securitySettingsForm = document.getElementById('securitySettingsForm');
             if (securitySettingsForm) {
                 securitySettingsForm.addEventListener('submit', async e => {
@@ -320,7 +309,6 @@
                     const newPassword = document.getElementById('newPassword').value;
                     const confirmNewPassword = document.getElementById('confirmNewPassword').value;
 
-                    // Password validation (client-side)
                     if (!currentPassword || !newPassword || !confirmNewPassword) {
                         Toastify({ text: 'All password fields are required', duration: 3000, style: { background: '#e74c3c' } }).showToast();
                         return;
@@ -335,7 +323,7 @@
                     }
 
                     try {
-                        const response = await fetch('/profile/change-password', { // Path changed to /profile/change-password
+                        const response = await fetch('/profile/change-password', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                             body: JSON.stringify({ currentPassword, newPassword }),
@@ -345,7 +333,6 @@
                         if (response.ok && result.success) {
                             Toastify({ text: 'Password changed successfully!', duration: 3000, style: { background: '#28a745' } }).showToast();
                             document.getElementById('passwordSection').style.display = 'none';
-                            // Clear password fields
                             document.getElementById('currentPassword').value = '';
                             document.getElementById('newPassword').value = '';
                             document.getElementById('confirmNewPassword').value = '';
@@ -359,7 +346,6 @@
                 });
             }
 
-            // Event listener for the Preferences form
             const preferencesSettingsForm = document.getElementById('preferencesSettingsForm');
             if (preferencesSettingsForm) {
                 preferencesSettingsForm.addEventListener('submit', async e => {
@@ -368,11 +354,11 @@
                     const theme = document.getElementById('theme').value;
                     const privacyElement = document.getElementById('profilePrivacy');
                     const privacyValue = privacyElement ? privacyElement.value : 'public';
-                    const twoFactorAuthElement = document.getElementById('twoFactorAuth'); // This checkbox is part of security form
+                    const twoFactorAuthElement = document.getElementById('twoFactorAuth');
                     const twoFactorAuthChecked = twoFactorAuthElement ? twoFactorAuthElement.checked : false;
 
                     try {
-                        const response = await fetch('/profile/update-preferences', { // Path changed to /profile/update-preferences
+                        const response = await fetch('/profile/update-preferences', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                             body: JSON.stringify({ notifications, theme, privacy: privacyValue, twoFactorAuth: twoFactorAuthChecked }),
@@ -381,7 +367,6 @@
                         const result = await response.json();
                         if (response.ok && result.success) {
                             Toastify({ text: 'Preferences updated successfully!', duration: 3000, style: { background: '#28a745' } }).showToast();
-                            // Update header profile pic and name as preferences might affect points/roles in future
                             loadUserProfileInHeader();
                         } else {
                             Toastify({ text: result.error || 'Failed to update preferences', duration: 3000, style: { background: '#e74c3c' } }).showToast();
@@ -393,7 +378,6 @@
                 });
             }
 
-            // Original click handlers for buttons that don't submit a form directly
             document.getElementById('changePasswordBtn').addEventListener('click', () => {
                 const passwordSection = document.getElementById('passwordSection');
                 if (passwordSection) {
@@ -412,17 +396,17 @@
             });
 
             document.getElementById('cancelProfileBtn').addEventListener('click', () => {
-                loadSettings(); // Reloads all settings data
+                loadSettings();
             });
 
             document.getElementById('cancelPreferencesBtn').addEventListener('click', () => {
-                loadSettings(); // Reloads all settings data
+                loadSettings();
             });
 
             document.getElementById('deleteAccountBtn').addEventListener('click', async () => {
                 if (!confirm('Are you sure you want to delete your account? This cannot be undone.')) return;
                 try {
-                    const response = await fetch('/profile/delete-account', { // Path changed to /profile/delete-account
+                    const response = await fetch('/profile/delete-account', {
                         method: 'DELETE',
                         headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                         credentials: 'include'
@@ -430,7 +414,6 @@
                     const result = await response.json();
                     if (response.ok && result.success) {
                         Toastify({ text: 'Account deleted successfully!', duration: 3000, style: { background: '#28a745' } }).showToast();
-                        // Redirect to login page after successful deletion
                         setTimeout(() => window.location.href = '/login.html', 3000);
                     } else {
                         Toastify({ text: result.error || 'Failed to delete account', duration: 3000, style: { background: '#e74c3c' } }).showToast();
@@ -441,29 +424,22 @@
                 }
             });
 
-            // Initial page load
             window.addEventListener('load', () => {
-                console.log("settings.html: window.onload triggered.");
-                loadUserProfileInHeader(); // To populate header details on settings page (from scripts.js)
-                loadSettings(); // To populate form fields (defined above)
-                loadActivityLog(); // To load activity log (defined above)
-                // Ensure password section is hidden on initial load
+                loadUserProfileInHeader();
+                loadSettings();
+                loadActivityLog();
                 const passwordSection = document.getElementById('passwordSection');
                 if (passwordSection) {
                     passwordSection.style.display = 'none';
                 }
             });
-
-            // Handle search bar in header (from scripts.js)
             const searchInput = document.getElementById('searchInput');
             const autocompleteSuggestions = document.getElementById('autocompleteSuggestions');
-            // Assuming performGlobalSearch, DEBOUNCE_DELAY, populateDropdown, loadDynamicFilterOptions are in scripts.js
 
-            // Only add event listeners if searchInput exists (it should in the header)
             if (searchInput) {
                 searchInput.addEventListener('input', () => {
-                    clearTimeout(searchTimeout); // searchTimeout is global from scripts.js
-                    searchTimeout = setTimeout(performGlobalSearch, DEBOUNCE_DELAY); // DEBOUNCE_DELAY & performGlobalSearch are global from scripts.js
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(performGlobalSearch, DEBOUNCE_DELAY);
                 });
 
                 searchInput.addEventListener('focus', () => {
@@ -474,26 +450,22 @@
                 });
             }
 
-            // Hide autocomplete when clicking outside (global listener)
             document.addEventListener('click', (event) => {
                 if (autocompleteSuggestions && !autocompleteSuggestions.contains(event.target) && event.target !== searchInput) {
                     autocompleteSuggestions.style.display = 'none';
                 }
             });
 
-            // Filter modal button (if it exists on this page)
             const filterBtn = document.getElementById('filterBtn');
             if (filterBtn) {
                 filterBtn.addEventListener('click', () => {
-                    // Assuming loadDynamicFilterOptions is in scripts.js
                     loadDynamicFilterOptions();
                 });
             }
-            // Apply Filters button within the modal (if it exists)
             const applyFiltersBtn = document.getElementById('applyFilters');
             if (applyFiltersBtn) {
                 applyFiltersBtn.addEventListener('click', () => {
-                    performGlobalSearch(); // assuming this also performs search with filters
+                    performGlobalSearch();
                     const filterModal = bootstrap.Modal.getInstance(document.getElementById('filterModal'));
                     if (filterModal) {
                         filterModal.hide();

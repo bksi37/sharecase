@@ -3,19 +3,19 @@ const express = require('express');
 const router = express.Router();
 const cloudinary = require('cloudinary').v2;
 const User = require('../models/User');
-const Project = require('../models/Project'); // Needed for /my-projects and delete-account
-const { isAuthenticated } = require('../middleware/auth'); // isProfileComplete is not directly used as middleware here, but check `auth.js` for where it's applied
+const Project = require('../models/Project');
+const { isAuthenticated, isProfileComplete } = require('../middleware/auth');
 const bcrypt = require('bcryptjs');
-const upload = require('../middleware/upload'); // Multer for file uploads
+const upload = require('../middleware/upload');
 
 // Update Profile (General user profile update after initial completion)
 router.post('/update-profile', isAuthenticated, upload.single('profilePic'), async (req, res) => {
     try {
-        // Removed personalEmail from destructuring as per User model roadmap
-        const { name, bio, linkedin, major, github, personalWebsite, department } = req.body;
+        // Now destructure `universityEmail` and `bio` from the body
+        const { name, bio, linkedin, major, github, personalWebsite, department, universityEmail } = req.body;
         const userId = req.session.userId;
 
-        console.log('Update profile attempt (profile.js):', { userId, name, major, linkedin, github, personalWebsite, bio, department, file: req.file ? req.file.originalname : 'no file' });
+        console.log('Update profile attempt (profile.js):', { userId, name, major, linkedin, github, personalWebsite, bio, department, universityEmail, file: req.file ? req.file.originalname : 'no file' });
 
         let user = await User.findById(userId);
         if (!user) {
@@ -27,7 +27,15 @@ router.post('/update-profile', isAuthenticated, upload.single('profilePic'), asy
         user.bio = bio;
         user.github = github;
         user.personalWebsite = personalWebsite;
-        user.department = department; // Added department update
+        user.department = department;
+        
+        // NEW: Handle university email update
+        user.universityEmail = universityEmail || null;
+
+        // NEW: Change role from 'external' to 'student' if a valid .edu email is provided
+        if (user.role === 'external' && user.universityEmail && user.universityEmail.endsWith('.edu')) {
+            user.role = 'student';
+        }
 
         let processedLinkedin = linkedin;
         if (processedLinkedin && !processedLinkedin.startsWith('http://') && !processedLinkedin.startsWith('https://')) {
@@ -36,30 +44,25 @@ router.post('/update-profile', isAuthenticated, upload.single('profilePic'), asy
         user.linkedin = processedLinkedin;
 
         if (req.file && req.file.path) {
-            // Optional: Delete old profile pic from Cloudinary if it's not default
             if (user.profilePic && !user.profilePic.includes('default-profile.jpg')) {
                 const publicIdMatch = user.profilePic.match(/sharecase\/profiles\/(.+)\.\w+$/);
                 if (publicIdMatch && publicIdMatch[1]) {
                     const publicId = `sharecase/profiles/${publicIdMatch[1]}`;
                     await cloudinary.uploader.destroy(publicId);
-                    console.log('Old profile pic deleted from Cloudinary:', publicId);
                 }
             }
             user.profilePic = req.file.path;
-            console.log('New profile pic URL assigned from Multer (profile.js):', user.profilePic);
-        } else {
-            console.log('No new profile pic uploaded in update-profile. Retaining existing or default.');
         }
 
         await user.save();
 
-        // Update activity log for profile update
         await User.findByIdAndUpdate(userId, {
             $push: { activityLog: { action: 'Profile updated', timestamp: new Date() } }
         });
 
-        // Update session userName just in case it was changed
         req.session.userName = user.name;
+        // NEW: Update the session role to reflect the change
+        req.session.userRole = user.role;
         await req.session.save();
 
         res.json({
@@ -71,7 +74,8 @@ router.post('/update-profile', isAuthenticated, upload.single('profilePic'), asy
             major: user.major,
             github: user.github,
             personalWebsite: user.personalWebsite,
-            department: user.department
+            department: user.department,
+            role: user.role // Return the new role to the frontend
         });
     } catch (error) {
         console.error('Profile update error (profile.js):', error);
@@ -149,7 +153,6 @@ router.delete('/delete-account', isAuthenticated, async (req, res) => {
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
-        // Delete user projects
         const projects = await Project.find({ userId: userId });
         for (const project of projects) {
             if (project.image && !project.image.includes('default-project.jpg')) {
@@ -157,24 +160,20 @@ router.delete('/delete-account', isAuthenticated, async (req, res) => {
                 if (publicIdMatch && publicIdMatch[1]) {
                     const publicId = `sharecase/projects/${publicIdMatch[1]}`;
                     await cloudinary.uploader.destroy(publicId);
-                    console.log(`Deleted project image ${publicId}`);
                 }
             }
         }
         await Project.deleteMany({ userId: userId });
 
-        // Delete user profile picture
         if (user.profilePic && !user.profilePic.includes('default-profile.jpg')) {
             const publicIdMatch = user.profilePic.match(/sharecase\/profiles\/(.+)\.\w+$/);
             if (publicIdMatch && publicIdMatch[1]) {
                 const publicId = `sharecase/profiles/${publicIdMatch[1]}`;
                 await cloudinary.uploader.destroy(publicId);
-                console.log(`Deleted profile image ${publicId}`);
             }
         }
-        // Delete user
         await User.findByIdAndDelete(userId);
-        req.session.destroy(); // Clear session
+        req.session.destroy();
         res.json({ success: true, message: 'Account deleted successfully.' });
     } catch (error) {
         console.error('Account deletion error:', error);

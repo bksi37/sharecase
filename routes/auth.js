@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
-const Project = require('../models/Project'); // This import may not be strictly needed here, but keeping for completeness
+const Project = require('../models/Project');
 const bcrypt = require('bcryptjs');
 const { isAuthenticated, isProfileComplete } = require('../middleware/auth');
 const upload = require('../middleware/upload');
-const cloudinary = require('cloudinary').v2; // Multer for file uploads
+const cloudinary = require('cloudinary').v2;
 const crypto = require('crypto');
 const { Resend } = require('resend');
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -13,13 +13,11 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 // Current User (Requires Authentication)
 router.get('/current-user', isAuthenticated, async (req, res) => {
     try {
-        // isAuthenticated middleware ensures req.session.userId exists here
         const user = await User.findById(req.session.userId)
             .select('name email profilePic major department linkedin github personalWebsite privacy isProfileComplete role universityEmail universityEmailVerified followers following totalPoints');
 
         if (!user) {
-            req.session.destroy(); // Clear invalid session
-            // This case should ideally be rare if isAuthenticated is working correctly
+            req.session.destroy();
             return res.status(404).json({ isLoggedIn: false, error: 'User not found after authentication check.' });
         }
 
@@ -32,18 +30,16 @@ router.get('/current-user', isAuthenticated, async (req, res) => {
                 profilePic: user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg',
                 major: user.major || '',
                 department: user.department || '',
-                // Group social links into an object as expected by frontend
                 socialLinks: {
                     linkedin: user.linkedin || '',
                     github: user.github || '',
-                    website: user.personalWebsite || '' // Using 'website' for personalWebsite
+                    website: user.personalWebsite || ''
                 },
                 privacy: user.privacy,
                 isProfileComplete: user.isProfileComplete,
                 role: user.role,
                 universityEmail: user.universityEmail || '',
                 universityEmailVerified: user.universityEmailVerified,
-                // Rename counts to match frontend's expected properties
                 followersCount: user.followers ? user.followers.length : 0,
                 followingCount: user.following ? user.following.length : 0,
                 totalPoints: user.totalPoints || 0
@@ -86,7 +82,6 @@ router.post('/signup', async (req, res) => {
         const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${emailVerificationToken}`;
         console.log('Verification URL being sent:', verificationUrl);
 
-        // Send verification email using Resend
         await resend.emails.send({
             from: 'noreply@sharecase.live',
             to: email,
@@ -158,6 +153,10 @@ router.get('/verify-email', async (req, res) => {
 
         user.isVerified = true;
         user.emailVerificationToken = null;
+        // Check if the user has a university email to set their role to 'student'
+        if (user.universityEmail) {
+            user.role = 'student';
+        }
         await user.save();
 
         res.redirect('/login.html?verified=true');
@@ -172,12 +171,15 @@ router.get('/verify-email', async (req, res) => {
 router.post('/complete-profile', isAuthenticated, upload.single('profilePic'), async (req, res) => {
     try {
         const userId = req.session.userId;
-        const { name, major, linkedin, github, personalWebsite, department, universityEmail } = req.body;
-        console.log('Complete profile attempt:', { userId, name, major, linkedin, github, personalWebsite, department, universityEmail, file: req.file ? req.file.originalname : 'no file' });
+        const name = req.session.userName;
+        const { major, linkedin, github, personalWebsite, department, universityEmail } = req.body;
+
+        if (!name || !major) {
+            return res.status(400).json({ success: false, error: 'Name and Major are required.' });
+        }
 
         const user = await User.findById(userId);
         if (!user) {
-            console.log('Complete profile failed: User not found:', userId);
             return res.status(404).json({ success: false, error: 'User not found' });
         }
 
@@ -185,40 +187,36 @@ router.post('/complete-profile', isAuthenticated, upload.single('profilePic'), a
         user.major = major;
         user.department = department;
         user.universityEmail = universityEmail || null;
-
-        // Process social links
         user.linkedin = linkedin;
         user.github = github;
         user.personalWebsite = personalWebsite;
 
-        // Ensure URLs have https:// prefix if they don't already
-        if (user.linkedin && !user.linkedin.startsWith('http://') && !user.linkedin.startsWith('https://')) {
+        // Automatically change role to 'student' if a university email is provided
+        if (user.universityEmail) {
+            user.role = 'student';
+        }
+
+        if (user.linkedin && !user.linkedin.startsWith('http')) {
             user.linkedin = `https://${user.linkedin}`;
         }
-        if (user.github && !user.github.startsWith('http://') && !user.github.startsWith('https://')) {
+        if (user.github && !user.github.startsWith('http')) {
             user.github = `https://${user.github}`;
         }
-        if (user.personalWebsite && !user.personalWebsite.startsWith('http://') && !user.personalWebsite.startsWith('https://')) {
+        if (user.personalWebsite && !user.personalWebsite.startsWith('http')) {
             user.personalWebsite = `https://${user.personalWebsite}`;
         }
 
-
         if (req.file && req.file.path) {
             user.profilePic = req.file.path;
-            console.log('New profile pic URL assigned from Multer (auth.js):', user.profilePic);
-        } else {
-            console.log('No new profile pic uploaded in complete-profile. Retaining existing or default.');
         }
 
         user.isProfileComplete = true;
         await user.save();
 
         req.session.isProfileComplete = true;
-        req.session.userRole = user.role;
-        req.session.userName = user.name;
+        req.session.userRole = user.role; // Update the session role
         await req.session.save();
 
-        console.log('Profile completed for user:', userId);
         res.json({ success: true, redirect: '/index.html' });
     } catch (error) {
         console.error('Error completing profile:', error);
@@ -233,11 +231,9 @@ router.post('/complete-profile', isAuthenticated, upload.single('profilePic'), a
 router.post('/skip-profile-completion', isAuthenticated, async (req, res) => {
     try {
         const userId = req.session.userId;
-        console.log('Skip profile attempt:', { userId });
-
         const user = await User.findById(userId);
+
         if (!user) {
-            console.log('Skip profile failed: User not found:', userId);
             return res.status(404).json({ success: false, error: 'User not found' });
         }
 
@@ -247,7 +243,6 @@ router.post('/skip-profile-completion', isAuthenticated, async (req, res) => {
         req.session.isProfileComplete = true;
         await req.session.save();
 
-        console.log('User skipped profile completion:', userId);
         res.json({ success: true, redirect: '/index.html' });
     } catch (error) {
         console.error('Error skipping profile completion:', error);
@@ -262,7 +257,6 @@ router.get('/logout', (req, res) => {
             console.error('Logout error:', err);
             return res.status(500).json({ error: 'Server error' });
         }
-        console.log('Logout successful');
         res.json({ success: true, redirect: '/login.html' });
     });
 });
@@ -285,15 +279,13 @@ router.get('/user-details/:id', async (req, res) => {
             profilePic: user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg',
             major: user.major || '',
             department: user.department || '',
-            // Group social links into an object as expected by frontend
             socialLinks: {
                 linkedin: user.linkedin || '',
                 github: user.github || '',
-                website: user.personalWebsite || '' // Using 'website' for personalWebsite
+                website: user.personalWebsite || ''
             },
             role: user.role,
             totalPoints: user.totalPoints || 0,
-            // Rename counts to match frontend's expected properties
             followersCount: user.followers ? user.followers.length : 0,
             followingCount: user.following ? user.following.length : 0
         });
@@ -337,10 +329,9 @@ router.get('/users/search', isAuthenticated, async (req, res) => {
 // Route to toggle a follow/unfollow action
 router.post('/user/:id/follow', isAuthenticated, async (req, res) => {
     try {
-        const targetUserId = req.params.id; // The user to be followed/unfollowed
-        const currentUserId = req.session.userId; // The user performing the action
+        const targetUserId = req.params.id;
+        const currentUserId = req.session.userId;
 
-        // Prevent a user from following themselves
         if (currentUserId === targetUserId) {
             return res.status(400).json({ error: 'You cannot follow yourself.' });
         }
@@ -355,13 +346,11 @@ router.post('/user/:id/follow', isAuthenticated, async (req, res) => {
         const isFollowing = currentUser.following.includes(targetUserId);
 
         if (isFollowing) {
-            // Unfollow logic: remove from both arrays
-            currentUser.following.pull(targetUserId); // Use Mongoose's .pull() method
+            currentUser.following.pull(targetUserId);
             targetUser.followers.pull(currentUserId);
             await Promise.all([currentUser.save(), targetUser.save()]);
             res.json({ success: true, isFollowing: false, followersCount: targetUser.followers.length });
         } else {
-            // Follow logic: add to both arrays
             currentUser.following.push(targetUserId);
             targetUser.followers.push(currentUserId);
             await Promise.all([currentUser.save(), targetUser.save()]);
