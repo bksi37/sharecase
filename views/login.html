@@ -8,13 +8,11 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     
-    <!-- --- NEW: Modular CSS Links --- -->
     <link rel="stylesheet" href="/css/_base.css">
     <link rel="stylesheet" href="/css/_header.css">
     <link rel="stylesheet" href="/css/_forms.css">
     <link rel="stylesheet" href="/css/_utilities.css">
-    <!-- --- END NEW --- -->
-
+    
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
 </head>
 <body>
@@ -56,7 +54,6 @@
             e.preventDefault();
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            console.log('Login attempt (frontend):', { email });
 
             try {
                 const response = await fetch('/login', {
@@ -69,7 +66,6 @@
                     credentials: 'include'
                 });
                 const data = await response.json();
-                console.log('Login response (frontend):', data);
 
                 if (response.ok && data.success) {
                     Toastify({
@@ -93,16 +89,17 @@
             }
         });
 
-        // Prevent redirect loop for profile completion
+        // --- NEW: Check for successful email verification via URL parameter ---
         const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('redirected') === 'true') {
+        if (urlParams.get('verified') === 'true') {
             Toastify({
-                text: 'Please complete your profile to continue',
-                duration: 3000,
-                style: { background: '#e74c3c' },
-                className: 'error'
+                text: 'Your account has been successfully verified! You can now log in.',
+                duration: 5000,
+                style: { background: '#28a745' },
+                className: 'success'
             }).showToast();
         }
+        // --- END NEW ---
     </script>
 </body>
 </html>
