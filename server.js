@@ -18,41 +18,41 @@ app.set('trust proxy', 1);
 
 mongoose.set('strictQuery', true);
 mongoose.connect(process.env.MONGO_URL, { useNewUrlParser: true, useUnifiedTopology: true })
-    .then(() => console.log('MongoDB connected successfully'))
-    .catch(err => {
-        console.error('MongoDB connection error:', err);
-        process.exit(1);
-    });
+    .then(() => console.log('MongoDB connected successfully'))
+    .catch(err => {
+        console.error('MongoDB connection error:', err);
+        process.exit(1);
+    });
 
 // Session Configuration
 const sessionStore = MongoStore.create({
-    mongoUrl: process.env.MONGO_URL,
-    collectionName: 'sessions',
-    ttl: 24 * 60 * 60, // 1 day
-    autoRemove: 'native'
+    mongoUrl: process.env.MONGO_URL,
+    collectionName: 'sessions',
+    ttl: 24 * 60 * 60, // 1 day
+    autoRemove: 'native'
 });
 
 sessionStore.on('error', err => console.error('MongoStore error:', err));
 sessionStore.on('connected', () => console.log('MongoStore connected successfully'));
 
 app.use(session({
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    store: sessionStore,
-    cookie: {
-        maxAge: 24 * 60 * 60 * 1000, // 1 day
-        secure: process.env.NODE_ENV === 'production',
-        httpOnly: true,
-        sameSite: 'lax', // Consider 'None' if cross-site, but 'lax' usually works
-        path: '/'
-    }
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    store: sessionStore,
+    cookie: {
+        maxAge: 24 * 60 * 60 * 1000, // 1 day
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/'
+    }
 }));
 
 // Middleware
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000', // Ensure this matches your frontend URL
-    credentials: true,
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    credentials: true,
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -64,32 +64,32 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Debug Session (keep this, very useful!)
 app.use((req, res, next) => {
-    console.log('Session middleware:', {
-        sessionId: req.sessionID,
-        userId: req.session.userId,
-        cookies: req.cookies,
-        path: req.path
-    });
-    next();
+    console.log('Session middleware:', {
+        sessionId: req.sessionID,
+        userId: req.session.userId,
+        cookies: req.cookies,
+        path: req.path
+    });
+    next();
 });
 
 // Logging (keep this, also very useful!)
 app.use((req, res, next) => {
-    const originalJson = res.json;
-    res.json = function (body) {
-        // Only log JSON bodies, avoid logging sensitive data
-        console.log(`Response: ${req.method} ${req.url} ${res.statusCode} ${JSON.stringify(body).substring(0, 150)}...`); // Limit length for logs
-        return originalJson.call(this, body);
-    };
-    console.log(`Request: ${req.method} ${req.url} ${req.body && Object.keys(req.body).length > 0 ? JSON.stringify(req.body).substring(0, 150) + '...' : ''} Session: ${(req.session && req.session.userId) || 'none'}`);
-    next();
+    const originalJson = res.json;
+    res.json = function (body) {
+        // Only log JSON bodies, avoid logging sensitive data
+        console.log(`Response: ${req.method} ${req.url} ${res.statusCode} ${JSON.stringify(body).substring(0, 150)}...`); // Limit length for logs
+        return originalJson.call(this, body);
+    };
+    console.log(`Request: ${req.method} ${req.url} ${req.body && Object.keys(req.body).length > 0 ? JSON.stringify(req.body).substring(0, 150) + '...' : ''} Session: ${(req.session && req.session.userId) || 'none'}`);
+    next();
 });
 
 // Cloudinary Configuration
 cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
 // --- ROUTES ---
@@ -131,41 +131,41 @@ app.get('/about.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 
 app.get('/edit-project.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'edit-project.html')));
 app.get('/public-profile.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'public-profile.html')));
 app.get('/admin/dashboard.html', isAuthenticated, async (req, res) => {
-    // --- IMPORTANT: You still need proper role-based authorization here.
-    // This example is just an `isAuthenticated` check.
-    // You should add: if (req.session.userRole !== 'admin' && req.session.userRole !== 'sharecase_worker') { return res.redirect('/index.html'); }
-    res.sendFile(path.join(__dirname, 'views', 'admin-dashboard.html'));
+    // --- IMPORTANT: You still need proper role-based authorization here.
+    // This example is just an `isAuthenticated` check.
+    // You should add: if (req.session.userRole !== 'admin' && req.session.userRole !== 'sharecase_worker') { return res.redirect('/index.html'); }
+    res.sendFile(path.join(__dirname, 'views', 'admin-dashboard.html'));
 });
 
 // Catch-all for API 404s and SPA routing
 // This middleware should be placed AFTER all specific API and static file routes
 app.use((req, res, next) => {
-    // If it's a request for /favicon.ico and it wasn't caught by express.static,
-    // just send a 204 No Content or the default.
-    // express.static should handle favicon.ico if it's in /public.
-    if (req.path === '/favicon.ico') {
-        return res.status(204).end(); // No content for favicon if not found statically
-    }
+    // If it's a request for /favicon.ico and it wasn't caught by express.static,
+    // just send a 204 No Content or the default.
+    // express.static should handle favicon.ico if it's in /public.
+    if (req.path === '/favicon.ico') {
+        return res.status(204).end(); // No content for favicon if not found statically
+    }
 
-    // If an API route wasn't matched, and it's an AJAX request, send JSON 404
-    const isAjaxRequest = req.xhr || req.headers.accept.includes('application/json');
-    if (isAjaxRequest) {
-        return res.status(404).json({ error: 'API endpoint not found', message: `No API route for ${req.method} ${req.url}` });
-    }
-    // For non-API requests (e.g., direct navigation to an unmatched HTML path),
-    // serve index.html (or your main SPA entry point) from the 'views' directory.
-    res.status(404).sendFile(path.join(__dirname, 'views', 'index.html')); // <-- CORRECTED PATH HERE
+    // --- CORRECTED LINE 151 HERE ---
+    const isAjaxRequest = req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'));
+    if (isAjaxRequest) {
+        return res.status(404).json({ error: 'API endpoint not found', message: `No API route for ${req.method} ${req.url}` });
+    }
+    // For non-API requests (e.g., direct navigation to an unmatched HTML path),
+    // serve index.html (or your main SPA entry point) from the 'views' directory.
+    res.status(404).sendFile(path.join(__dirname, 'views', 'index.html')); // <-- CORRECTED PATH HERE
 });
 
 // General Error Handling Middleware (should always be last)
 app.use((err, req, res, next) => {
-    console.error('Global Server Error:', err.stack);
-    const isAjaxRequest = req.xhr || req.headers.accept.includes('application/json');
-    if (isAjaxRequest) {
-        res.status(500).json({ error: 'Internal server error', message: err.message });
-    } else {
-        res.status(500).send('<h1>500 - Internal Server Error</h1><p>Something went wrong!</p>');
-    }
+    console.error('Global Server Error:', err.stack);
+    const isAjaxRequest = req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'));
+    if (isAjaxRequest) {
+        res.status(500).json({ error: 'Internal server error', message: err.message });
+    } else {
+        res.status(500).send('<h1>500 - Internal Server Error</h1><p>Something went wrong!</p>');
+    }
 });
 
 // Start Server
