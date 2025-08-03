@@ -8,7 +8,7 @@ const upload = require('../middleware/upload');
 const cloudinary = require('cloudinary').v2; // Multer for file uploads
 const crypto = require('crypto');
 const { Resend } = require('resend');
-const resend = new Resend('re_VjGVXkMU_NtKjGfDrm5pE1UQPbjJGbEVv');
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Current User (Requires Authentication)
 router.get('/current-user', isAuthenticated, async (req, res) => {
