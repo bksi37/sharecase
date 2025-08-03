@@ -86,7 +86,7 @@ router.post('/signup', async (req, res) => {
         const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${emailVerificationToken}`;
 
         await resend.emails.send({
-            from: 'onboarding@resend.dev',
+            from: 'noreply@sharecase.live',
             to: email,
             subject: 'Verify your ShareCase account',
             html: `
