@@ -84,7 +84,9 @@ router.post('/signup', async (req, res) => {
         await user.save();
 
         const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${emailVerificationToken}`;
+        console.log('Verification URL being sent:', verificationUrl);
 
+        // Send verification email using Resend
         await resend.emails.send({
             from: 'noreply@sharecase.live',
             to: email,
