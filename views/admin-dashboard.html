@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShareCase - Admin Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="/css/_base.css">
+    <link rel="stylesheet" href="/css/_header.css">
+    <link rel="stylesheet" href="/css/_forms.css">
+    <link rel="stylesheet" href="/css/_utilities.css">
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+</head>
+<body>
+    <header class="d-flex justify-content-between align-items-center">
+        <div class="logo">
+            <a href="/index.html">ShareCase</a>
+        </div>
+        <div class="search-bar-container position-relative">
+            <div class="input-group">
+                <input type="text" class="form-control" id="searchInput" placeholder="Search projects, users...">
+                <button class="btn btn-outline-secondary" id="filterBtn" data-bs-toggle="modal" data-bs-target="#filterModal" type="button">
+                    <i class="fas fa-filter"></i>
+                </button>
+            </div>
+            <div id="autocompleteSuggestions" class="autocomplete-suggestions"></div>
+        </div>
+        <div class="user-menu">
+            <div class="profile-container" id="userMenuToggle" style="display: none;">
+                <img id="headerProfilePic" src="https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg" alt="Profile Picture">
+                <span id="headerProfileName">Guest</span>
+                <div class="dropdown-menu" id="userDropdown">
+                    <a href="/profile.html" class="dropdown-item">Profile</a>
+                    <a href="/settings.html" class="dropdown-item">Settings</a>
+                    <a href="/upload-project.html" class="dropdown-item">Upload Project</a>
+                    <a id="adminDashboardLink" href="/admin/dashboard.html" class="dropdown-item" style="display: none;">Admin Dashboard</a>
+                    <a id="logoutLink" href="/logout" class="dropdown-item">Logout</a>
+                    <a href="/about.html" class="dropdown-item">About</a>
+                    <div class="dropdown-item-text text-muted small mt-2">
+                        Role: <span id="userRoleDisplay"></span><br>
+                        Points: <span id="userPointsDisplay"></span>
+                    </div>
+                </div>
+            </div>
+            <div id="authControls" style="display: none;">
+                <a href="/login.html" class="btn btn-primary btn-sm">Login</a>
+                <a href="/signup.html" class="btn btn-outline-primary btn-sm ms-2">Sign Up</a>
+            </div>
+        </div>
+    </header>
+    <main>
+        <div class="container py-5">
+            <h2 class="text-center mb-5">Admin Dashboard</h2>
+
+            <div class="row justify-content-center mb-5">
+                <div class="col-md-8 col-lg-7">
+                    <div class="auth-container p-4 shadow-lg rounded">
+                        <h3 class="mb-3">Point Allocation</h3>
+                        <form id="pointAllocationForm">
+                            <div class="mb-3">
+                                <label for="userId" class="form-label">User ID</label>
+                                <input type="text" class="form-control" id="userId" name="userId" required placeholder="Enter user's ID">
+                                <small class="form-text text-muted">A user's ID can be found on their public profile URL.</small>
+                            </div>
+                            <div class="mb-3">
+                                <label for="points" class="form-label">Points to Add</label>
+                                <input type="number" class="form-control" id="points" name="points" required placeholder="e.g., 50">
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100 mt-3">Allocate Points</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row justify-content-center mb-5">
+                <div class="col-md-10 col-lg-9">
+                    <div class="p-4 shadow-lg rounded bg-light">
+                        <h3 class="mb-4">Project Analytics</h3>
+                        <div id="analyticsContent">
+                            <p class="text-center text-muted">Loading analytics data...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+    <footer>
+        <p>© 2025 ShareCase. All rights reserved.</p>
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="/js/scripts.js"></script>
+    <script>
+        // Fetches and renders the project analytics data
+        async function loadAnalytics() {
+            const analyticsContent = document.getElementById('analyticsContent');
+            if (!analyticsContent) return;
+            
+            try {
+                const response = await fetch('/admin/analytics/projects', { credentials: 'include' });
+                const data = await response.json();
+
+                if (response.ok) {
+                    analyticsContent.innerHTML = `
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5>Total Projects: ${data.totalProjects}</h5>
+                                <h5>Published Projects: ${data.totalPublishedProjects}</h5>
+                                <hr>
+                                <h5>Projects by Type:</h5>
+                                <ul>
+                                    ${data.projectsByType.map(item => `<li>${item._id || 'Unspecified'}: ${item.count}</li>`).join('')}
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h5>Top Projects by Views:</h5>
+                                <ol>
+                                    ${data.topProjectsByViews.map(project => `<li><a href="/project.html?id=${project._id}">${project.title}</a> (${project.views} views)</li>`).join('')}
+                                </ol>
+                                <hr>
+                                <h5>Top Projects by Points:</h5>
+                                <ol>
+                                    ${data.topProjectsByPoints.map(project => `<li><a href="/project.html?id=${project._id}">${project.title}</a> (${project.points} pts)</li>`).join('')}
+                                </ol>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(data.error || 'Failed to load analytics data.');
+                }
+            } catch (error) {
+                console.error('Error loading analytics:', error);
+                analyticsContent.innerHTML = `<p class="text-center text-danger">Error loading analytics: ${error.message}</p>`;
+                Toastify({
+                    text: error.message,
+                    duration: 5000,
+                    style: { background: '#e74c3c' },
+                }).showToast();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Point Allocation Form Logic
+            const pointAllocationForm = document.getElementById('pointAllocationForm');
+            if (pointAllocationForm) {
+                pointAllocationForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    
+                    const userId = document.getElementById('userId').value;
+                    const points = document.getElementById('points').value;
+
+                    try {
+                        const response = await fetch('/admin/allocate-points', {
+                            method: 'POST',
+                            headers: { 
+                                'Content-Type': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: JSON.stringify({ userId, points: Number(points) }),
+                            credentials: 'include'
+                        });
+
+                        const data = await response.json();
+                        
+                        if (response.ok && data.success) {
+                            Toastify({
+                                text: data.message,
+                                duration: 3000,
+                                style: { background: '#28a745' },
+                            }).showToast();
+                            pointAllocationForm.reset();
+                        } else {
+                            throw new Error(data.error || 'Failed to allocate points.');
+                        }
+                    } catch (error) {
+                        console.error('Point allocation error:', error);
+                        Toastify({
+                            text: error.message || 'An error occurred during point allocation.',
+                            duration: 3000,
+                            style: { background: '#e74c3c' },
+                        }).showToast();
+                    }
+                });
+            }
+
+            // Load analytics data on page load
+            loadAnalytics();
+        });
+    </script>
+</body>
+</html>

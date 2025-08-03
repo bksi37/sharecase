@@ -84,32 +84,25 @@ router.get('/admin/users-analytics', isAuthenticated, authorizeAdminOrShareCaseW
     }
 });
 
-// Future: Route to manually award points (protected for admin/faculty)
-router.post('/admin/award-points', isAuthenticated, authorizeAdminOrFaculty, async (req, res) => {
+router.post('/allocate-points', isAuthenticated, authorizeAdmin, async (req, res) => {
     try {
-        const { userId, projectId, points, reason } = req.body;
-        // Logic to update user's total points and project's points
-        // This would involve finding the user and project, updating their 'points' fields,
-        // and potentially logging the transaction.
+        const { userId, points } = req.body;
+        if (!userId || !points) {
+            return res.status(400).json({ success: false, error: 'User ID and points are required.' });
+        }
 
-        // Placeholder for actual implementation:
-        // const user = await User.findById(userId);
-        // if (user) {
-        //     user.totalPoints += points;
-        //     await user.save();
-        // }
-        // if (projectId) {
-        //     const project = await Project.findById(projectId);
-        //     if (project) {
-        //         project.points += points;
-        //         await project.save();
-        //     }
-        // }
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'User not found.' });
+        }
 
-        res.json({ success: true, message: 'Points awarded (placeholder).' });
+        user.totalPoints += points;
+        await user.save();
+
+        res.json({ success: true, message: `Successfully allocated ${points} points to ${user.name}.` });
     } catch (error) {
-        console.error('Error awarding points:', error);
-        res.status(500).json({ message: 'Server error' });
+        console.error('Error allocating points:', error);
+        res.status(500).json({ success: false, error: 'Server error during point allocation.' });
     }
 });
 
