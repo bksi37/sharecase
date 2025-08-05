@@ -86,12 +86,13 @@ const authRoutes = require('./routes/auth');
 const profileRoutes = require('./routes/profile');
 const projectRoutes = require('./routes/projects');
 const adminRoutes = require('./routes/admin');
+const portfolioRoutes = require('./routes/portfolio');
 
 app.use('/', authRoutes);
 app.use('/profile', profileRoutes);
 app.use('/', projectRoutes);
 app.use('/admin', adminRoutes);
-
+app.use('/portfolio', portfolioRoutes);
 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'views', 'landing.html')));
 app.get('/signup.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'signup.html')));
@@ -105,6 +106,7 @@ app.get('/settings.html', isAuthenticated, isProfileComplete, (req, res) => res.
 app.get('/about.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'about.html')));
 app.get('/edit-project.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'edit-project.html')));
 app.get('/public-profile.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'public-profile.html')));
+app.get('/select-portfolio-type.html', isAuthenticated, (req, res) => res.sendFile(path.join(__dirname, 'views', 'select-portfolio-type.html')));
 app.get('/admin/dashboard.html', isAuthenticated, authorizeAdmin, (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'admin-dashboard.html'));
 });
