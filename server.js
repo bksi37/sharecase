@@ -56,6 +56,8 @@ app.use(cookieParser());
 
 app.use(express.static(path.join(__dirname, 'public')));
 
+app.use(express.static(path.join(__dirname, 'views'))); 
+
 app.use((req, res, next) => {
     console.log('Session middleware:', {
         sessionId: req.sessionID,
@@ -88,27 +90,57 @@ const projectRoutes = require('./routes/projects');
 const adminRoutes = require('./routes/admin');
 const portfolioRoutes = require('./routes/portfolio');
 
+// Public and Private profile routes
+app.get('/public-profile.html', (req, res) => {
+    if (req.session.userId) {
+        res.sendFile(path.join(__dirname, 'views', 'public-profile.html'));
+    } else {
+        const userId = req.query.userId || 'default';
+        res.redirect(`/public-landing-profile.html?userId=${userId}`);
+    }
+});
+
+app.get('/public-landing-profile.html', (req, res) => {
+    const filePath = path.join(__dirname, 'views', 'public-landing-profile.html');
+    console.log('Attempting to send file at:', filePath);
+    res.sendFile(filePath, (err) => {
+        if (err) {
+            console.error('Error sending file:', err);
+            res.status(err.status).end();
+        }
+    });
+});
+// Mount other routers
 app.use('/', authRoutes);
 app.use('/profile', profileRoutes);
 app.use('/', projectRoutes);
 app.use('/admin', adminRoutes);
 app.use('/portfolio', portfolioRoutes);
 
+// Serve other static HTML pages (some with middleware)
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'views', 'landing.html')));
 app.get('/signup.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'signup.html')));
 app.get('/login.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'login.html')));
 app.get('/create-profile.html', isAuthenticated, (req, res) => res.sendFile(path.join(__dirname, 'views', 'create-profile.html')));
 app.get('/index.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'index.html')));
 app.get('/upload-project.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'upload-project.html')));
-app.get('/project.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'project.html')));
+app.get('/project.html', (req, res) => {
+    if (req.session.userId) {
+        res.sendFile(path.join(__dirname, 'views', 'project.html'));
+    } else {
+        res.redirect(`/login.html?redirectedFrom=/project.html?id=${req.query.id}`);
+    }
+});
 app.get('/profile.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'profile.html')));
 app.get('/settings.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'settings.html')));
 app.get('/about.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'about.html')));
 app.get('/edit-project.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'edit-project.html')));
-app.get('/public-profile.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'public-profile.html')));
-app.get('/select-portfolio-type.html', isAuthenticated, (req, res) => res.sendFile(path.join(__dirname, 'views', 'select-portfolio-type.html')));
 app.get('/admin/dashboard.html', isAuthenticated, authorizeAdmin, (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'admin-dashboard.html'));
+});
+app.get('/select-portfolio-type.html', isAuthenticated, isProfileComplete, (req, res) => {
+    console.log('Serving select-portfolio-type.html for user:', req.session.userId);
+    res.sendFile(path.join(__dirname, 'views', 'select-portfolio-type.html'));
 });
 
 app.use((req, res, next) => {

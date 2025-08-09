@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Profile - ShareCase</title>
+    <title>ShareCase - Public Profile</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -13,12 +13,16 @@
     <link rel="stylesheet" href="/css/_project_cards.css">
     <link rel="stylesheet" href="/css/_public_profile.css">
     <link rel="stylesheet" href="/css/_utilities.css">
+    <link rel="icon" type="image/png" href="https://res.cloudinary.com/dphfedhek/image/upload/v1/favicon.png" sizes="192x192">
+    <link rel="apple-touch-icon" href="https://res.cloudinary.com/dphfedhek/image/upload/v1/apple-touch-icon.png">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
 </head>
 <body>
     <header class="d-flex justify-content-between align-items-center">
         <div class="logo">
-            <a href="/index.html">ShareCase</a>
+            <a href="/index.html">
+                <img src="https://res.cloudinary.com/dphfedhek/image/upload/sharecase-logo.png" alt="ShareCase Logo" style="height: 90px;">
+            </a>
         </div>
         <div class="search-bar-container position-relative">
             <div class="input-group">
@@ -46,7 +50,7 @@
                     </div>
                 </div>
             </div>
-            <div id="authControls" style="display: none;">
+            <div id="authControls" style="display: flex;">
                 <a href="/login.html" class="btn btn-primary btn-sm">Login</a>
                 <a href="/signup.html" class="btn btn-outline-primary btn-sm ms-2">Sign Up</a>
             </div>
@@ -54,247 +58,185 @@
     </header>
 
     <main class="container-fluid py-4">
-        <div class="public-profile-header">
-            <div class="profile-avatar">
-                <img id="publicProfilePic" src="https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg" alt="Profile" class="avatar-img">
-            </div>
-            <div class="profile-details">
-                <div class="d-flex align-items-center justify-content-between flex-wrap">
-                    <h1 id="publicUserName" class="me-3">User Name</h1>
-                    <button id="followBtn" class="btn btn-outline-primary mt-3" style="display: none;"><i class="fas fa-user-plus"></i> Follow</button>
+        <div class="container py-4">
+            <div class="profile-layout">
+                <div class="profile-sidebar">
+                    <div class="profile-header">
+                        <div class="profile-avatar">
+                            <img id="publicProfilePic" src="https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg" alt="Profile" class="avatar-img">
+                        </div>
+                        <div class="profile-details">
+                            <h1 id="publicProfileName">Loading Name...</h1>
+                            <div class="profile-meta">
+                                <span id="publicProfileMajor"></span>
+                                <span id="publicProfileDepartment"></span>
+                                <span id="publicProfileBio"></span>
+                            </div>
+                            <div class="profile-stats">
+                                <span><i class="fas fa-users"></i> <strong id="publicProfileFollowersCount">0</strong>&nbsp;Followers</span>
+                                <span><i class="fas fa-user-plus"></i> <strong id="publicProfileFollowingCount">0</strong>&nbsp;Following</span>
+                            </div>
+                            <div class="social-links">
+                                <a href="#" target="_blank" style="display:none;" id="publicGithubLink"><i class="fab fa-github"></i></a>
+                                <a href="#" target="_blank" style="display:none;" id="publicLinkedinLink"><i class="fab fa-linkedin"></i></a>
+                                <a href="#" target="_blank" style="display:none;" id="publicWebsiteLink"><i class="fas fa-globe"></i></a>
+                            </div>
+                            <button class="btn btn-outline-primary mt-3 w-100" id="followButton" style="display:none;">Follow</button>
+                        </div>
+                    </div>
                 </div>
-                <div class="profile-meta">
-                    <span id="publicUserMajor"></span>
-                    <span id="publicUserDepartment"></span>
+                <div class="profile-content">
+                    <div class="profile-section">
+                        <h2 class="section-title">Projects</h2>
+                        <hr class="section-divider">
+                        <div class="project-grid" id="public-projects">
+                            <p class="text-muted text-center">Loading projects...</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="profile-stats d-flex gap-3 mt-2">
-                    <span><i class="fas fa-users"></i> <strong id="publicFollowersCount">0</strong> Followers</span>
-                    <span><i class="fas fa-user-plus"></i> <strong id="publicFollowingCount">0</strong> Following</span>
-                </div>
-                <div class="social-links mt-3">
-                    <a href="#" target="_blank" style="display:none;" id="publicGithubLink"><i class="fab fa-github"></i></a>
-                    <a href="#" target="_blank" style="display:none;" id="publicLinkedinLink"><i class="fab fa-linkedin"></i></a>
-                    <a href="#" target="_blank" style="display:none;" id="publicWebsiteLink"><i class="fas fa-globe"></i></a>
-                </div>
-            </div>
-        </div>
-        <hr class="profile-separator">
-        <div class="container profile-main-content">
-            <div class="profile-section">
-                <h2 class="section-title">Projects</h2>
-                <hr class="section-divider">
-                <div class="project-grid" id="publicUserProjectsGrid">
-                    <p class="text-muted text-center w-100">Loading projects...</p>
-                </div>
-                <p id="noPublicProjectsMessage" class="text-muted mt-3 text-center" style="display: none;">No projects found for this user.</p>
             </div>
         </div>
     </main>
 
-    <div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="filterModalLabel">Filter Projects</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="courseFilter" class="form-label">Course</label>
-                        <select id="courseFilter" class="form-select">
-                            <option value="">All Courses</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="yearFilter" class="form-label">Year</label>
-                        <select id="yearFilter" class="form-select">
-                            <option value="">All Years</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="typeFilter" class="form-label">Type</label>
-                        <select id="typeFilter" class="form-select">
-                            <option value="">All Types</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="departmentFilter" class="form-label">Department</label>
-                        <select id="departmentFilter" class="form-select">
-                            <option value="">All Departments</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="categoryFilter" class="form-label">Category</label>
-                        <select id="categoryFilter" class="form-select">
-                            <option value="">All Categories</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary" id="applyFilters">Apply Filters</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <footer>
         <p>© 2025 ShareCase. All rights reserved.</p>
     </footer>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+<script src="/js/scripts.js"></script>
+<script>
+    // These variables are now declared globally in scripts.js, so they are available here.
+    // The previous declarations (let searchTimeout; const DEBOUNCE_DELAY = 300;) were removed.
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
-    <script src="/js/scripts.js"></script>
-    <script>
-        // --- Functions and Variables for this page's logic ---
-        const DEBOUNCE_DELAY_SEARCH = 300;
+    async function loadPublicProfileDetails() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const userId = urlParams.get('userId');
 
-        async function loadPublicUserProfileAndProjects() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const targetUserId = urlParams.get('userId');
+        if (!userId) {
+            Toastify({ text: 'No user ID provided.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+            setTimeout(() => window.location.href = '/index.html', 3000); 
+            return;
+        }
 
-            if (!targetUserId) {
-                if (window.currentLoggedInUserId) {
-                    window.location.href = `/profile.html`;
-                    return;
-                }
-                displayPublicProfileError('No User ID Provided', 'Please provide a user ID in the URL (e.g., ?userId=...).');
-                return;
+        try {
+            const userResponse = await fetch(`/user-details/${userId}`, { credentials: 'include' });
+            if (!userResponse.ok) {
+                throw new Error('Failed to load public profile details.');
+            }
+            const user = await userResponse.json();
+
+            const projectsResponse = await fetch(`/projects-by-user/${userId}`, { credentials: 'include' });
+            if (!projectsResponse.ok) {
+                throw new Error('Failed to load user projects.');
+            }
+            const projects = await projectsResponse.json();
+
+            document.getElementById('publicProfileName').textContent = user.name || 'N/A';
+            document.getElementById('publicProfilePic').src = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
+            document.getElementById('publicProfileMajor').textContent = user.major || '';
+            document.getElementById('publicProfileDepartment').textContent = user.department || '';
+            document.getElementById('publicProfileBio').textContent = user.bio || '';
+            document.getElementById('publicProfileFollowersCount').textContent = user.followersCount || 0;
+            document.getElementById('publicProfileFollowingCount').textContent = user.followingCount || 0;
+
+            const publicGithubLink = document.getElementById('publicGithubLink');
+            const publicLinkedinLink = document.getElementById('publicLinkedinLink');
+            const publicWebsiteLink = document.getElementById('publicWebsiteLink');
+
+            if (user.socialLinks?.github && publicGithubLink) {
+                publicGithubLink.href = user.socialLinks.github;
+                publicGithubLink.style.display = 'inline-block';
+            }
+            if (user.socialLinks?.linkedin && publicLinkedinLink) {
+                publicLinkedinLink.href = user.socialLinks.linkedin;
+                publicLinkedinLink.style.display = 'inline-block';
+            }
+            if (user.socialLinks?.website && publicWebsiteLink) {
+                publicWebsiteLink.href = user.socialLinks.website;
+                publicWebsiteLink.style.display = 'inline-block';
             }
 
-            try {
-                const userResponse = await fetch(`/user-details/${targetUserId}`);
-                if (userResponse.ok) {
-                    const user = await userResponse.json();
-                    
-                    document.getElementById('publicProfilePic').src = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
-                    document.getElementById('publicUserName').textContent = user.name || 'N/A';
-                    document.getElementById('publicUserMajor').textContent = user.major ? `Major: ${user.major}` : '';
-                    document.getElementById('publicUserDepartment').textContent = user.department ? `Department: ${user.department}` : '';
-                    document.getElementById('publicFollowersCount').textContent = user.followersCount || 0;
-                    document.getElementById('publicFollowingCount').textContent = user.followingCount || 0;
-
-                    const githubLink = document.getElementById('publicGithubLink');
-                    const linkedinLink = document.getElementById('publicLinkedinLink');
-                    const websiteLink = document.getElementById('publicWebsiteLink');
-
-                    if (user.socialLinks?.github && githubLink) {
-                        githubLink.href = user.socialLinks.github;
-                        githubLink.style.display = 'inline-block';
-                    }
-                    if (user.socialLinks?.linkedin && linkedinLink) {
-                        linkedinLink.href = user.socialLinks.linkedin;
-                        linkedinLink.style.display = 'inline-block';
-                    }
-                    if (user.socialLinks?.website && websiteLink) {
-                        websiteLink.href = user.socialLinks.website;
-                        websiteLink.style.display = 'inline-block';
-                    }
-
-                    const followBtn = document.getElementById('followBtn');
-                    if (window.currentLoggedInUserId && window.currentLoggedInUserId !== targetUserId) {
-                        followBtn.style.display = 'inline-block';
-                        const isFollowing = window.currentLoggedInUserFollowing.includes(targetUserId);
-                        if (isFollowing) {
-                            followBtn.textContent = 'Unfollow';
-                            followBtn.classList.remove('btn-outline-primary');
-                            followBtn.classList.add('btn-primary');
-                        } else {
-                            followBtn.textContent = 'Follow';
-                            followBtn.classList.remove('btn-primary');
-                            followBtn.classList.add('btn-outline-primary');
-                        }
-                        followBtn.onclick = () => window.toggleFollow(targetUserId, followBtn, updatePublicFollowCounts);
-                    } else {
-                        followBtn.style.display = 'none';
-                    }
-
-                    function updatePublicFollowCounts(isFollowing) {
-                        const followersCountElem = document.getElementById('publicFollowersCount');
-                        let currentCount = parseInt(followersCountElem.textContent) || 0;
-                        followersCountElem.textContent = isFollowing ? currentCount + 1 : currentCount - 1;
-                    }
-
+            const publicProjectsGrid = document.getElementById('public-projects');
+            if (publicProjectsGrid) {
+                if (projects && projects.length > 0) {
+                    publicProjectsGrid.innerHTML = projects.map(p => renderProjectCard(p)).join('');
                 } else {
-                    if (userResponse.status === 404) {
-                        displayPublicProfileError('User Not Found', 'The requested user could not be found.');
-                        return;
-                    }
-                    throw new Error(`Failed to load user details: ${userResponse.statusText}`);
+                    publicProjectsGrid.innerHTML = '<p class="text-muted text-center">No public projects available.</p>';
                 }
+            }
 
-                const projectsResponse = await fetch(`/projects-by-user/${targetUserId}`);
-                if (projectsResponse.ok) {
-                    const projects = await projectsResponse.json();
-                    const publicUserProjectsGrid = document.getElementById('publicUserProjectsGrid');
-                    if (projects.length > 0) {
-                        publicUserProjectsGrid.innerHTML = projects.map(p => window.renderProjectCard(p)).join('');
-                        document.getElementById('noPublicProjectsMessage').style.display = 'none';
-                    } else {
-                        document.getElementById('noPublicProjectsMessage').style.display = 'block';
-                        publicUserProjectsGrid.innerHTML = '';
-                    }
+            const followButton = document.getElementById('followButton');
+            if (followButton && typeof currentLoggedInUserId !== 'undefined' && currentLoggedInUserId !== null) {
+                if (currentLoggedInUserId === userId) {
+                    followButton.style.display = 'none';
                 } else {
-                    throw new Error('Failed to load user projects');
+                    followButton.style.display = 'block';
+                    if (isUserFollowing(userId)) {
+                        followButton.textContent = 'Unfollow';
+                        followButton.classList.remove('btn-outline-primary');
+                        followButton.classList.add('btn-primary');
+                    } else {
+                        followButton.textContent = 'Follow';
+                        followButton.classList.remove('btn-primary');
+                        followButton.classList.add('btn-outline-primary');
+                    }
+                    followButton.onclick = () => toggleFollow(userId, followButton, loadPublicProfileDetails);
                 }
-            } catch (error) {
-                console.error('Error loading public profile or projects:', error);
-                Toastify({ text: error.message || 'Error loading public profile', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                displayPublicProfileError('Error Loading Profile', error.message || 'An unexpected error occurred.');
+            } else if (followButton) {
+                followButton.style.display = 'none';
+            }
+
+        } catch (error) {
+            console.error('Error loading public profile or projects:', error);
+            Toastify({
+                text: error.message || 'Error loading public profile.',
+                duration: 3000,
+                style: { background: '#e74c3c' },
+            }).showToast();
+            document.getElementById('public-projects').innerHTML = '<p class="text-muted text-center">Could not load projects.</p>';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadUserProfileInHeader();
+        loadPublicProfileDetails();
+
+        const searchInput = document.getElementById('searchInput');
+        const autocompleteSuggestions = document.getElementById('autocompleteSuggestions');
+        const courseFilter = document.getElementById('courseFilter');
+        const yearFilter = document.getElementById('yearFilter');
+        const typeFilter = document.getElementById('typeFilter');
+        const departmentFilter = document.getElementById('departmentFilter');
+        const categoryFilter = document.getElementById('categoryFilter');
+
+        if (courseFilter && yearFilter && typeFilter && departmentFilter && categoryFilter) {
+            const applyFiltersBtn = document.getElementById('applyFilters');
+            if (applyFiltersBtn) {
+                applyFiltersBtn.addEventListener('click', () => {
+                    performGlobalSearch();
+                    const filterModal = bootstrap.Modal.getInstance(document.getElementById('filterModal'));
+                    if (filterModal) filterModal.hide();
+                });
             }
         }
 
-        function displayPublicProfileError(title, message) {
-            document.getElementById('publicUserName').textContent = title;
-            document.getElementById('publicProfilePic').src = 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
-            document.getElementById('publicUserMajor').textContent = '';
-            document.getElementById('publicUserDepartment').textContent = '';
-            document.getElementById('publicGithubLink').style.display = 'none';
-            document.getElementById('publicLinkedinLink').style.display = 'none';
-            document.getElementById('publicWebsiteLink').style.display = 'none';
-            document.getElementById('publicFollowersCount').textContent = '0';
-            document.getElementById('publicFollowingCount').textContent = '0';
-            const followBtn = document.getElementById('followBtn');
-            if (followBtn) followBtn.style.display = 'none';
-            const projectsGrid = document.getElementById('publicUserProjectsGrid');
-            if (projectsGrid) projectsGrid.innerHTML = `<p class="text-center w-100">${message}</p>`;
-            const noProjectsMsg = document.getElementById('noPublicProjectsMessage');
-            if (noProjectsMsg) noProjectsMsg.style.display = 'none';
-        }
-
-        // --- Main execution block ---
-        document.addEventListener('DOMContentLoaded', () => {
-            const searchInput = document.getElementById('searchInput');
-            const autocompleteSuggestions = document.getElementById('autocompleteSuggestions');
-            if (searchInput && autocompleteSuggestions) {
-                searchInput.addEventListener('input', () => {
-                    clearTimeout(window.searchTimeout);
-                    window.searchTimeout = setTimeout(() => window.performGlobalSearch(), DEBOUNCE_DELAY_SEARCH);
-                });
-                searchInput.addEventListener('focus', () => {
-                    if (searchInput.value.trim() && autocompleteSuggestions.children.length > 0) {
-                        autocompleteSuggestions.style.display = 'block';
-                    }
-                });
-                document.addEventListener('click', (event) => {
-                    if (!autocompleteSuggestions.contains(event.target) && event.target !== searchInput) {
-                        autocompleteSuggestions.style.display = 'none';
-                    }
-                });
-            }
-
-            const filterBtn = document.getElementById('filterBtn');
-            if (filterBtn) {
-                filterBtn.addEventListener('click', () => {
-                    Toastify({ text: 'Filter modal not implemented on this page.', duration: 2000, style: { background: "#ffc107" } }).showToast();
-                });
-            }
-
-            // Load user profile for header and then load the public profile page
-            window.loadUserProfileInHeader().then(() => {
-                loadPublicUserProfileAndProjects();
+        if (searchInput) {
+            searchInput.addEventListener('input', () => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(performGlobalSearch, DEBOUNCE_DELAY);
             });
+            searchInput.addEventListener('focus', () => {
+                if (searchInput.value.trim() && autocompleteSuggestions.children.length > 0) {
+                    autocompleteSuggestions.style.display = 'block';
+                }
+            });
+        }
+        document.addEventListener('click', (event) => {
+            if (autocompleteSuggestions && !autocompleteSuggestions.contains(event.target) && event.target !== searchInput) {
+                autocompleteSuggestions.style.display = 'none';
+            }
         });
-    </script>
+    });
+</script>
 </body>
 </html>

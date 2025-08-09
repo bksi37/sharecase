@@ -5,59 +5,56 @@ header {
     top: 0;
     left: 0;
     right: 0;
-    background: #ffffff; /* White header */
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* Softer shadow */
+    background: #ffffff;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
     z-index: 1000;
     padding: 10px 20px;
-    height: 60px; /* Explicit height for consistency */
+    height: 60px;
     display: flex;
     align-items: center;
-    justify-content: space-between; /* Ensures logo, search, and user menu are spaced out */
+    justify-content: space-between;
 }
 
 .logo {
-    font-size: 22px; /* Slightly larger logo for better visibility */
-    font-weight: bold;
+    /* No font styling needed here, as the content is now an image */
     line-height: 1;
-    letter-spacing: 0.5px; /* A touch of letter spacing for style */
+    letter-spacing: 0.5px;
 }
 
-.logo a {
-    text-decoration: none;
-    color: #444444; /* Slightly darker grey for better contrast */
-    transition: color 0.2s ease-in-out; /* Smooth transition on hover */
+/* New rule for the logo image */
+.logo img {
+    height: 100px; /* Adjust this value as needed */
+    width: auto; /* Ensures the aspect ratio is maintained */
+    vertical-align: middle; /* Aligns the image nicely with other elements */
 }
 
-.logo a:hover {
-    color: #007bff; /* Highlight on hover */
-}
 
 .search-bar {
     flex-grow: 1;
     max-width: 500px;
     margin: 0 20px;
-    position: relative; /* Needed for autocomplete suggestions positioning */
+    position: relative;
 }
 
 .search-bar input {
-    height: 38px; /* Slightly taller for better touch target */
-    font-size: 15px; /* Slightly larger font */
-    border: 1px solid #dcdcdc; /* Slightly more defined border */
-    border-radius: 6px; /* Slightly more rounded corners */
+    height: 38px;
+    font-size: 15px;
+    border: 1px solid #dcdcdc;
+    border-radius: 6px;
     background: #ffffff;
-    padding-right: 45px; /* Ensure space for filter button */
+    padding-right: 45px;
 }
 
 .search-bar .btn {
     background: transparent;
     border: none;
-    color: #757575; /* Darker grey icon */
-    padding: 0 10px; /* Adjust button padding */
+    color: #757575;
+    padding: 0 10px;
     transition: color 0.2s ease-in-out;
 }
 
 .search-bar .btn:hover {
-    color: #007bff; /* Blue on hover */
+    color: #007bff;
 }
 
 .user-menu {
@@ -70,61 +67,61 @@ header {
     align-items: center;
     cursor: pointer;
     position: relative;
-    padding: 5px; /* Added padding for a larger click area */
-    border-radius: 20px; /* Slightly rounded background on hover/active */
+    padding: 5px;
+    border-radius: 20px;
     transition: background-color 0.2s ease-in-out;
 }
 
 .user-menu .profile-container:hover,
 .user-menu .profile-container.active {
-    background-color: #f5f5f5; /* Light background on hover/active */
+    background-color: #f5f5f5;
 }
 
 .user-menu img {
-    width: 35px; /* Slightly larger profile picture */
+    width: 35px;
     height: 35px;
     border-radius: 50%;
     object-fit: cover;
-    margin-right: 8px; /* Adjusted margin */
-    border: 2px solid #e0e0e0; /* Subtle border around profile pic */
+    margin-right: 8px;
+    border: 2px solid #e0e0e0;
 }
 
 .user-menu #headerProfileName {
     font-weight: 500;
     color: #333;
-    margin-right: 5px; /* Space before dropdown arrow (if any) */
+    margin-right: 5px;
 }
 
 .user-menu .dropdown-menu {
     display: none;
     position: absolute;
-    top: calc(100% + 5px); /* Position slightly below the profile container */
+    top: calc(100% + 5px);
     right: 0;
     background: #ffffff;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* More pronounced shadow for dropdown */
-    border-radius: 6px; /* Slightly more rounded */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-radius: 6px;
     padding: 10px 0;
     z-index: 1000;
-    min-width: 180px; /* Wider dropdown */
+    min-width: 180px;
 }
 
 .user-menu .dropdown-menu a {
     display: block;
-    padding: 10px 20px; /* Increased padding */
-    color: #555555; /* Darker text for better readability */
+    padding: 10px 20px;
+    color: #555555;
     text-decoration: none;
-    font-size: 15px; /* Slightly larger font */
+    font-size: 15px;
     transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
 }
 
 .user-menu .dropdown-menu a:hover {
-    background: #e9f0ff; /* Light blue hover */
-    color: #007bff; /* Blue text on hover */
+    background: #e9f0ff;
+    color: #007bff;
 }
 
 .user-menu .profile-container.active .dropdown-menu {
-    display: flex; /* Show when active */
-    flex-direction: column; /* Ensure vertical layout */
+    display: flex;
+    flex-direction: column;
 }
 
 /* Autocomplete Container */
@@ -132,7 +129,7 @@ header {
     flex-grow: 1;
     max-width: 600px;
     margin: 0 20px;
-    position: relative; /* Crucial for absolute positioning of suggestions */
+    position: relative;
 }
 
 .autocomplete-suggestions {
@@ -140,20 +137,20 @@ header {
     background-color: #fff;
     border: 1px solid #ddd;
     border-radius: 4px;
-    width: 100%; /* Make it span the full width of its parent (.search-bar-container) */
+    width: 100%;
     max-height: 300px;
     overflow-y: auto;
     z-index: 1000;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     display: none;
-    top: calc(100% + 5px); /* Position slightly below the search input */
+    top: calc(100% + 5px);
     left: 0;
 }
 
 .autocomplete-item {
     display: flex;
     align-items: center;
-    padding: 10px 15px; /* More padding */
+    padding: 10px 15px;
     cursor: pointer;
     border-bottom: 1px solid #eee;
     transition: background-color 0.15s ease-in-out;
@@ -164,38 +161,37 @@ header {
 }
 
 .autocomplete-item:hover {
-    background-color: #f0f8ff; /* Light blue hover */
+    background-color: #f0f8ff;
 }
 
 .autocomplete-item img {
-    width: 35px; /* Slightly larger image */
+    width: 35px;
     height: 35px;
     border-radius: 50%;
     object-fit: cover;
-    margin-right: 12px; /* More margin */
+    margin-right: 12px;
     border: 1px solid #007bff;
 }
 
 .autocomplete-item span {
-    font-size: 1em; /* Standard font size */
+    font-size: 1em;
     color: #333;
     font-weight: 500;
 }
 
 .autocomplete-item .user-detail {
-    font-size: 0.85em; /* Slightly larger detail font */
+    font-size: 0.85em;
     color: #666;
     margin-left: 8px;
     font-weight: 400;
 }
 
-/* Adjust header search bar layout if needed */
-header .search-bar-container .input-group .form-control { /* Specific target for Bootstrap input */
+header .search-bar-container .input-group .form-control {
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
 }
 
-header .search-bar-container .input-group .btn { /* Specific target for Bootstrap button */
+header .search-bar-container .input-group .btn {
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
 }

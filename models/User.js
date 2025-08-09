@@ -36,7 +36,6 @@ const userSchema = new mongoose.Schema({
     github: { type: String, default: '' },
     personalWebsite: { type: String, default: '' },
     isProfileComplete: { type: Boolean, default: false },
-
     followers: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
@@ -45,12 +44,10 @@ const userSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     }],
-
     totalPoints: {
         type: Number,
         default: 0
     },
-
     notifications: {
         type: String,
         enum: ['all', 'important', 'none'],
@@ -70,14 +67,12 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
-
     activityLog: [{
         action: { type: String, required: true },
         timestamp: { type: Date, default: Date.now }
     }],
     projectsCollaboratedOn: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Project' }],
-
-    // --- NEW FIELDS FOR EMAIL VERIFICATION ---
+    viewedProjects: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Project' }], // New field for tracking unique projects viewed
     emailVerificationToken: {
         type: String,
         required: false,
@@ -88,7 +83,6 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     }
-    // --- END NEW FIELDS ---
 }, { timestamps: true });
 
 userSchema.pre('save', async function(next) {

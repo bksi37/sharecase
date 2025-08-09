@@ -5,7 +5,8 @@ let currentLoggedInUserFollowing = []; // To track who the current user is follo
 
 document.addEventListener('DOMContentLoaded', () => {
     // Call this function on DOMContentLoaded to load user data into the header
-    // and set global variables. This runs on every page load.
+    // and set global variables. This runs on every page load for authenticated pages.
+    // It's NOT called on public-profile.html directly.
     loadUserProfileInHeader();
 
     // --- Dropdown Menu Toggle ---
@@ -66,6 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
 /**
  * Fetches current user data and updates the header UI.
  * This function should be called on every page load to ensure header is consistent.
+ * It also sets global variables like currentLoggedInUserId.
  */
 async function loadUserProfileInHeader() {
     try {
@@ -86,7 +88,6 @@ async function loadUserProfileInHeader() {
             // Set global variables
             currentLoggedInUserId = user._id;
             currentLoggedInUserRole = user.role;
-            // Ensure following is an array, default to empty array if undefined/null
             currentLoggedInUserFollowing = user.following || []; 
 
             if (authControls) authControls.style.display = 'none'; // Hide login/signup
@@ -97,17 +98,15 @@ async function loadUserProfileInHeader() {
             if (userRoleDisplay) userRoleDisplay.textContent = user.role; // Display user role
             if (userPointsDisplay) userPointsDisplay.textContent = `${user.totalPoints || 0} pts`; // Display points
 
-            // Show admin dashboard link only for 'admin' or 'sharecase_worker' roles
+            // Show admin dashboard link only for 'admin' role
             if (adminDashboardLink) {
-                if (user.role === 'admin' || user.role === 'sharecase_worker') {
+                if (user.role === 'admin') { // Removed 'sharecase_worker'
                     adminDashboardLink.style.display = 'block';
                 } else {
                     adminDashboardLink.style.display = 'none';
                 }
             }
 
-            // Note: isProfileComplete check and redirect logic is better handled by middleware.
-            // Keeping console.warn for client-side awareness.
             if (!user.isProfileComplete && window.location.pathname !== '/create-profile.html') {
                 console.warn('User profile not complete. Backend middleware should handle redirect.');
             }
@@ -140,19 +139,26 @@ async function loadUserProfileInHeader() {
 /**
  * Renders a project card HTML element for general display (index.html, public-profile.html).
  * Does NOT include project points, as they are a personal metric.
+ * Includes conditional redirection based on login status.
  * @param {Object} project - The project data object.
  * @returns {string} - The HTML string for the project card.
  */
 function renderProjectCard(project) {
+    // Determine the click action based on login status
+    // CRITICAL CHANGE: This logic now handles redirection for unauthenticated users.
+    const clickAction = currentLoggedInUserId 
+        ? `window.location.href='/project.html?id=${project.id || project._id}'` 
+        : `window.location.href='/login.html?redirectedFrom=/project.html?id=${project.id || project._id}'`; // Redirect to login, then back to project
+
     const cardHtml = `
         <div class="col">
-            <div class="card h-100" style="cursor: pointer;" onclick="window.location.href='/project.html?id=${project.id || project._id}'">
+            <div class="card h-100" style="cursor: pointer;" onclick="${clickAction}">
                 <img src="${project.image || 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'}" class="card-img-top" alt="${project.title}" onerror="this.src='https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'">
                 <div class="card-body">
                     <h5 class="card-title">${project.title}</h5>
                     <p class="card-text">${project.description ? project.description.substring(0, 100) + '...' : 'No description'}</p>
                     <div class="project-meta">
-                        <span class="project-author">By <a href="/public-profile.html?userId=${project.userId}">${project.userName}</a></span>
+                        <span class="project-author">By <a href="/public-landing-profile.html?userId=${project.userId}">${project.userName}</a></span>
                         <span class="project-views"><i class="fas fa-eye"></i> ${project.views || 0}</span>
                         <span class="project-likes"><i class="fas fa-heart"></i> ${project.likes || 0}</span>
                     </div>
@@ -174,7 +180,7 @@ function renderProjectCard(project) {
  */
 function renderUserSuggestion(user) {
     const userSuggestionHtml = `
-        <div class="autocomplete-item" onclick="window.location.href='/public-profile.html?userId=${user._id}'">
+        <div class="autocomplete-item" onclick="window.location.href='/public-landing-profile.html?userId=${user._id}'">
             <img src="${user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'}" class="rounded-circle me-2" style="width: 30px; height: 30px; object-fit: cover;" alt="${user.name}">
             <span>${user.name}</span>
             <span class="user-detail">${user.major || user.department ? `(${user.major || ''}${user.major && user.department ? ', ' : ''}${user.department || ''})` : ''}</span>
@@ -315,7 +321,7 @@ async function loadDynamicFilterOptions() {
     const departmentFilter = document.getElementById('departmentFilter');
     const categoryFilter = document.getElementById('categoryFilter');
 
-    if (!courseFilter || !yearFilter || !typeFilter || !departmentFilter || !categoryFilter) {
+    if (!courseFilter && !yearFilter && !typeFilter && !departmentFilter && !categoryFilter) {
         console.warn('Filter dropdown elements not all found. Skipping dynamic filter loading for missing ones.');
         // Allow partial loading if some elements are missing on a page.
     }
@@ -419,7 +425,6 @@ async function performGlobalSearch() {
 
     if (!searchInput || !projectGrid || !projectGridHeader || !noProjectsFoundSearchMessage || !initialLoadingMessage || !autocompleteSuggestions) {
         console.warn('One or more search/project grid elements not found. Skipping global search.');
-        // Allow partial execution if filters are missing (e.g., on pages without a filter modal)
     }
 
     const query = searchInput ? searchInput.value.trim() : '';

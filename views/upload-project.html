@@ -18,7 +18,9 @@
 <body>
     <header class="d-flex justify-content-between align-items-center">
         <div class="logo">
-            <a href="/index.html">ShareCase</a>
+            <a href="/index.html">
+                <img src="https://res.cloudinary.com/dphfedhek/image/upload/sharecase-logo.png" alt="ShareCase Logo" style="height: 90px;">
+            </a>
         </div>
         <div class="search-bar-container position-relative">
             <div class="input-group">
@@ -287,124 +289,114 @@
 
         // --- Form Submission Logic (Unified for Publish and Draft) ---
         document.addEventListener('DOMContentLoaded', () => {
-            const uploadForm = document.getElementById('uploadForm');
-            const uploadProjectBtn = document.getElementById('uploadProjectBtn');
-            const saveDraftBtn = document.getElementById('saveDraftBtn');
+        const uploadForm = document.getElementById('uploadForm');
+        const uploadProjectBtn = document.getElementById('uploadProjectBtn');
+        const saveDraftBtn = document.getElementById('saveDraftBtn');
 
-            if (uploadForm && uploadProjectBtn && saveDraftBtn) {
-                // Handle "Upload Project" button click
-                uploadProjectBtn.addEventListener('click', (e) => {
-                    e.preventDefault(); 
+        if (uploadForm && uploadProjectBtn && saveDraftBtn) {
+            // Handle "Upload Project" button click
+            uploadProjectBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const title = document.getElementById('title').value.trim();
+                const projectType = document.getElementById('projectType').value;
+                const description = document.getElementById('description').value.trim();
+                const image = document.getElementById('image').files[0];
+                const course = document.getElementById('course').value;
+                const year = document.getElementById('year').value;
+                const department = document.getElementById('department').value;
+                const category = document.getElementById('category').value;
 
-                    // Client-side validation for PUBLISHING (requires title and projectType)
-                    const title = document.getElementById('title').value.trim();
-                    const projectType = document.getElementById('projectType').value;
-                    if (!title) {
-                        Toastify({ text: 'Project Title is required to publish.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                        return;
-                    }
-                    if (!projectType) {
-                        Toastify({ text: 'Project Type is required to publish.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                        return;
-                    }
-                    
-                    submitProject(true); // Call unified submit function with isPublished = true
-                });
-
-                // Handle "Save as Draft" button click
-                saveDraftBtn.addEventListener('click', (e) => {
-                    e.preventDefault(); 
-                    // No strict validation for saving as draft, but title is generally good to have
-                    const title = document.getElementById('title').value.trim();
-                    if (!title) {
-                        Toastify({ text: 'A Title is recommended even for drafts.', duration: 3000, style: { background: "#ffc107" } }).showToast();
-                    }
-                    submitProject(false); // Call unified submit function with isPublished = false
-                });
-
-                // Unified function to handle form data submission
-                async function submitProject(isPublishedStatus) {
-                    const formData = new FormData();
-                    formData.append('title', document.getElementById('title').value.trim());
-                    // Use projectType from its dedicated dropdown. Default to 'Other' if empty for draft.
-                    formData.append('projectType', document.getElementById('projectType').value || 'Other'); 
-                    formData.append('description', document.getElementById('description').value);
-                    formData.append('problemStatement', document.getElementById('problemStatement').value);
-
-                    // Collect remaining selected tags (course, year, department, category)
-                    const selectedTags = [];
-                    const course = document.getElementById('course').value;
-                    const year = document.getElementById('year').value;
-                    // Removed 'type' as it's now covered by 'projectType'
-                    const department = document.getElementById('department').value;
-                    const category = document.getElementById('category').value;
-
-                    if (course) selectedTags.push(course);
-                    if (year) selectedTags.push(year);
-                    // if (type) selectedTags.push(type); // Ensure this line is removed or commented out
-                    if (department) selectedTags.push(department);
-                    if (category) selectedTags.push(category);
-
-                    formData.append('tags', selectedTags.join(','));
-
-                    formData.append('collaboratorIds', collaboratorIdsHiddenInput.value);
-                    formData.append('otherCollaborators', document.getElementById('otherCollaborators').value);
-                    formData.append('resources', document.getElementById('resources').value);
-                    formData.append('isPublished', isPublishedStatus ? 'true' : 'false'); 
-                    
-                    const imageFile = document.getElementById('image').files[0];
-                    if (imageFile) {
-                        formData.append('image', imageFile);
-                    }
-
-                    try {
-                        const response = await fetch('/add-project', {
-                            method: 'POST',
-                            body: formData,
-                            credentials: 'include'
-                        });
-
-                        if (response.ok) {
-                            const message = isPublishedStatus ? 'Project uploaded successfully!' : 'Project saved as draft!';
-                            Toastify({ text: message, duration: 3000, style: { background: '#28a745' } }).showToast();
-                            
-                            // Clear form after successful upload/save
-                            uploadForm.reset(); 
-                            imagePreview.style.display = 'none';
-                            window.selectedCollaboratorIds = [];
-                            selectedCollaboratorsDisplay.innerHTML = '';
-                            updateCollaboratorIdsHiddenInput();
-                            
-                            setTimeout(() => window.location.href = '/profile.html', 3000);
-                        } else {
-                            const errorData = await response.json();
-                            throw new Error(errorData.error || 'Failed to process project');
-                        }
-                    } catch (error) {
-                        console.error('Error processing project:', error);
-                        Toastify({ text: error.message || 'Error processing project', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                    }
+                if (!title) {
+                    Toastify({ text: 'Project Title is required to publish.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                    return;
+                }
+                if (!projectType) {
+                    Toastify({ text: 'Project Type is required to publish.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                    return;
+                }
+                if (!description) {
+                    Toastify({ text: 'Description is required to publish.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                    return;
+                }
+                if (!image) {
+                    Toastify({ text: 'Project Image is required to publish.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                    return;
+                }
+                if (!course && !year && !department && !category) {
+                    Toastify({ text: 'At least one tag (Course, Year, Department, or Category) is required to publish.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                    return;
                 }
 
-                // Prevent form submission on Enter key press in textareas and text inputs
-                const textareas = uploadForm.querySelectorAll('textarea');
-                textareas.forEach(textarea => {
-                    textarea.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) { // Allow Shift+Enter for new line
-                            e.preventDefault(); 
-                        }
-                    });
-                });
+                submitProject(true); // Publish
+            });
 
-                const textInputs = uploadForm.querySelectorAll('input[type="text"]');
-                textInputs.forEach(input => {
-                    input.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter') {
-                            e.preventDefault(); 
-                        }
+            // Handle "Save as Draft" button click
+            saveDraftBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const title = document.getElementById('title').value.trim();
+                if (!title) {
+                    Toastify({ text: 'Project Title is required to save as draft.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                    return;
+                }
+                submitProject(false); // Draft
+            });
+
+            // Unified function to handle form data submission
+            async function submitProject(isPublishedStatus) {
+                const formData = new FormData();
+                formData.append('title', document.getElementById('title').value.trim());
+                formData.append('projectType', document.getElementById('projectType').value || 'Other');
+                formData.append('description', document.getElementById('description').value);
+                formData.append('problemStatement', document.getElementById('problemStatement').value);
+
+                // Collect tags
+                const selectedTags = [];
+                const course = document.getElementById('course').value;
+                const year = document.getElementById('year').value;
+                const department = document.getElementById('department').value;
+                const category = document.getElementById('category').value;
+                if (course) selectedTags.push(course);
+                if (year) selectedTags.push(year);
+                if (department) selectedTags.push(department);
+                if (category) selectedTags.push(category);
+                formData.append('tags', selectedTags.join(','));
+
+                formData.append('collaboratorIds', collaboratorIdsHiddenInput.value);
+                formData.append('otherCollaborators', document.getElementById('otherCollaborators').value);
+                formData.append('resources', document.getElementById('resources').value);
+                formData.append('isPublished', isPublishedStatus ? 'true' : 'false');
+
+                const imageFile = document.getElementById('image').files[0];
+                if (imageFile) {
+                    formData.append('image', imageFile);
+                }
+
+                try {
+                    const response = await fetch('/add-project', {
+                        method: 'POST',
+                        body: formData,
+                        credentials: 'include'
                     });
-                });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        Toastify({ text: data.message, duration: 3000, style: { background: '#28a745' } }).showToast();
+                        uploadForm.reset();
+                        imagePreview.style.display = 'none';
+                        window.selectedCollaboratorIds = [];
+                        selectedCollaboratorsDisplay.innerHTML = '';
+                        updateCollaboratorIdsHiddenInput();
+                        setTimeout(() => window.location.href = data.redirect, 3000);
+                    } else {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'Failed to process project');
+                    }
+                } catch (error) {
+                    console.error('Error processing project:', error);
+                    Toastify({ text: error.message || 'Error processing project', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                }
             }
+        }
 
             const cancelUploadBtn = document.getElementById('cancelUploadBtn');
             if (cancelUploadBtn) {

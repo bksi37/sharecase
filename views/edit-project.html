@@ -7,7 +7,6 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    
     <link rel="stylesheet" href="/css/_base.css">
     <link rel="stylesheet" href="/css/_header.css">
     <link rel="stylesheet" href="/css/_forms.css">
@@ -17,7 +16,9 @@
 <body>
     <header class="d-flex justify-content-between align-items-center">
         <div class="logo">
-            <a href="/index.html">ShareCase</a>
+            <a href="/index.html">
+                <img src="https://res.cloudinary.com/dphfedhek/image/upload/sharecase-logo.png" alt="ShareCase Logo" style="height: 90px;">
+            </a>
         </div>
         <div class="search-bar-container position-relative">
             <div class="input-group">
@@ -74,18 +75,36 @@
                         <textarea class="form-control" id="problemStatement" name="problemStatement" rows="4"></textarea>
                     </div>
                     <div class="mb-3">
-                        <label for="tags" class="form-label">Tags (e.g., Course, Year, Category)</label>
-                        <input type="text" class="form-control" id="tags" name="tags" placeholder="Comma-separated tags">
+                        <label class="form-label">Additional Tags</label>
+                        <div class="row">
+                            <div class="col-md-6 mb-2">
+                                <label for="course" class="form-label">Course</label>
+                                <select class="form-select" id="course" name="course"></select>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <label for="year" class="form-label">Year</label>
+                                <select class="form-select" id="year" name="year"></select>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <label for="department" class="form-label">Department</label>
+                                <select class="form-select" id="department" name="department"></select>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <label for="category" class="form-label">Category</label>
+                                <select class="form-select" id="category" name="category"></select>
+                            </div>
+                            <div class="col-md-12">
+                                <small class="form-text text-muted">Select relevant descriptive tags for your project (e.g., Course, Year).</small>
+                            </div>
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Collaborators (Registered Users)</label>
                         <div class="form-control" style="min-height: 50px; padding: .375rem .75rem; display: flex; flex-wrap: wrap; align-items: center; gap: 5px;">
-                            <div id="selectedCollaboratorsDisplay" style="display: flex; flex-wrap: wrap; gap: 5px;">
-                            </div>
+                            <div id="selectedCollaboratorsDisplay" style="display: flex; flex-wrap: wrap; gap: 5px;"></div>
                             <input type="text" id="collaboratorSearchInput" class="form-control flex-grow-1" placeholder="Search by name or email..." style="border: none; outline: none; box-shadow: none; padding: 0; min-width: 150px;">
                         </div>
-                        <div id="collaboratorSearchResults" class="list-group position-absolute z-index-1000 w-100 mt-1 shadow" style="max-height: 200px; overflow-y: auto; display: none; background-color: white;">
-                        </div>
+                        <div id="collaboratorSearchResults" class="list-group position-absolute z-index-1000 w-100 mt-1 shadow" style="max-height: 200px; overflow-y: auto; display: none; background-color: white;"></div>
                         <input type="hidden" id="collaboratorIds" name="collaboratorIds">
                     </div>
                     <div class="mb-3">
@@ -99,13 +118,6 @@
                         <small class="form-text text-muted">Provide links to project files, external documentation, or source code.</small>
                     </div>
                     <div class="mb-3">
-                        <label for="isPublished" class="form-label">Publish Status</label>
-                        <select class="form-select" id="isPublished" name="isPublished">
-                            <option value="true">Published</option>
-                            <option value="false">Draft</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
                         <label for="image" class="form-label">Project Image</label>
                         <input type="file" class="form-control" id="image" name="image" accept="image/*" style="display: none;">
                         <div id="dropZone" class="drop-zone">
@@ -115,8 +127,11 @@
                     <div class="image-preview mb-3">
                         <img id="imagePreview" src="" alt="Image Preview" style="display: none; max-width: 100%; max-height: 200px;">
                     </div>
-                    <button type="submit" class="btn btn-primary" id="saveChangesBtn">Save Changes</button>
-                    <button type="button" class="btn btn-secondary" id="cancelEditBtn">Cancel</button>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary" id="saveChangesBtn">Save Changes</button>
+                        <button type="button" class="btn btn-primary" id="publishBtn">Publish</button>
+                        <button type="button" class="btn btn-secondary" id="cancelEditBtn">Cancel</button>
+                    </div>
                 </form>
             </div>
         </div>
@@ -128,146 +143,30 @@
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="/js/scripts.js"></script>
     <script>
-        // Global variables and functions
+        // Debounce variables
         let debounceTimeout;
         const DEBOUNCE_DELAY_SEARCH = 300;
+
+        // Global variables for collaborator management
+        const collaboratorSearchInput = document.getElementById('collaboratorSearchInput');
+        const collaboratorSearchResults = document.getElementById('collaboratorSearchResults');
+        const selectedCollaboratorsDisplay = document.getElementById('selectedCollaboratorsDisplay');
+        const collaboratorIdsHiddenInput = document.getElementById('collaboratorIds');
         let selectedCollaboratorIds = [];
-        let originalProjectStatus = 'false'; // To store the initial publish status
+        window.selectedCollaboratorIds = selectedCollaboratorIds; // Expose to scripts.js
+        let originalProjectStatus = 'false'; // To store initial publish status
 
-        // --- Helper Functions ---
-        function updateCollaboratorIdsHiddenInput() {
-            document.getElementById('collaboratorIds').value = selectedCollaboratorIds.join(',');
-        }
+        // --- Image Upload Logic ---
+        const dropZone = document.getElementById('dropZone');
+        const imageInput = document.getElementById('image');
+        const imagePreview = document.getElementById('imagePreview');
 
-        function addCollaboratorChip(userId, userName, profilePic, isInitialLoad = false) {
-            if (selectedCollaboratorIds.includes(userId)) return;
-            selectedCollaboratorIds.push(userId);
-            updateCollaboratorIdsHiddenInput();
-            
-            const display = document.getElementById('selectedCollaboratorsDisplay');
-            const chip = document.createElement('span');
-            chip.classList.add('badge', 'bg-primary', 'me-2', 'd-flex', 'align-items-center');
-            chip.setAttribute('data-user-id', userId);
-            chip.innerHTML = `
-                <img src="${profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'}" class="rounded-circle me-1" style="width: 20px; height: 20px;" alt="${userName}">
-                ${userName}
-                <button type="button" class="btn-close btn-close-white ms-1" aria-label="Remove" data-remove-id="${userId}" style="font-size: 0.6em;"></button>
-            `;
-            display.appendChild(chip);
-            if (!isInitialLoad) {
-                Toastify({ text: `${userName} added`, duration: 2000, style: { background: "#28a745" } }).showToast();
-            }
-        }
-        
-        // --- Main Project Loading Logic ---
-        async function loadProject() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const projectId = urlParams.get('id');
-            if (!projectId) {
-                Toastify({ text: 'No project ID provided.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                setTimeout(() => window.location.href = '/profile.html', 3000);
-                return;
-            }
-
-            try {
-                const response = await fetch(`/project/${projectId}`);
-                if (!response.ok) throw new Error('Failed to load project details.');
-                const project = await response.json();
-                
-                // Store original status for later comparison
-                originalProjectStatus = project.isPublished ? 'true' : 'false';
-
-                document.getElementById('title').value = project.title;
-                document.getElementById('description').value = project.description || '';
-                document.getElementById('problemStatement').value = project.problemStatement || '';
-                document.getElementById('tags').value = project.tags.join(', ');
-                document.getElementById('otherCollaborators').value = project.otherCollaborators.join(', ');
-                document.getElementById('resources').value = project.resources.join(', ');
-                document.getElementById('isPublished').value = project.isPublished ? 'true' : 'false';
-                
-                // Set the projectType dropdown
-                const projectTypeSelect = document.getElementById('projectType');
-                if (projectTypeSelect) {
-                    projectTypeSelect.value = project.projectType || 'Other';
-                }
-
-                if (project.image) {
-                    document.getElementById('imagePreview').src = project.image;
-                    document.getElementById('imagePreview').style.display = 'block';
-                }
-
-                // Populate collaborators
-                if (project.collaborators && project.collaborators.length > 0) {
-                    project.collaborators.forEach(collab => {
-                        addCollaboratorChip(collab._id, collab.name, collab.profilePic, true);
-                    });
-                }
-            } catch (error) {
-                console.error('Error loading project:', error);
-                Toastify({ text: 'Error loading project', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                setTimeout(() => window.location.href = '/profile.html', 3000);
-            }
-        }
-
-        // --- Form Submission Logic ---
-        document.getElementById('editForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const urlParams = new URLSearchParams(window.location.search);
-            const projectId = urlParams.get('id');
-            const newProjectStatus = document.getElementById('isPublished').value;
-
-            // Determine if a draft is being newly published
-            const isPublishingDraft = (originalProjectStatus === 'false' && newProjectStatus === 'true');
-
-            const formData = new FormData();
-            formData.append('title', document.getElementById('title').value);
-            formData.append('projectType', document.getElementById('projectType').value);
-            formData.append('description', document.getElementById('description').value);
-            formData.append('problemStatement', document.getElementById('problemStatement').value);
-            formData.append('tags', document.getElementById('tags').value);
-            formData.append('collaboratorIds', document.getElementById('collaboratorIds').value);
-            formData.append('otherCollaborators', document.getElementById('otherCollaborators').value);
-            formData.append('resources', document.getElementById('resources').value);
-            formData.append('isPublished', newProjectStatus);
-            formData.append('isPublishingDraft', isPublishingDraft); // Send a flag to the backend
-            const imageFile = document.getElementById('image').files[0];
-            if (imageFile) {
-                formData.append('image', imageFile);
-            }
-
-            try {
-                const response = await fetch(`/project/${projectId}`, {
-                    method: 'PUT',
-                    body: formData
-                });
-                if (response.ok) {
-                    Toastify({
-                        text: 'Project updated successfully!',
-                        duration: 3000,
-                        style: { background: '#28a745' },
-                    }).showToast();
-                    setTimeout(() => window.location.href = '/profile.html', 3000);
-                } else {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Failed to update project');
-                }
-            } catch (error) {
-                console.error('Error updating project:', error);
-                Toastify({
-                    text: error.message || 'Error updating project',
-                    duration: 3000,
-                    style: { background: '#e74c3c' },
-                }).showToast();
-            }
-        });
-
-        // --- Event Listeners and Initial Load ---
-        document.addEventListener('DOMContentLoaded', () => {
-            const dropZone = document.getElementById('dropZone');
-            const imageInput = document.getElementById('image');
-            const imagePreview = document.getElementById('imagePreview');
+        if (dropZone && imageInput && imagePreview) {
             dropZone.addEventListener('click', () => imageInput.click());
-            dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            });
             dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
             dropZone.addEventListener('drop', (e) => {
                 e.preventDefault();
@@ -278,30 +177,354 @@
                     previewImage(files[0]);
                 }
             });
-            imageInput.addEventListener('change', () => { if (imageInput.files.length) previewImage(imageInput.files[0]); });
+            imageInput.addEventListener('change', () => {
+                if (imageInput.files.length) previewImage(imageInput.files[0]);
+            });
+
             function previewImage(file) {
                 const reader = new FileReader();
-                reader.onload = () => { imagePreview.src = reader.result; imagePreview.style.display = 'block'; };
+                reader.onload = () => {
+                    imagePreview.src = reader.result;
+                    imagePreview.style.display = 'block';
+                };
                 reader.readAsDataURL(file);
             }
-            document.getElementById('selectedCollaboratorsDisplay').addEventListener('click', (e) => {
-                const removeBtn = e.target.closest('.btn-close');
+        } else {
+            console.warn('Image upload elements not found.');
+        }
+
+        // --- Collaborator Search and Selection Logic ---
+        function updateCollaboratorIdsHiddenInput() {
+            if (collaboratorIdsHiddenInput) {
+                collaboratorIdsHiddenInput.value = window.selectedCollaboratorIds.join(',');
+            }
+        }
+
+        function addCollaboratorChip(userId, userName, profilePic, isInitialLoad = false) {
+            if (window.selectedCollaboratorIds.includes(userId)) {
+                if (!isInitialLoad) {
+                    Toastify({ text: `${userName} is already added.`, duration: 2000, style: { background: "#ffc107" } }).showToast();
+                }
+                return;
+            }
+            if (window.currentLoggedInUserId && userId === window.currentLoggedInUserId) {
+                if (!isInitialLoad) {
+                    Toastify({ text: `You are the project owner, no need to add yourself as a collaborator.`, duration: 3000, style: { background: "#ffc107" } }).showToast();
+                }
+                return;
+            }
+
+            window.selectedCollaboratorIds.push(userId);
+            updateCollaboratorIdsHiddenInput();
+
+            if (selectedCollaboratorsDisplay) {
+                const chip = document.createElement('span');
+                chip.classList.add('badge', 'bg-primary', 'me-2', 'd-flex', 'align-items-center');
+                chip.setAttribute('data-user-id', userId);
+                chip.innerHTML = `
+                    <img src="${profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'}" class="rounded-circle me-1" style="width: 20px; height: 20px;" alt="${userName}">
+                    ${userName}
+                    <button type="button" class="btn-close btn-close-white ms-1" aria-label="Remove" data-remove-id="${userId}" style="font-size: 0.6em;"></button>
+                `;
+                selectedCollaboratorsDisplay.appendChild(chip);
+                if (!isInitialLoad) {
+                    Toastify({ text: `${userName} added as collaborator`, duration: 2000, style: { background: "#28a745" } }).showToast();
+                }
+            }
+        }
+
+        if (collaboratorSearchInput && collaboratorSearchResults && selectedCollaboratorsDisplay && collaboratorIdsHiddenInput) {
+            collaboratorSearchInput.addEventListener('input', () => {
+                const query = collaboratorSearchInput.value.trim();
+                if (query.length > 2) {
+                    clearTimeout(debounceTimeout);
+                    debounceTimeout = setTimeout(() => {
+                        window.searchUsers(query, collaboratorSearchResults, addCollaboratorChip, window.selectedCollaboratorIds);
+                    }, DEBOUNCE_DELAY_SEARCH);
+                } else {
+                    collaboratorSearchResults.style.display = 'none';
+                    collaboratorSearchResults.innerHTML = '';
+                }
+            });
+
+            collaboratorSearchResults.addEventListener('click', (event) => {
+                const selectedItem = event.target.closest('.list-group-item');
+                if (selectedItem) {
+                    const userId = selectedItem.dataset.userId;
+                    const userName = selectedItem.dataset.userName;
+                    const profilePic = selectedItem.dataset.profilePic;
+
+                    addCollaboratorChip(userId, userName, profilePic);
+
+                    collaboratorSearchInput.value = '';
+                    collaboratorSearchResults.style.display = 'none';
+                    collaboratorSearchResults.innerHTML = '';
+                }
+            });
+
+            selectedCollaboratorsDisplay.addEventListener('click', (event) => {
+                const removeBtn = event.target.closest('.btn-close');
                 if (removeBtn) {
                     const userIdToRemove = removeBtn.dataset.removeId;
                     const chipToRemove = removeBtn.closest('.badge');
-                    selectedCollaboratorIds = selectedCollaboratorIds.filter(id => id !== userIdToRemove);
+
+                    window.selectedCollaboratorIds = window.selectedCollaboratorIds.filter(id => id !== userIdToRemove);
                     updateCollaboratorIdsHiddenInput();
-                    if (chipToRemove) chipToRemove.remove();
+
+                    if (chipToRemove) {
+                        chipToRemove.remove();
+                        Toastify({ text: `Collaborator removed`, duration: 2000, style: { background: "#dc3545" } }).showToast();
+                    }
                 }
             });
-            document.getElementById('cancelEditBtn').addEventListener('click', () => window.location.href = '/profile.html');
 
-            loadUserProfileInHeader(); // from scripts.js
-            loadProject();
+            document.addEventListener('click', (event) => {
+                if (!collaboratorSearchInput.contains(event.target) && !collaboratorSearchResults.contains(event.target)) {
+                    collaboratorSearchResults.style.display = 'none';
+                }
+            });
+        } else {
+            console.warn('Collaborator search/selection elements not found.');
+        }
+
+        // --- Dynamic Tag Options and Project Loading ---
+        async function loadDynamicOptionsAndProject() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const projectId = urlParams.get('id');
+            if (!projectId) {
+                Toastify({ text: 'No project ID provided.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                setTimeout(() => window.location.href = '/profile.html', 3000);
+                return;
+            }
+
+            try {
+                // Load dynamic filter options
+                const response = await fetch('/dynamic-filter-options');
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const filterData = await response.json();
+                console.log('Dynamic Filter Options for Edit:', filterData);
+
+                // Populate dropdowns
+                const projectTypeSelect = document.getElementById('projectType');
+                const courseSelect = document.getElementById('course');
+                const yearSelect = document.getElementById('year');
+                const departmentSelect = document.getElementById('department');
+                const categorySelect = document.getElementById('category');
+
+                if (projectTypeSelect) populateDropdown(projectTypeSelect, filterData.types || [], 'Select Project Type');
+                if (courseSelect) populateDropdown(courseSelect, filterData.courses || [], 'Select Course');
+                if (yearSelect) populateDropdown(yearSelect, filterData.years || [], 'Select Year');
+                if (departmentSelect) populateDropdown(departmentSelect, filterData.departments || [], 'Select Department');
+                if (categorySelect) populateDropdown(categorySelect, filterData.categories || [], 'Select Category');
+
+                // Load project data
+                const projectResponse = await fetch(`/project/${projectId}`);
+                if (!projectResponse.ok) throw new Error('Failed to load project details.');
+                const project = await projectResponse.json();
+
+                originalProjectStatus = project.isPublished ? 'true' : 'false';
+
+                // Populate form fields
+                document.getElementById('title').value = project.title || '';
+                document.getElementById('description').value = project.description || '';
+                document.getElementById('problemStatement').value = project.problemStatement || '';
+                document.getElementById('otherCollaborators').value = project.otherCollaborators.join(', ') || '';
+                document.getElementById('resources').value = project.resources.join(', ') || '';
+                if (project.image) {
+                    document.getElementById('imagePreview').src = project.image;
+                    document.getElementById('imagePreview').style.display = 'block';
+                }
+
+                // Populate dropdowns with project data
+                if (projectTypeSelect) projectTypeSelect.value = project.projectType || 'Other';
+                if (project.tags && project.tags.length > 0) {
+                    project.tags.forEach(tag => {
+                        if (filterData.courses.includes(tag)) courseSelect.value = tag;
+                        else if (filterData.years.includes(tag)) yearSelect.value = tag;
+                        else if (filterData.departments.includes(tag)) departmentSelect.value = tag;
+                        else if (filterData.categories.includes(tag)) categorySelect.value = tag;
+                    });
+                }
+
+                // Populate collaborators
+                if (project.collaborators && project.collaborators.length > 0) {
+                    project.collaborators.forEach(collab => {
+                        addCollaboratorChip(collab._id, collab.name, collab.profilePic, true);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading project or options:', error);
+                Toastify({ text: 'Error loading project or options: ' + error.message, duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                setTimeout(() => window.location.href = '/profile.html', 3000);
+            }
+        }
+
+        function populateDropdown(selectElement, options, defaultText = 'Select...') {
+            if (!selectElement) return;
+            selectElement.innerHTML = `<option value="">${defaultText}</option>`;
+            options.forEach(optionValue => {
+                const option = document.createElement('option');
+                option.value = optionValue;
+                option.textContent = optionValue;
+                selectElement.appendChild(option);
+            });
+        }
+
+        // --- Form Submission Logic ---
+        async function submitProject(isPublishedStatus) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const projectId = urlParams.get('id');
+            if (!projectId) {
+                Toastify({ text: 'No project ID provided.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                return;
+            }
+
+            const isPublishingDraft = (originalProjectStatus === 'false' && isPublishedStatus);
+
+            // Client-side validation for publishing
+            if (isPublishedStatus) {
+                const title = document.getElementById('title').value.trim();
+                const projectType = document.getElementById('projectType').value;
+                if (!title) {
+                    Toastify({ text: 'Project Title is required to publish.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                    return;
+                }
+                if (!projectType) {
+                    Toastify({ text: 'Project Type is required to publish.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                    return;
+                }
+            }
+
+            const formData = new FormData();
+            formData.append('title', document.getElementById('title').value.trim());
+            formData.append('projectType', document.getElementById('projectType').value || 'Other');
+            formData.append('description', document.getElementById('description').value);
+            formData.append('problemStatement', document.getElementById('problemStatement').value);
+
+            // Collect tags from dropdowns
+            const selectedTags = [];
+            const course = document.getElementById('course').value;
+            const year = document.getElementById('year').value;
+            const department = document.getElementById('department').value;
+            const category = document.getElementById('category').value;
+            if (course) selectedTags.push(course);
+            if (year) selectedTags.push(year);
+            if (department) selectedTags.push(department);
+            if (category) selectedTags.push(category);
+            formData.append('tags', selectedTags.join(','));
+
+            formData.append('collaboratorIds', collaboratorIdsHiddenInput.value);
+            formData.append('otherCollaborators', document.getElementById('otherCollaborators').value);
+            formData.append('resources', document.getElementById('resources').value);
+            formData.append('isPublished', isPublishedStatus ? 'true' : 'false');
+            formData.append('isPublishingDraft', isPublishingDraft ? 'true' : 'false');
+
+            const imageFile = document.getElementById('image').files[0];
+            if (imageFile) {
+                formData.append('image', imageFile);
+            }
+
+            try {
+                const response = await fetch(`/project/${projectId}`, {
+                    method: 'PUT',
+                    body: formData,
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const message = isPublishedStatus ? 'Project published successfully!' : 'Project saved successfully!';
+                    Toastify({ text: message, duration: 3000, style: { background: '#28a745' } }).showToast();
+                    setTimeout(() => window.location.href = '/profile.html', 3000);
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to update project');
+                }
+            } catch (error) {
+                console.error('Error updating project:', error);
+                Toastify({ text: error.message || 'Error updating project', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+            }
+        }
+
+        // --- Event Listeners and Initial Load ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const editForm = document.getElementById('editForm');
+            const saveChangesBtn = document.getElementById('saveChangesBtn');
+            const publishBtn = document.getElementById('publishBtn');
+            const cancelEditBtn = document.getElementById('cancelEditBtn');
+
+            if (editForm && saveChangesBtn && publishBtn && cancelEditBtn) {
+                saveChangesBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    submitProject(false); // Save as draft or maintain current status
+                });
+
+                publishBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    submitProject(true); // Publish the project
+                });
+
+                cancelEditBtn.addEventListener('click', () => {
+                    editForm.reset();
+                    imagePreview.style.display = 'none';
+                    window.selectedCollaboratorIds = [];
+                    selectedCollaboratorsDisplay.innerHTML = '';
+                    updateCollaboratorIdsHiddenInput();
+                    Toastify({ text: 'Edit cancelled', duration: 2000, style: { background: "#6c757d" } }).showToast();
+                    setTimeout(() => window.location.href = '/profile.html', 2000);
+                });
+
+                // Prevent Enter key submission in text inputs and textareas
+                const textareas = editForm.querySelectorAll('textarea');
+                textareas.forEach(textarea => {
+                    textarea.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                        }
+                    });
+                });
+
+                const textInputs = editForm.querySelectorAll('input[type="text"]');
+                textInputs.forEach(input => {
+                    input.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                        }
+                    });
+                });
+            }
+
+            // Header search bar functionality
+            const searchInput = document.getElementById('searchInput');
+            const autocompleteSuggestions = document.getElementById('autocompleteSuggestions');
+            if (searchInput && autocompleteSuggestions) {
+                searchInput.addEventListener('input', () => {
+                    clearTimeout(debounceTimeout);
+                    debounceTimeout = setTimeout(() => window.performGlobalSearch(), DEBOUNCE_DELAY_SEARCH);
+                });
+                searchInput.addEventListener('focus', () => {
+                    if (searchInput.value.trim() && autocompleteSuggestions.children.length > 0) {
+                        autocompleteSuggestions.style.display = 'block';
+                    }
+                });
+                document.addEventListener('click', (event) => {
+                    if (!autocompleteSuggestions.contains(event.target) && event.target !== searchInput) {
+                        autocompleteSuggestions.style.display = 'none';
+                    }
+                });
+            }
+
+            // Filter button (placeholder)
+            const filterBtn = document.getElementById('filterBtn');
+            if (filterBtn) {
+                filterBtn.addEventListener('click', () => {
+                    Toastify({ text: 'Filter modal not implemented on this page.', duration: 2000, style: { background: "#ffc107" } }).showToast();
+                });
+            }
+
+            // Initial load
+            window.loadUserProfileInHeader();
+            loadDynamicOptionsAndProject();
         });
-
-        // Add a global function for collaborator search that can be used here too
-        // Assuming searchUsers, performGlobalSearch, etc. are global functions from scripts.js
     </script>
 </body>
 </html>

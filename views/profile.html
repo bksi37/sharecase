@@ -18,7 +18,9 @@
 <body>
     <header class="d-flex justify-content-between align-items-center">
         <div class="logo">
-            <a href="/index.html">ShareCase</a>
+            <a href="/index.html">
+                <img src="https://res.cloudinary.com/dphfedhek/image/upload/sharecase-logo.png" alt="ShareCase Logo" style="height: 90px;">
+            </a>
         </div>
         <div class="search-bar-container position-relative">
             <div class="input-group">
@@ -77,6 +79,10 @@
                         </div>
                         <button class="btn btn-outline-primary mt-3 w-100" onclick="window.location.href='/settings.html'">
                             <i class="fas fa-user-edit"></i> Edit Profile
+                        </button>
+                        <!-- NEW: Copy Public Profile Link Button -->
+                        <button class="btn btn-outline-secondary mt-2 w-100" id="copyProfileLinkBtn">
+                            <i class="fas fa-share-alt"></i> Copy Public Profile Link
                         </button>
                     </div>
                 </div>
@@ -191,6 +197,9 @@
                                 websiteLink.href = user.socialLinks.website;
                                 websiteLink.style.display = 'inline-block';
                             }
+
+                            // Store userId for copy link functionality
+                            document.body.dataset.currentUserId = user._id;
 
                             if (!user.isProfileComplete && window.location.pathname !== '/create-profile.html') {
                                 Toastify({
@@ -339,12 +348,43 @@
                 });
             });
 
-            window.addEventListener('load', () => {
-                loadUserProfileInHeader();
-                loadProfileDetails();
-                loadProjects();
-            });
+            // Initial page load
+            loadUserProfileInHeader(); // from scripts.js
+            loadProfileDetails();
+            loadProjects();
 
+            // NEW: Copy Public Profile Link functionality
+            const copyProfileLinkBtn = document.getElementById('copyProfileLinkBtn');
+            if (copyProfileLinkBtn) {
+                copyProfileLinkBtn.addEventListener('click', () => {
+                    const userId = document.body.dataset.currentUserId; // Get userId stored from loadProfileDetails
+                    if (userId) {
+                        const publicProfileUrl = `${window.location.origin}/public-profile.html?userId=${userId}`;
+                        
+                        // Use a temporary textarea to copy text to clipboard
+                        const tempInput = document.createElement('textarea');
+                        tempInput.value = publicProfileUrl;
+                        document.body.appendChild(tempInput);
+                        tempInput.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(tempInput);
+
+                        Toastify({
+                            text: 'Public profile link copied to clipboard!',
+                            duration: 3000,
+                            style: { background: '#28a745' },
+                        }).showToast();
+                    } else {
+                        Toastify({
+                            text: 'Could not find your user ID to generate link.',
+                            duration: 3000,
+                            style: { background: '#e74c3c' },
+                        }).showToast();
+                    }
+                });
+            }
+
+            // Handle search bar in header (from scripts.js)
             const searchInput = document.getElementById('searchInput');
             const autocompleteSuggestions = document.getElementById('autocompleteSuggestions');
             const courseFilter = document.getElementById('courseFilter');
