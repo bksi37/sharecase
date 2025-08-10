@@ -54,7 +54,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// Static file serving must be near the top to handle all static assets first
+// === FIX: This route must come before express.static to take precedence for the root URL ===
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'views', 'landing.html')));
+// ==========================================================================================
+
+// Now, load the static files
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(path.join(__dirname, 'views')));
 
@@ -90,22 +94,18 @@ const projectRoutes = require('./routes/projects');
 const adminRoutes = require('./routes/admin');
 const portfolioRoutes = require('./routes/portfolio');
 
-// A single route to handle all user profile views
+// Specific routes for profile pages
 app.get('/profile/:userId', (req, res) => {
     const isAuthenticated = req.session && req.session.userId;
-
     if (isAuthenticated) {
         res.sendFile(path.join(__dirname, 'views', 'public-profile.html'));
     } else {
         res.sendFile(path.join(__dirname, 'views', 'public-landing-profile.html'));
     }
 });
-
-// Redirects for old profile URLs
 app.get('/public-landing-profile.html', (req, res) => {
     res.redirect(`/profile/${req.query.userId}`);
 });
-
 app.get('/public-profile.html', (req, res) => {
     res.redirect(`/profile/${req.query.userId}`);
 });
@@ -117,12 +117,9 @@ app.use('/', projectRoutes);
 app.use('/admin', adminRoutes);
 app.use('/portfolio', portfolioRoutes);
 
-// Serve other static HTML pages
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'views', 'landing.html')));
+// Specific protected and public HTML pages
 app.get('/signup.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'signup.html')));
 app.get('/login.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'login.html')));
-
-// Protected routes
 app.get('/create-profile.html', isAuthenticated, (req, res) => res.sendFile(path.join(__dirname, 'views', 'create-profile.html')));
 app.get('/index.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'index.html')));
 app.get('/upload-project.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'upload-project.html')));
@@ -145,7 +142,7 @@ app.get('/select-portfolio-type.html', isAuthenticated, isProfileComplete, (req,
     res.sendFile(path.join(__dirname, 'views', 'select-portfolio-type.html'));
 });
 
-// 404 handler for non-API requests - this is the fix
+// 404 handler for non-API requests
 app.use((req, res, next) => {
     if (req.path === '/favicon.ico') {
         return res.status(204).end();
@@ -155,7 +152,6 @@ app.use((req, res, next) => {
     if (isAjaxRequest) {
         return res.status(404).json({ error: 'API endpoint not found', message: `No API route for ${req.method} ${req.url}` });
     }
-    // The main fix is here: serve landing.html as the 404 fallback.
     res.status(404).sendFile(path.join(__dirname, 'views', 'landing.html'));
 });
 
