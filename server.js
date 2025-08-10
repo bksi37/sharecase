@@ -96,8 +96,8 @@ const portfolioRoutes = require('./routes/portfolio');
 
 // Specific routes for profile pages
 app.get('/profile/:userId', (req, res) => {
-    const isAuthenticated = req.session && req.session.userId;
-    if (isAuthenticated) {
+    const isAuthenticatedUser = req.session && req.session.userId;
+    if (isAuthenticatedUser) {
         res.sendFile(path.join(__dirname, 'views', 'public-profile.html'));
     } else {
         res.sendFile(path.join(__dirname, 'views', 'public-landing-profile.html'));
@@ -140,6 +140,42 @@ app.get('/admin/dashboard.html', isAuthenticated, authorizeAdmin, (req, res) => 
 app.get('/select-portfolio-type.html', isAuthenticated, isProfileComplete, (req, res) => {
     console.log('Serving select-portfolio-type.html for user:', req.session.userId);
     res.sendFile(path.join(__dirname, 'views', 'select-portfolio-type.html'));
+});
+
+// Add the missing /profile/my-projects route for loading projects in profile.html
+app.get('/profile/my-projects', isAuthenticated, isProfileComplete, async (req, res) => {
+    try {
+        const projects = await Project.find({ userId: req.session.userId }).lean();
+        res.json(projects);
+    } catch (error) {
+        console.error('Error fetching my projects:', error);
+        res.status(500).json({ error: 'Internal server error', message: error.message });
+    }
+});
+
+// Add the missing /user-details/:userId route for public profiles
+app.get('/user-details/:userId', async (req, res) => {
+    try {
+        const user = await User.findById(req.params.userId).select('name profilePic major department bio socialLinks followersCount followingCount');
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'User not found.' });
+        }
+        res.json(user);
+    } catch (error) {
+        console.error('Error in /user-details/:userId:', error);
+        res.status(500).json({ success: false, error: 'Internal server error.' });
+    }
+});
+
+// Add the missing /projects-by-user/:userId route for public profiles
+app.get('/projects-by-user/:userId', async (req, res) => {
+    try {
+        const projects = await Project.find({ userId: req.params.userId, isPublished: true }).lean();
+        res.json(projects);
+    } catch (error) {
+        console.error('Error in /projects-by-user/:userId:', error);
+        res.status(500).json({ success: false, error: 'Internal server error.' });
+    }
 });
 
 // 404 handler for non-API requests

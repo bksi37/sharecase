@@ -96,12 +96,14 @@
         }
 
         async function loadPublicProfileDetails() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const userId = urlParams.get('userId');
-
+            let userId = new URLSearchParams(window.location.search).get('userId');
             if (!userId) {
+                const pathSegments = window.location.pathname.split('/');
+                userId = pathSegments[pathSegments.length - 1]; // Get last segment from /profile/:userId
+            }
+            if (!userId || userId === 'public-profile.html' || userId === 'public-landing-profile.html') {
                 Toastify({ text: 'No user ID provided.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                setTimeout(() => window.location.href = '/index.html', 3000); 
+                setTimeout(() => window.location.href = '/index.html', 3000);
                 return;
             }
 

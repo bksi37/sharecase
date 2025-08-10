@@ -80,7 +80,6 @@
                         <button class="btn btn-outline-primary mt-3 w-100" onclick="window.location.href='/settings.html'">
                             <i class="fas fa-user-edit"></i> Edit Profile
                         </button>
-                        <!-- NEW: Copy Public Profile Link Button -->
                         <button class="btn btn-outline-secondary mt-2 w-100" id="copyProfileLinkBtn">
                             <i class="fas fa-share-alt"></i> Copy Public Profile Link
                         </button>
@@ -237,7 +236,11 @@
 
             async function loadProjects() {
                 try {
-                    const response = await fetch('/profile/my-projects');
+                    const response = await fetch('/profile/my-projects', {
+                        headers: {
+                            'Accept': 'application/json'
+                        }
+                    });
                     if (!response.ok) {
                         throw new Error('Failed to load projects.');
                     }
