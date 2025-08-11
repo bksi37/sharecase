@@ -7,13 +7,19 @@ const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
+
+// Assuming these are in place
 const { isAuthenticated, isProfileComplete, authorizeAdmin } = require('./middleware/auth');
 const tags = require('./config/tags');
+const Project = require('./models/Project'); // Assuming you have these models
+const User = require('./models/User'); // Assuming you have these models
 
 const app = express();
 
+// Set 'trust proxy' if your app is behind a reverse proxy (like Nginx, Heroku, etc.)
 app.set('trust proxy', 1);
 
+// Database Connection
 mongoose.set('strictQuery', true);
 mongoose.connect(process.env.MONGO_URL, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => console.log('MongoDB connected successfully'))
@@ -22,6 +28,7 @@ mongoose.connect(process.env.MONGO_URL, { useNewUrlParser: true, useUnifiedTopol
         process.exit(1);
     });
 
+// Session Store
 const sessionStore = MongoStore.create({
     mongoUrl: process.env.MONGO_URL,
     collectionName: 'sessions',
@@ -29,8 +36,14 @@ const sessionStore = MongoStore.create({
     autoRemove: 'native'
 });
 
-sessionStore.on('error', err => console.error('MongoStore error:', err));
-sessionStore.on('connected', () => console.log('MongoStore connected successfully'));
+// Middleware
+app.use(cors({
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    credentials: true,
+}));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 app.use(session({
     secret: process.env.SESSION_SECRET,
@@ -46,101 +59,32 @@ app.use(session({
     }
 }));
 
-app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-    credentials: true,
-}));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
-
-// === FIX: This route must come before express.static to take precedence for the root URL ===
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'views', 'landing.html')));
-// ==========================================================================================
-
-// Now, load the static files
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.static(path.join(__dirname, 'views')));
-
-app.use((req, res, next) => {
-    console.log('Session middleware:', {
-        sessionId: req.sessionID,
-        userId: req.session.userId,
-        cookies: req.cookies,
-        path: req.path
-    });
-    next();
-});
-
-app.use((req, res, next) => {
-    const originalJson = res.json;
-    res.json = function (body) {
-        console.log(`Response: ${req.method} ${req.url} ${res.statusCode} ${JSON.stringify(body).substring(0, 150)}...`);
-        return originalJson.call(this, body);
-    };
-    console.log(`Request: ${req.method} ${req.url} ${req.body && Object.keys(req.body).length > 0 ? JSON.stringify(req.body).substring(0, 150) + '...' : ''} Session: ${(req.session && req.session.userId) || 'none'}`);
-    next();
-});
-
+// Cloudinary Configuration
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// === Logging middleware for debugging ===
+app.use((req, res, next) => {
+    console.log(`Request: ${req.method} ${req.url} Session: ${(req.session && req.session.userId) || 'none'}`);
+    next();
+});
+
+// Load Routers
 const authRoutes = require('./routes/auth');
 const profileRoutes = require('./routes/profile');
 const projectRoutes = require('./routes/projects');
 const adminRoutes = require('./routes/admin');
 const portfolioRoutes = require('./routes/portfolio');
 
-// Specific routes for profile pages
-app.get('/profile/:userId', (req, res) => {
-    const isAuthenticatedUser = req.session && req.session.userId;
-    if (isAuthenticatedUser) {
-        res.sendFile(path.join(__dirname, 'views', 'public-profile.html'));
-    } else {
-        res.sendFile(path.join(__dirname, 'views', 'public-landing-profile.html'));
-    }
-});
-app.get('/public-landing-profile.html', (req, res) => {
-    res.redirect(`/profile/${req.query.userId}`);
-});
-app.get('/public-profile.html', (req, res) => {
-    res.redirect(`/profile/${req.query.userId}`);
-});
-
-// Mount other routers
+// Mount specific routes and routers first
 app.use('/', authRoutes);
 app.use('/profile', profileRoutes);
 app.use('/', projectRoutes);
 app.use('/admin', adminRoutes);
 app.use('/portfolio', portfolioRoutes);
-
-// Specific protected and public HTML pages
-app.get('/signup.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'signup.html')));
-app.get('/login.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'login.html')));
-app.get('/create-profile.html', isAuthenticated, (req, res) => res.sendFile(path.join(__dirname, 'views', 'create-profile.html')));
-app.get('/index.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'index.html')));
-app.get('/upload-project.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'upload-project.html')));
-app.get('/project.html', (req, res) => {
-    if (req.session.userId) {
-        res.sendFile(path.join(__dirname, 'views', 'project.html'));
-    } else {
-        res.redirect(`/login.html?redirectedFrom=/project.html?id=${req.query.id}`);
-    }
-});
-app.get('/profile.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'profile.html')));
-app.get('/settings.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'settings.html')));
-app.get('/about.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'about.html')));
-app.get('/edit-project.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'edit-project.html')));
-app.get('/admin/dashboard.html', isAuthenticated, authorizeAdmin, (req, res) => {
-    res.sendFile(path.join(__dirname, 'views', 'admin-dashboard.html'));
-});
-app.get('/select-portfolio-type.html', isAuthenticated, isProfileComplete, (req, res) => {
-    console.log('Serving select-portfolio-type.html for user:', req.session.userId);
-    res.sendFile(path.join(__dirname, 'views', 'select-portfolio-type.html'));
-});
 
 // Add the missing /profile/my-projects route for loading projects in profile.html
 app.get('/profile/my-projects', isAuthenticated, isProfileComplete, async (req, res) => {
@@ -167,16 +111,52 @@ app.get('/user-details/:userId', async (req, res) => {
     }
 });
 
-// Add the missing /projects-by-user/:userId route for public profiles
-app.get('/projects-by-user/:userId', async (req, res) => {
-    try {
-        const projects = await Project.find({ userId: req.params.userId, isPublished: true }).lean();
-        res.json(projects);
-    } catch (error) {
-        console.error('Error in /projects-by-user/:userId:', error);
-        res.status(500).json({ success: false, error: 'Internal server error.' });
+// Serve HTML files
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'views', 'landing.html')));
+app.get('/signup.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'signup.html')));
+app.get('/login.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'login.html')));
+app.get('/create-profile.html', isAuthenticated, (req, res) => res.sendFile(path.join(__dirname, 'views', 'create-profile.html')));
+app.get('/index.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'index.html')));
+app.get('/upload-project.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'upload-project.html')));
+app.get('/project.html', (req, res) => {
+    if (req.session.userId) {
+        res.sendFile(path.join(__dirname, 'views', 'project.html'));
+    } else {
+        res.redirect(`/login.html?redirectedFrom=/project.html?id=${req.query.id}`);
     }
 });
+app.get('/profile.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'profile.html')));
+app.get('/settings.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'settings.html')));
+app.get('/about.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'about.html')));
+app.get('/edit-project.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'edit-project.html')));
+app.get('/admin/dashboard.html', isAuthenticated, authorizeAdmin, (req, res) => {
+    res.sendFile(path.join(__dirname, 'views', 'admin-dashboard.html'));
+});
+app.get('/select-portfolio-type.html', isAuthenticated, isProfileComplete, (req, res) => {
+    console.log('Serving select-portfolio-type.html for user:', req.session.userId);
+    res.sendFile(path.join(__dirname, 'views', 'select-portfolio-type.html'));
+});
+
+// Specific routes for profile pages
+app.get('/profile/:userId', (req, res) => {
+    const isAuthenticatedUser = req.session && req.session.userId;
+    if (isAuthenticatedUser) {
+        res.sendFile(path.join(__dirname, 'views', 'public-profile.html'));
+    } else {
+        res.sendFile(path.join(__dirname, 'views', 'public-landing-profile.html'));
+    }
+});
+app.get('/public-landing-profile.html', (req, res) => {
+    res.redirect(`/profile/${req.query.userId}`);
+});
+app.get('/public-profile.html', (req, res) => {
+    res.redirect(`/profile/${req.query.userId}`);
+});
+
+// === FIX: Move static file serving here, after all specific routes ===
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'views')));
+// =====================================================================
 
 // 404 handler for non-API requests
 app.use((req, res, next) => {

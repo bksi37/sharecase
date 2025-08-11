@@ -237,12 +237,34 @@
             async function loadProjects() {
                 try {
                     const response = await fetch('/profile/my-projects', {
+                        method: 'GET',
                         headers: {
-                            'Accept': 'application/json'
-                        }
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        credentials: 'include'
                     });
                     if (!response.ok) {
-                        throw new Error('Failed to load projects.');
+                        const errorData = await response.json().catch(() => ({ error: 'Failed to load projects' }));
+                        if (response.status === 401) {
+                            Toastify({
+                                text: 'You must be logged in to view your projects.',
+                                duration: 3000,
+                                style: { background: '#e74c3c' },
+                            }).showToast();
+                            setTimeout(() => window.location.href = '/login.html', 3000);
+                            return;
+                        }
+                        if (response.status === 403) {
+                            Toastify({
+                                text: 'Please complete your profile to view your projects.',
+                                duration: 3000,
+                                style: { background: '#e74c3c' },
+                            }).showToast();
+                            setTimeout(() => window.location.href = '/create-profile.html', 3000);
+                            return;
+                        }
+                        throw new Error(errorData.error || 'Failed to load projects');
                     }
                     const projects = await response.json();
                     const publishedProjects = document.getElementById('published-projects');
@@ -295,11 +317,10 @@
                             }
                         });
                     });
-
                 } catch (error) {
                     console.error('Error loading projects:', error);
                     Toastify({
-                        text: error.message,
+                        text: error.message || 'Error loading projects',
                         duration: 3000,
                         style: { background: '#e74c3c' },
                     }).showToast();

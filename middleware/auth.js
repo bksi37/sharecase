@@ -1,7 +1,7 @@
 const User = require('../models/User');
 
 const isAuthenticated = (req, res, next) => {
-    // Check if the request is an AJAX/API call (expects JSON response)
+    // Check if the request is an AJAX/API call (expects a JSON response)
     const wantsJson = req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'));
 
     if (req.session.userId) {
@@ -14,34 +14,35 @@ const isAuthenticated = (req, res, next) => {
             return res.status(401).json({
                 success: false,
                 error: 'Unauthorized. Please log in.',
-                redirect: '/login.html' // Suggest where the frontend should redirect
+                redirect: `/login.html?redirectedFrom=${encodeURIComponent(req.originalUrl)}`
             });
         } else {
-            // For regular browser navigation, redirect to the login page
-            return res.redirect('/login.html');
+            // For regular browser navigation, redirect to the login page with a return URL
+            return res.redirect(`/login.html?redirectedFrom=${encodeURIComponent(req.originalUrl)}`);
         }
     }
 };
 
 const isProfileComplete = async (req, res, next) => {
-    try {
-        const wantsJson = req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'));
+    const wantsJson = req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'));
 
+    try {
         if (!req.session.userId) {
             if (wantsJson) {
-                return res.status(401).json({ success: false, error: 'Unauthorized. Please log in.', redirect: '/login.html' });
+                return res.status(401).json({ success: false, error: 'Unauthorized. Please log in.', redirect: `/login.html?redirectedFrom=${encodeURIComponent(req.originalUrl)}` });
             } else {
-                return res.redirect('/login.html');
+                return res.redirect(`/login.html?redirectedFrom=${encodeURIComponent(req.originalUrl)}`);
             }
         }
 
         const user = await User.findById(req.session.userId);
 
         if (!user) {
+            // User ID in session does not match a user in the database
             if (wantsJson) {
-                return res.status(401).json({ success: false, error: 'User session invalid. Please log in.', redirect: '/login.html' });
+                return res.status(401).json({ success: false, error: 'User session invalid. Please log in.', redirect: `/login.html?redirectedFrom=${encodeURIComponent(req.originalUrl)}` });
             } else {
-                return res.redirect('/login.html');
+                return res.redirect(`/login.html?redirectedFrom=${encodeURIComponent(req.originalUrl)}`);
             }
         }
 
@@ -60,7 +61,11 @@ const isProfileComplete = async (req, res, next) => {
         }
     } catch (error) {
         console.error('Profile check error:', error);
-        res.status(500).json({ error: 'Server error during profile check' });
+        if (wantsJson) {
+            return res.status(500).json({ error: 'Server error during profile check' });
+        } else {
+            res.status(500).send('<h1>500 - Internal Server Error</h1><p>Something went wrong!</p>');
+        }
     }
 };
 
