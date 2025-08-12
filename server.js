@@ -143,14 +143,16 @@ app.get('/profile/:userId', (req, res) => {
     if (isAuthenticatedUser) {
         res.sendFile(path.join(__dirname, 'views', 'public-profile.html'));
     } else {
-        res.sendFile(path.join(__dirname, 'views', 'public-landing-profile.html'));
+        res.redirect(`/login.html?redirectedFrom=${encodeURIComponent(`/public-profile.html?userId=${req.params.userId}`)}`);
     }
 });
-app.get('/public-landing-profile.html', (req, res) => {
-    res.redirect(`/profile/${req.query.userId}`);
-});
 app.get('/public-profile.html', (req, res) => {
-    res.redirect(`/profile/${req.query.userId}`);
+    const userId = req.query.userId;
+    if (userId) {
+        res.redirect(`/profile/${userId}`);
+    } else {
+        res.redirect('/login.html');
+    }
 });
 
 // === FIX: Move static file serving here, after all specific routes ===

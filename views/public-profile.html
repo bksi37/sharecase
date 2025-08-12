@@ -56,7 +56,7 @@
             </div>
         </div>
     </header>
-
+    
     <main class="container-fluid py-4">
         <div class="container py-4">
             <div class="profile-layout">
@@ -81,7 +81,8 @@
                                 <a href="#" target="_blank" style="display:none;" id="publicLinkedinLink"><i class="fab fa-linkedin"></i></a>
                                 <a href="#" target="_blank" style="display:none;" id="publicWebsiteLink"><i class="fas fa-globe"></i></a>
                             </div>
-                            <button class="btn btn-outline-primary mt-3 w-100" id="followButton" style="display:none;">Follow</button>
+                            <!-- FIX: Removed inline style="display:none;" to control via JavaScript -->
+                            <button class="btn btn-outline-primary mt-3 w-100" id="followButton">Follow</button>
                         </div>
                     </div>
                 </div>
@@ -97,148 +98,201 @@
             </div>
         </div>
     </main>
-
+    
     <footer>
         <p>© 2025 ShareCase. All rights reserved.</p>
     </footer>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
-<script src="/js/scripts.js"></script>
-<script>
-    // These variables are now declared globally in scripts.js, so they are available here.
-    // The previous declarations (let searchTimeout; const DEBOUNCE_DELAY = 300;) were removed.
 
-    async function loadPublicProfileDetails() {
-        let userId = new URLSearchParams(window.location.search).get('userId');
-        if (!userId) {
-            const pathSegments = window.location.pathname.split('/');
-            userId = pathSegments[pathSegments.length - 1]; // Get last segment from /profile/:userId
-        }
-        if (!userId || userId === 'public-profile.html' || userId === 'public-landing-profile.html') {
-            Toastify({ text: 'No user ID provided.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-            setTimeout(() => window.location.href = '/index.html', 3000);
-            return;
-        }
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="/js/scripts.js"></script>
+    <script>
+        async function loadPublicProfileDetails() {
+            console.log('Current URL:', window.location.href);
+            console.log('Query params:', window.location.search);
+            let userId = new URLSearchParams(window.location.search).get('userId');
+            console.log('Query userId:', userId);
 
-        try {
-            const userResponse = await fetch(`/user-details/${userId}`, { credentials: 'include' });
-            if (!userResponse.ok) {
-                throw new Error('Failed to load public profile details.');
-            }
-            const user = await userResponse.json();
-
-            const projectsResponse = await fetch(`/projects-by-user/${userId}`, { credentials: 'include' });
-            if (!projectsResponse.ok) {
-                throw new Error('Failed to load user projects.');
-            }
-            const projects = await projectsResponse.json();
-
-            document.getElementById('publicProfileName').textContent = user.name || 'N/A';
-            document.getElementById('publicProfilePic').src = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
-            document.getElementById('publicProfileMajor').textContent = user.major || '';
-            document.getElementById('publicProfileDepartment').textContent = user.department || '';
-            document.getElementById('publicProfileBio').textContent = user.bio || '';
-            document.getElementById('publicProfileFollowersCount').textContent = user.followersCount || 0;
-            document.getElementById('publicProfileFollowingCount').textContent = user.followingCount || 0;
-
-            const publicGithubLink = document.getElementById('publicGithubLink');
-            const publicLinkedinLink = document.getElementById('publicLinkedinLink');
-            const publicWebsiteLink = document.getElementById('publicWebsiteLink');
-
-            if (user.socialLinks?.github && publicGithubLink) {
-                publicGithubLink.href = user.socialLinks.github;
-                publicGithubLink.style.display = 'inline-block';
-            }
-            if (user.socialLinks?.linkedin && publicLinkedinLink) {
-                publicLinkedinLink.href = user.socialLinks.linkedin;
-                publicLinkedinLink.style.display = 'inline-block';
-            }
-            if (user.socialLinks?.website && publicWebsiteLink) {
-                publicWebsiteLink.href = user.socialLinks.website;
-                publicWebsiteLink.style.display = 'inline-block';
-            }
-
-            const publicProjectsGrid = document.getElementById('public-projects');
-            if (publicProjectsGrid) {
-                if (projects && projects.length > 0) {
-                    publicProjectsGrid.innerHTML = projects.map(p => renderProjectCard(p)).join('');
-                } else {
-                    publicProjectsGrid.innerHTML = '<p class="text-muted text-center">No public projects available.</p>';
+            // If no userId in query, try extracting from /profile/:userId path
+            if (!userId) {
+                const pathMatch = window.location.pathname.match(/^\/profile\/([0-9a-f]{24})$/);
+                if (pathMatch) {
+                    userId = pathMatch[1];
+                    console.log('Path userId:', userId);
                 }
             }
 
-            const followButton = document.getElementById('followButton');
-            if (followButton && typeof currentLoggedInUserId !== 'undefined' && currentLoggedInUserId !== null) {
-                if (currentLoggedInUserId === userId) {
-                    followButton.style.display = 'none';
+            // Fetch current user details to check login status
+            const currentUserResponse = await fetch('/current-user', {
+                headers: { 'Accept': 'application/json' },
+                credentials: 'include'
+            });
+            const currentUserData = await currentUserResponse.json();
+            console.log('Current user data:', currentUserData);
+
+            if (!userId) {
+                if (!currentUserData.isLoggedIn) {
+                    Toastify({
+                        text: 'No user ID provided. Redirecting to login...',
+                        duration: 3000,
+                        style: { background: '#e74c3c' }
+                    }).showToast();
+                    setTimeout(() => window.location.href = '/login.html', 3000);
                 } else {
-                    followButton.style.display = 'block';
-                    if (isUserFollowing(userId)) {
-                        followButton.textContent = 'Unfollow';
-                        followButton.classList.remove('btn-outline-primary');
-                        followButton.classList.add('btn-primary');
-                    } else {
-                        followButton.textContent = 'Follow';
-                        followButton.classList.remove('btn-primary');
-                        followButton.classList.add('btn-outline-primary');
+                    Toastify({
+                        text: 'Error: No public profile ID specified in the URL.',
+                        duration: 5000,
+                        style: { background: '#e74c3c' }
+                    }).showToast();
+                }
+                return;
+            }
+
+            try {
+                const userResponse = await fetch(`/user-details/${userId}`, {
+                    headers: { 'Accept': 'application/json' },
+                    credentials: 'include'
+                });
+
+                if (userResponse.status === 401 && !currentUserData.isLoggedIn) {
+                    Toastify({
+                        text: 'Please log in to view this profile.',
+                        duration: 3000,
+                        style: { background: '#e74c3c' }
+                    }).showToast();
+                    setTimeout(() => window.location.href = `/login.html?redirectedFrom=${encodeURIComponent(window.location.href)}`, 3000);
+                    return;
+                }
+                if (!userResponse.ok) {
+                    throw new Error('Failed to load public profile details.');
+                }
+                const user = await userResponse.json();
+
+                const projectsResponse = await fetch(`/projects-by-user/${userId}`, {
+                    headers: { 'Accept': 'application/json' },
+                    credentials: 'include'
+                });
+                if (projectsResponse.status === 401 && !currentUserData.isLoggedIn) {
+                    Toastify({
+                        text: 'Please log in to view projects.',
+                        duration: 3000,
+                        style: { background: '#e74c3c' }
+                    }).showToast();
+                    setTimeout(() => window.location.href = `/login.html?redirectedFrom=${encodeURIComponent(window.location.href)}`, 3000);
+                    return;
+                }
+                if (!projectsResponse.ok) {
+                    throw new Error('Failed to load user projects.');
+                }
+                const projects = await projectsResponse.json();
+
+                document.getElementById('publicProfileName').textContent = user.name || 'N/A';
+                document.getElementById('publicProfilePic').src = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
+                document.getElementById('publicProfileMajor').textContent = user.major || '';
+                document.getElementById('publicProfileDepartment').textContent = user.department || '';
+                document.getElementById('publicProfileBio').textContent = user.bio || '';
+                document.getElementById('publicProfileFollowersCount').textContent = user.followersCount || 0;
+                document.getElementById('publicProfileFollowingCount').textContent = user.followingCount || 0;
+
+                const publicGithubLink = document.getElementById('publicGithubLink');
+                const publicLinkedinLink = document.getElementById('publicLinkedinLink');
+                const publicWebsiteLink = document.getElementById('publicWebsiteLink');
+                const socialLinks = document.querySelector('.social-links');
+
+                // FIX: Hide social-links container if no links are present
+                if (!user.socialLinks || (!user.socialLinks.github && !user.socialLinks.linkedin && !user.socialLinks.website)) {
+                    socialLinks.style.display = 'none';
+                } else {
+                    socialLinks.style.display = 'block';
+                    if (user.socialLinks?.github && publicGithubLink) {
+                        publicGithubLink.href = user.socialLinks.github;
+                        publicGithubLink.style.display = 'inline-block';
                     }
-                    followButton.onclick = () => toggleFollow(userId, followButton, loadPublicProfileDetails);
+                    if (user.socialLinks?.linkedin && publicLinkedinLink) {
+                        publicLinkedinLink.href = user.socialLinks.linkedin;
+                        publicLinkedinLink.style.display = 'inline-block';
+                    }
+                    if (user.socialLinks?.website && publicWebsiteLink) {
+                        publicWebsiteLink.href = user.socialLinks.website;
+                        publicWebsiteLink.style.display = 'inline-block';
+                    }
                 }
-            } else if (followButton) {
-                followButton.style.display = 'none';
+
+                const publicProjectsGrid = document.getElementById('public-projects');
+                if (publicProjectsGrid) {
+                    if (projects && projects.length > 0) {
+                        publicProjectsGrid.innerHTML = projects.map(p => window.renderProjectCard(p)).join('');
+                    } else {
+                        publicProjectsGrid.innerHTML = '<p class="text-muted text-center">No public projects available.</p>';
+                    }
+                }
+
+                // FIX: Ensure followButton display is handled correctly
+                const followButton = document.getElementById('followButton');
+                const currentUserId = window.currentLoggedInUserId;
+                console.log('currentLoggedInUserId:', currentUserId);
+                if (followButton && currentUserId && currentUserId !== userId) {
+                    followButton.style.display = 'block';
+                    followButton.textContent = window.isUserFollowing(userId) ? 'Unfollow' : 'Follow';
+                    followButton.classList.toggle('btn-primary', window.isUserFollowing(userId));
+                    followButton.classList.toggle('btn-outline-primary', !window.isUserFollowing(userId));
+                    followButton.onclick = () => window.toggleFollow(userId, followButton, loadPublicProfileDetails);
+                } else if (followButton) {
+                    followButton.style.display = 'none';
+                    followButton.style.margin = '0'; // FIX: Prevent margin from creating space
+                }
+            } catch (error) {
+                console.error('Error loading public profile or projects:', error);
+                Toastify({
+                    text: error.message || 'Error loading public profile.',
+                    duration: 3000,
+                    style: { background: '#e74c3c' },
+                }).showToast();
+                document.getElementById('public-projects').innerHTML = '<p class="text-muted text-center">Could not load projects.</p>';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Await the header loading to ensure global variables are set
+            await window.loadUserProfileInHeader();
+            loadPublicProfileDetails();
+
+            const searchInput = document.getElementById('searchInput');
+            const autocompleteSuggestions = document.getElementById('autocompleteSuggestions');
+            const courseFilter = document.getElementById('courseFilter');
+            const yearFilter = document.getElementById('yearFilter');
+            const typeFilter = document.getElementById('typeFilter');
+            const departmentFilter = document.getElementById('departmentFilter');
+            const categoryFilter = document.getElementById('categoryFilter');
+
+            if (courseFilter && yearFilter && typeFilter && departmentFilter && categoryFilter) {
+                const applyFiltersBtn = document.getElementById('applyFilters');
+                if (applyFiltersBtn) {
+                    applyFiltersBtn.addEventListener('click', () => {
+                        window.performGlobalSearch();
+                        const filterModal = bootstrap.Modal.getInstance(document.getElementById('filterModal'));
+                        if (filterModal) filterModal.hide();
+                    });
+                }
             }
 
-        } catch (error) {
-            console.error('Error loading public profile or projects:', error);
-            Toastify({
-                text: error.message || 'Error loading public profile.',
-                duration: 3000,
-                style: { background: '#e74c3c' },
-            }).showToast();
-            document.getElementById('public-projects').innerHTML = '<p class="text-muted text-center">Could not load projects.</p>';
-        }
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-        loadUserProfileInHeader();
-        loadPublicProfileDetails();
-
-        const searchInput = document.getElementById('searchInput');
-        const autocompleteSuggestions = document.getElementById('autocompleteSuggestions');
-        const courseFilter = document.getElementById('courseFilter');
-        const yearFilter = document.getElementById('yearFilter');
-        const typeFilter = document.getElementById('typeFilter');
-        const departmentFilter = document.getElementById('departmentFilter');
-        const categoryFilter = document.getElementById('categoryFilter');
-
-        if (courseFilter && yearFilter && typeFilter && departmentFilter && categoryFilter) {
-            const applyFiltersBtn = document.getElementById('applyFilters');
-            if (applyFiltersBtn) {
-                applyFiltersBtn.addEventListener('click', () => {
-                    performGlobalSearch();
-                    const filterModal = bootstrap.Modal.getInstance(document.getElementById('filterModal'));
-                    if (filterModal) filterModal.hide();
+            if (searchInput && autocompleteSuggestions) {
+                searchInput.addEventListener('input', () => {
+                    clearTimeout(window.searchTimeout);
+                    window.searchTimeout = setTimeout(window.performGlobalSearch, window.DEBOUNCE_DELAY);
+                });
+                searchInput.addEventListener('focus', () => {
+                    if (searchInput.value.trim() && autocompleteSuggestions.children.length > 0) {
+                        autocompleteSuggestions.style.display = 'block';
+                    }
+                });
+                document.addEventListener('click', (event) => {
+                    if (!autocompleteSuggestions.contains(event.target) && event.target !== searchInput) {
+                        autocompleteSuggestions.style.display = 'none';
+                    }
                 });
             }
-        }
-
-        if (searchInput) {
-            searchInput.addEventListener('input', () => {
-                clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(performGlobalSearch, DEBOUNCE_DELAY);
-            });
-            searchInput.addEventListener('focus', () => {
-                if (searchInput.value.trim() && autocompleteSuggestions.children.length > 0) {
-                    autocompleteSuggestions.style.display = 'block';
-                }
-            });
-        }
-        document.addEventListener('click', (event) => {
-            if (autocompleteSuggestions && !autocompleteSuggestions.contains(event.target) && event.target !== searchInput) {
-                autocompleteSuggestions.style.display = 'none';
-            }
         });
-    });
-</script>
+    </script>
 </body>
 </html>

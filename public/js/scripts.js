@@ -3,10 +3,24 @@ let currentLoggedInUserId = null;
 let currentLoggedInUserRole = null;
 let currentLoggedInUserFollowing = []; // To track who the current user is following
 
+let searchTimeout;
+const DEBOUNCE_DELAY = 300; // ms
+
+// Define global functions to be accessible from other scripts
+window.renderProjectCard = renderProjectCard;
+window.renderUserSuggestion = renderUserSuggestion;
+window.isUserFollowing = isUserFollowing;
+window.toggleFollow = toggleFollow;
+window.loadUserProfileInHeader = loadUserProfileInHeader;
+window.performGlobalSearch = performGlobalSearch;
+window.searchUsers = searchUsers;
+window.renderCollaboratorSearchResults = renderCollaboratorSearchResults;
+window.loadDynamicFilterOptions = loadDynamicFilterOptions;
+
+
 document.addEventListener('DOMContentLoaded', () => {
     // Call this function on DOMContentLoaded to load user data into the header
     // and set global variables. This runs on every page load for authenticated pages.
-    // It's NOT called on public-profile.html directly.
     loadUserProfileInHeader();
 
     // --- Dropdown Menu Toggle ---
@@ -144,11 +158,9 @@ async function loadUserProfileInHeader() {
  * @returns {string} - The HTML string for the project card.
  */
 function renderProjectCard(project) {
-    // Determine the click action based on login status
-    // CRITICAL CHANGE: This logic now handles redirection for unauthenticated users.
     const clickAction = currentLoggedInUserId 
         ? `window.location.href='/project.html?id=${project.id || project._id}'` 
-        : `window.location.href='/login.html?redirectedFrom=/project.html?id=${project.id || project._id}'`; // Redirect to login, then back to project
+        : `window.location.href='/login.html?redirectedFrom=/project.html?id=${project.id || project._id}'`;
 
     const cardHtml = `
         <div class="col">
@@ -158,7 +170,7 @@ function renderProjectCard(project) {
                     <h5 class="card-title">${project.title}</h5>
                     <p class="card-text">${project.description ? project.description.substring(0, 100) + '...' : 'No description'}</p>
                     <div class="project-meta">
-                        <span class="project-author">By <a href="/public-landing-profile.html?userId=${project.userId}">${project.userName}</a></span>
+                        <span class="project-author">By <a href="/public-profile.html?userId=${project.userId}">${project.userName}</a></span>
                         <span class="project-views"><i class="fas fa-eye"></i> ${project.views || 0}</span>
                         <span class="project-likes"><i class="fas fa-heart"></i> ${project.likes || 0}</span>
                     </div>
@@ -180,7 +192,7 @@ function renderProjectCard(project) {
  */
 function renderUserSuggestion(user) {
     const userSuggestionHtml = `
-        <div class="autocomplete-item" onclick="window.location.href='/public-landing-profile.html?userId=${user._id}'">
+        <div class="autocomplete-item" onclick="window.location.href='/public-profile.html?userId=${user._id}'">
             <img src="${user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'}" class="rounded-circle me-2" style="width: 30px; height: 30px; object-fit: cover;" alt="${user.name}">
             <span>${user.name}</span>
             <span class="user-detail">${user.major || user.department ? `(${user.major || ''}${user.major && user.department ? ', ' : ''}${user.department || ''})` : ''}</span>
@@ -280,10 +292,6 @@ async function toggleFollow(targetUserId, followButton, callback) {
 function isUserFollowing(targetUserId) {
     return currentLoggedInUserFollowing.includes(targetUserId);
 }
-
-// Global variables for debounce (used by index.html for search)
-let searchTimeout;
-const DEBOUNCE_DELAY = 300; // ms
 
 /**
  * Populates a dropdown (select) element with options.
@@ -507,8 +515,14 @@ async function performGlobalSearch() {
     }
 }
 
-// public/js/scripts.js (or your upload.html script if searchUsers is defined there)
-
+/**
+ * Searches for users to be added as collaborators.
+ * This is typically used in the project upload form.
+ * @param {string} query - The search query for users.
+ * @param {HTMLElement} resultsContainer - The DOM element to display search results.
+ * @param {Function} addChipCallback - The function to call when a user is selected.
+ * @param {Array<string>} selectedIds - An array of user IDs already selected as collaborators.
+ */
 async function searchUsers(query, resultsContainer, addChipCallback, selectedIds) {
     if (!query) {
         resultsContainer.style.display = 'none';
@@ -534,6 +548,13 @@ async function searchUsers(query, resultsContainer, addChipCallback, selectedIds
     }
 }
 
+/**
+ * Renders the search results for the collaborator search functionality.
+ * @param {Array<Object>} users - The array of user objects from the search.
+ * @param {HTMLElement} resultsContainer - The DOM element to display the results.
+ * @param {Function} addChipCallback - The function to call when a user is clicked.
+ * @param {Array<string>} selectedIds - An array of user IDs already selected.
+ */
 function renderCollaboratorSearchResults(users, resultsContainer, addChipCallback, selectedIds) {
     resultsContainer.innerHTML = '';
 
@@ -572,5 +593,3 @@ function renderCollaboratorSearchResults(users, resultsContainer, addChipCallbac
         resultsContainer.style.display = 'none';
     }
 }
-
-window.searchUsers = searchUsers;

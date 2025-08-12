@@ -3,7 +3,7 @@
 .public-profile-header {
     display: flex;
     align-items: center;
-    padding: 20px;
+    padding: 10px; /* FURTHER REDUCED from 15px for tighter spacing */
     border-radius: 0 0 15px 15px;
     background-color: #f5f5f5;
     margin: 0 auto;
@@ -12,7 +12,7 @@
 }
 
 .profile-avatar {
-    margin-right: 20px;
+    margin-right: 10px; /* FURTHER REDUCED from 15px */
     position: relative;
 }
 
@@ -32,20 +32,25 @@
 
 .profile-details {
     flex-grow: 1;
+    margin-top: 0;
 }
 
 .profile-details h1 {
     font-size: 1.8rem;
     font-weight: 700;
-    margin: 10px 0 5px;
+    margin: 2px 0; /* FURTHER REDUCED from 5px 0 */
     color: #222;
+}
+
+.profile-meta {
+    margin: 0; /* NEW: Ensure no extra margins around meta container */
 }
 
 .profile-meta span {
     display: block;
     font-size: 0.9rem;
     color: #555;
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.1rem; /* FURTHER REDUCED from 0.15rem */
 }
 
 .profile-meta span:empty {
@@ -54,8 +59,8 @@
 
 .profile-stats {
     display: flex;
-    gap: 15px;
-    margin-top: 10px;
+    gap: 8px; /* FURTHER REDUCED from 10px */
+    margin-top: 5px; /* FURTHER REDUCED from 8px */
 }
 
 .profile-stats span {
@@ -74,8 +79,12 @@
 }
 
 .social-links {
-    margin-top: 15px;
+    margin-top: 5px; /* FURTHER REDUCED from 10px */
     text-align: center;
+}
+
+.social-links:empty {
+    display: none; /* NEW: Hide if no social links to prevent empty space */
 }
 
 .social-links a {
@@ -91,7 +100,7 @@
     transform: translateY(-2px) scale(1.1);
 }
 
-#followBtn {
+#followButton { /* CHANGED from #followBtn to match HTML */
     padding: 0.5rem 1.5rem;
     font-size: 0.95rem;
     border-width: 2px;
@@ -99,26 +108,27 @@
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
+    margin-top: 5px; /* REDUCED from 10px */
 }
 
-#followBtn.btn-primary {
+#followButton.btn-primary {
     background-color: #007bff;
     border-color: #007bff;
     color: #fff;
 }
 
-#followBtn.btn-primary:hover {
+#followButton.btn-primary:hover {
     background-color: #0056b3;
     border-color: #0056b3;
     transform: translateY(-3px);
 }
 
-#followBtn.btn-outline-primary {
+#followButton.btn-outline-primary {
     color: #007bff;
     border-color: #007bff;
 }
 
-#followBtn.btn-outline-primary:hover {
+#followButton.btn-outline-primary:hover {
     background-color: rgba(0, 123, 255, 0.1);
     transform: translateY(-3px);
 }
@@ -126,7 +136,7 @@
 .profile-main-content {
     max-width: 1400px;
     margin: 0 auto;
-    padding: 20px 0;
+    padding: 15px 0; /* REDUCED from 20px */
 }
 
 .profile-separator {
@@ -139,7 +149,7 @@
     font-size: 1.5rem;
     color: #333;
     font-weight: 600;
-    margin-bottom: 1rem;
+    margin-bottom: 0.5rem; /* REDUCED from 1rem */
     position: relative;
 }
 
@@ -157,53 +167,78 @@
 .section-divider {
     border: 0;
     border-top: 1px solid #e0e0e0;
-    margin-bottom: 1rem;
+    margin-bottom: 0.5rem; /* REDUCED from 1rem */
 }
 
 .project-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 10px;
-    margin-top: 1rem;
+    gap: 6px; /* FURTHER REDUCED from 8px */
+    margin-top: 0.25rem; /* FURTHER REDUCED from 0.5rem */
+}
+
+.container-fluid.py-4 {
+    padding-top: 1.5rem !important; /* FURTHER REDUCED from 2rem */
+    padding-bottom: 1.5rem !important;
+}
+
+.profile-layout {
+    margin: 0;
+    padding: 0;
+}
+
+.profile-sidebar {
+    margin: 0; /* NEW: Prevent potential margins from _utilities.css */
+    padding: 0;
 }
 
 @media (max-width: 768px) {
     .public-profile-header {
         flex-direction: column;
         text-align: center;
-        padding: 15px;
+        padding: 8px; /* FURTHER REDUCED from 10px */
     }
 
     .profile-avatar {
         margin-right: 0;
-        margin-bottom: 15px;
+        margin-bottom: 15px; /* REDUCED from 20px */
     }
 
     .avatar-img {
-        width: 120px;
-        height: 120px;
+        width: 100px;
+        height: 100px;
     }
 
     .profile-details h1 {
-        font-size: 1.5rem;
+        font-size: 1.4rem;
+    }
+
+    .profile-meta {
+        margin: 0; /* NEW: Ensure no extra margins */
     }
 
     .profile-meta span {
-        font-size: 0.85rem;
+        font-size: 0.8rem;
+        margin-bottom: 0.1rem; /* REDUCED from 0.15rem */
     }
 
     .profile-stats {
         flex-direction: column;
-        gap: 10px;
+        gap: 6px; /* REDUCED from 8px */
+        margin-top: 4px; /* REDUCED from 5px */
+    }
+
+    .social-links {
+        margin-top: 4px; /* REDUCED from 5px */
     }
 
     .project-grid {
         grid-template-columns: 1fr;
     }
 
-    #followBtn {
+    #followButton {
         width: 100%;
         justify-content: center;
+        margin-top: 5px; /* REDUCED from 10px */
     }
 }
-
