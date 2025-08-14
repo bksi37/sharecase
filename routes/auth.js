@@ -123,6 +123,13 @@ router.post('/login', async (req, res) => {
         if (!isMatch) {
             return res.status(401).json({ error: 'Invalid credentials.' });
         }
+                // This is the key change.
+        if (!user.isVerified) {
+            return res.status(401).json({ 
+                error: 'Please verify your email before logging in.',
+                resendVerification: true // Signal the frontend to show a resend button
+            });
+        }
 
         req.session.userId = user._id.toString();
         req.session.userName = user.name;
@@ -164,6 +171,48 @@ router.get('/verify-email', async (req, res) => {
     } catch (error) {
         console.error('Email verification error:', error);
         res.status(500).send('An error occurred during email verification.');
+    }
+});
+
+router.post('/resend-verification', async (req, res) => {
+    try {
+        const { email } = req.body;
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'User not found.' });
+        }
+
+        if (user.isVerified) {
+            return res.status(400).json({ success: false, error: 'Account is already verified.' });
+        }
+
+        const newEmailVerificationToken = crypto.randomBytes(32).toString('hex');
+        user.emailVerificationToken = newEmailVerificationToken;
+        await user.save();
+
+        const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${newEmailVerificationToken}`;
+        await resend.emails.send({
+            from: 'noreply@sharecase.live',
+            to: email,
+            subject: 'Verify your ShareCase account',
+            html: `
+                <p>Hello,</p>
+                <p>We received a request to resend your account verification link. Please click the link below to verify your account:</p>
+                <a href="${verificationUrl}">Verify Account</a>
+                <p>If you did not request this, you can safely ignore this email.</p>
+            `,
+        });
+
+        // Updated success message to include a warning about the delay
+        res.json({ 
+            success: true, 
+            message: 'Verification email resent successfully. Please check your inbox in a few minutes and remember to check your spam folder.' 
+        });
+
+    } catch (error) {
+        console.error('Error resending verification email:', error);
+        res.status(500).json({ success: false, error: 'Server error during resending verification email.' });
     }
 });
 

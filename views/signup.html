@@ -91,10 +91,9 @@
                 const data = await response.json();
 
                 if (response.ok && data.success) {
-                    // Corrected logic: Inform the user to check their email and then redirect to login.
                     Toastify({
-                        text: 'Signup successful! Please check your email to verify your account.',
-                        duration: 5000, // Give user more time to read the instruction
+                        text: 'Signup successful! Please check your email to verify your account. Note that this may take 4 to 5 minutes.',
+                        duration: 8000, // Increased duration to give the user enough time to read
                         style: { background: '#28a745' },
                     }).showToast();
                     setTimeout(() => window.location.href = '/login.html', 5000);
