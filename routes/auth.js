@@ -149,25 +149,25 @@ router.post('/login', async (req, res) => {
 router.get('/verify-email', async (req, res) => {
     try {
         const { token } = req.query;
+        console.log(`Verifying token: ${token}`);
         if (!token) {
             return res.status(400).send('Verification token is missing.');
         }
 
         const user = await User.findOne({ emailVerificationToken: token });
         if (!user) {
+            console.log(`No user found for token: ${token}`);
             return res.status(404).send('Invalid or expired verification token.');
         }
 
+        console.log(`User found: ${user.email}, Token: ${user.emailVerificationToken}`);
+
         user.isVerified = true;
-        user.emailVerificationToken = null;
-        // Check if the user has a university email to set their role to 'student'
-        if (user.universityEmail) {
-            user.role = 'student';
-        }
+        user.emailVerificationToken = undefined;
         await user.save();
+        console.log(`User verified: ${user.email}`);
 
         res.redirect('/login.html?verified=true');
-
     } catch (error) {
         console.error('Email verification error:', error);
         res.status(500).send('An error occurred during email verification.');

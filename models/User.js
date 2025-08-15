@@ -72,12 +72,11 @@ const userSchema = new mongoose.Schema({
         timestamp: { type: Date, default: Date.now }
     }],
     projectsCollaboratedOn: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Project' }],
-    viewedProjects: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Project' }], // New field for tracking unique projects viewed
+    viewedProjects: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Project' }],
     emailVerificationToken: {
         type: String,
         required: false,
-        unique: true,
-        sparse: true
+        sparse: true // Keep sparse: true to allow null values
     },
     isVerified: {
         type: Boolean,
