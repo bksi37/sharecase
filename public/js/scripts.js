@@ -1,12 +1,13 @@
 // Global variables to store user session data
 let currentLoggedInUserId = null;
 let currentLoggedInUserRole = null;
-let currentLoggedInUserFollowing = []; // To track who the current user is following
+let currentLoggedInUserFollowing = [];
+let cachedUserData = null;
 
 let searchTimeout;
 const DEBOUNCE_DELAY = 300; // ms
 
-// Define global functions to be accessible from other scripts
+// Expose global functions
 window.renderProjectCard = renderProjectCard;
 window.renderUserSuggestion = renderUserSuggestion;
 window.isUserFollowing = isUserFollowing;
@@ -17,23 +18,20 @@ window.searchUsers = searchUsers;
 window.renderCollaboratorSearchResults = renderCollaboratorSearchResults;
 window.loadDynamicFilterOptions = loadDynamicFilterOptions;
 
-
 document.addEventListener('DOMContentLoaded', () => {
-    // Call this function on DOMContentLoaded to load user data into the header
-    // and set global variables. This runs on every page load for authenticated pages.
+    // Load user data into the header
     loadUserProfileInHeader();
 
-    // --- Dropdown Menu Toggle ---
+    // Dropdown Menu Toggle
     const userMenuToggle = document.getElementById('userMenuToggle');
     const userDropdown = document.getElementById('userDropdown');
 
     if (userMenuToggle && userDropdown) {
         userMenuToggle.addEventListener('click', (event) => {
-            event.stopPropagation(); // Prevent click from immediately closing dropdown
+            event.stopPropagation();
             userDropdown.style.display = userDropdown.style.display === 'block' ? 'none' : 'block';
         });
 
-        // Close dropdown if clicked outside
         document.addEventListener('click', (e) => {
             if (!userMenuToggle.contains(e.target) && !userDropdown.contains(e.target)) {
                 userDropdown.style.display = 'none';
@@ -41,22 +39,19 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Logout Functionality ---
+    // Logout Functionality
     const logoutLink = document.getElementById('logoutLink');
-
     if (logoutLink) {
         logoutLink.addEventListener('click', async (event) => {
-            event.preventDefault(); // Prevent the default link navigation
-
+            event.preventDefault();
             try {
                 const response = await fetch('/logout');
                 const data = await response.json();
-
                 if (data.success && data.redirect) {
-                    // Clear global variables on successful logout
                     currentLoggedInUserId = null;
                     currentLoggedInUserRole = null;
                     currentLoggedInUserFollowing = [];
+                    cachedUserData = null;
                     window.location.href = data.redirect;
                 } else {
                     console.error('Logout failed or redirect URL missing:', data);
@@ -78,136 +73,87 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-/**
- * Fetches current user data and updates the header UI.
- * This function should be called on every page load to ensure header is consistent.
- * It also sets global variables like currentLoggedInUserId.
- */
 async function loadUserProfileInHeader() {
+    if (cachedUserData) {
+        console.log('Using cached user data:', JSON.stringify(cachedUserData, null, 2));
+        return cachedUserData;
+    }
+
     try {
-        const response = await fetch('/current-user', { credentials: 'include' });
+        const response = await fetch('/current-user', {
+            credentials: 'include',
+            headers: { 'Accept': 'application/json' }
+        });
+        console.log('Current-user response status:', response.status);
         const data = await response.json();
+        console.log('Current-user response data:', JSON.stringify(data, null, 2));
 
-        const authControls = document.getElementById('authControls'); // Container for login/signup/user menu
-        const loggedInUserContainer = document.getElementById('userMenuToggle'); // Specific container for user menu
-        const userNameDisplay = document.getElementById('headerProfileName'); // For logged-in user's name
-        const userProfilePic = document.getElementById('headerProfilePic'); // For logged-in user's profile pic
-        const userRoleDisplay = document.getElementById('userRoleDisplay'); // For user's role
-        const userPointsDisplay = document.getElementById('userPointsDisplay'); // For user's total points
-        const adminDashboardLink = document.getElementById('adminDashboardLink'); // Admin link in dropdown
+        const authControls = document.getElementById('authControls');
+        const loggedInUserContainer = document.getElementById('userMenuToggle');
+        const userNameDisplay = document.getElementById('headerProfileName');
+        const userProfilePic = document.getElementById('headerProfilePic');
+        const userRoleDisplay = document.getElementById('userRoleDisplay');
+        const userPointsDisplay = document.getElementById('userPointsDisplay');
+        const adminDashboardLink = document.getElementById('adminDashboardLink');
 
-        if (data.isLoggedIn && data.user) {
+        if (response.ok && data.isLoggedIn && data.user && data.user._id) {
             const user = data.user;
+            currentLoggedInUserId = user._id.toString();
+            currentLoggedInUserRole = user.role || 'user';
+            currentLoggedInUserFollowing = Array.isArray(user.following) ? user.following.map(id => id.toString()) : [];
+            cachedUserData = data;
 
-            // Set global variables
-            currentLoggedInUserId = user._id;
-            currentLoggedInUserRole = user.role;
-            currentLoggedInUserFollowing = user.following || []; 
+            console.log('Set currentLoggedInUserId:', currentLoggedInUserId);
 
-            if (authControls) authControls.style.display = 'none'; // Hide login/signup
-            if (loggedInUserContainer) loggedInUserContainer.style.display = 'flex'; // Show user menu
-
-            if (userNameDisplay) userNameDisplay.textContent = user.name;
-            if (userProfilePic) userProfilePic.src = user.profilePic;
-            if (userRoleDisplay) userRoleDisplay.textContent = user.role; // Display user role
-            if (userPointsDisplay) userPointsDisplay.textContent = `${user.totalPoints || 0} pts`; // Display points
-
-            // Show admin dashboard link only for 'admin' role
+            if (authControls) authControls.style.display = 'none';
+            if (loggedInUserContainer) loggedInUserContainer.style.display = 'flex';
+            if (userNameDisplay) userNameDisplay.textContent = user.name || 'Guest';
+            if (userProfilePic) userProfilePic.src = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
+            if (userRoleDisplay) userRoleDisplay.textContent = user.role || 'user';
+            if (userPointsDisplay) userPointsDisplay.textContent = `${user.totalPoints || 0} pts`;
             if (adminDashboardLink) {
-                if (user.role === 'admin') { // Removed 'sharecase_worker'
-                    adminDashboardLink.style.display = 'block';
-                } else {
-                    adminDashboardLink.style.display = 'none';
-                }
+                adminDashboardLink.style.display = user.role === 'admin' ? 'block' : 'none';
             }
 
             if (!user.isProfileComplete && window.location.pathname !== '/create-profile.html') {
-                console.warn('User profile not complete. Backend middleware should handle redirect.');
+                console.warn('User profile not complete. Redirecting to create-profile.html');
+                window.location.href = '/create-profile.html';
             }
-
         } else {
-            // User is not logged in
+            console.warn('User not logged in or invalid response:', JSON.stringify(data, null, 2));
             currentLoggedInUserId = null;
             currentLoggedInUserRole = null;
             currentLoggedInUserFollowing = [];
-
-            if (authControls) authControls.style.display = 'flex'; // Show login/signup
-            if (loggedInUserContainer) loggedInUserContainer.style.display = 'none'; // Hide user menu
-            if (adminDashboardLink) adminDashboardLink.style.display = 'none'; // Hide admin link
+            cachedUserData = { isLoggedIn: false };
+            if (authControls) authControls.style.display = 'flex';
+            if (loggedInUserContainer) loggedInUserContainer.style.display = 'none';
+            if (adminDashboardLink) adminDashboardLink.style.display = 'none';
         }
     } catch (error) {
         console.error('Error fetching current user profile for header:', error);
-        // Fallback to logged out state on error
         currentLoggedInUserId = null;
         currentLoggedInUserRole = null;
         currentLoggedInUserFollowing = [];
-        const authControls = document.getElementById('authControls');
-        const loggedInUserContainer = document.getElementById('userMenuToggle');
+        cachedUserData = { isLoggedIn: false };
         if (authControls) authControls.style.display = 'flex';
         if (loggedInUserContainer) loggedInUserContainer.style.display = 'none';
-        const adminDashboardLink = document.getElementById('adminDashboardLink');
         if (adminDashboardLink) adminDashboardLink.style.display = 'none';
+        Toastify({
+            text: 'Error loading user session. Please log in again.',
+            duration: 3000,
+            style: { background: '#e74c3c' },
+        }).showToast();
     }
+    console.log('Final currentLoggedInUserId after loadUserProfileInHeader:', currentLoggedInUserId);
+    return cachedUserData;
 }
 
-/**
- * Renders a project card HTML element for general display (index.html, public-profile.html).
- * Does NOT include project points, as they are a personal metric.
- * Includes conditional redirection based on login status.
- * @param {Object} project - The project data object.
- * @returns {string} - The HTML string for the project card.
- */
-function renderProjectCard(project) {
-    const clickAction = currentLoggedInUserId 
-        ? `window.location.href='/project.html?id=${project.id || project._id}'` 
-        : `window.location.href='/login.html?redirectedFrom=/project.html?id=${project.id || project._id}'`;
-
-    const cardHtml = `
-        <div class="col">
-            <div class="card h-100" style="cursor: pointer;" onclick="${clickAction}">
-                <img src="${project.image || 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'}" class="card-img-top" alt="${project.title}" onerror="this.src='https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'">
-                <div class="card-body">
-                    <h5 class="card-title">${project.title}</h5>
-                    <p class="card-text">${project.description ? project.description.substring(0, 100) + '...' : 'No description'}</p>
-                    <div class="project-meta">
-                        <span class="project-author">By <a href="/public-profile.html?userId=${project.userId}">${project.userName}</a></span>
-                        <span class="project-views"><i class="fas fa-eye"></i> ${project.views || 0}</span>
-                        <span class="project-likes"><i class="fas fa-heart"></i> ${project.likes || 0}</span>
-                    </div>
-                    <div class="project-tags">
-                        ${(project.tags || []).map(tag => `<span class="tag">${tag}</span>`).join('')}
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-    return cardHtml;
+function isUserFollowing(targetUserId) {
+    return cachedUserData?.isLoggedIn && Array.isArray(cachedUserData.user?.following)
+        ? cachedUserData.user.following.map(id => id.toString()).includes(targetUserId.toString())
+        : false;
 }
 
-/**
- * Renders a user suggestion card for autocomplete.
- * This function will be called by page-specific scripts.
- * @param {Object} user - The user data object.
- * @returns {string} - The HTML string for the user suggestion item.
- */
-function renderUserSuggestion(user) {
-    const userSuggestionHtml = `
-        <div class="autocomplete-item" onclick="window.location.href='/public-profile.html?userId=${user._id}'">
-            <img src="${user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'}" class="rounded-circle me-2" style="width: 30px; height: 30px; object-fit: cover;" alt="${user.name}">
-            <span>${user.name}</span>
-            <span class="user-detail">${user.major || user.department ? `(${user.major || ''}${user.major && user.department ? ', ' : ''}${user.department || ''})` : ''}</span>
-        </div>
-    `;
-    return userSuggestionHtml;
-}
-
-/**
- * Toggles follow status for a user.
- * Assumes currentLoggedInUserId is globally available.
- * @param {string} targetUserId - The ID of the user to follow/unfollow.
- * @param {HTMLElement} followButton - The button element that triggered the action.
- * @param {Function} [callback] - Optional callback function to run after successful toggle. Receives isFollowing (boolean).
- */
 async function toggleFollow(targetUserId, followButton, callback) {
     if (!currentLoggedInUserId) {
         Toastify({
@@ -231,7 +177,7 @@ async function toggleFollow(targetUserId, followButton, callback) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
+                'Accept': 'application/json'
             },
             credentials: 'include'
         });
@@ -239,73 +185,128 @@ async function toggleFollow(targetUserId, followButton, callback) {
 
         if (response.ok && data.success) {
             Toastify({
-                text: data.message,
+                text: data.message || (data.isFollowing ? 'Followed user!' : 'Unfollowed user!'),
                 duration: 3000,
                 style: { background: '#28a745' },
             }).showToast();
 
-            // Update UI based on new status
-            if (followButton) {
-                const isFollowing = data.isFollowing;
-                if (isFollowing) {
-                    followButton.textContent = 'Unfollow';
+            if (data.isFollowing) {
+                if (cachedUserData?.user?.following) {
+                    cachedUserData.user.following.push(targetUserId);
+                }
+                if (followButton) {
+                    followButton.textContent = 'Following';
+                    followButton.setAttribute('aria-label', 'Unfollow this user');
                     followButton.classList.remove('btn-outline-primary');
                     followButton.classList.add('btn-primary');
-                    if (!currentLoggedInUserFollowing.includes(targetUserId)) {
-                        currentLoggedInUserFollowing.push(targetUserId);
-                    }
-                } else {
+                }
+                if (document.getElementById('profileFollowingCount')) {
+                    const currentCount = parseInt(document.getElementById('profileFollowingCount').textContent) || 0;
+                    document.getElementById('profileFollowingCount').textContent = currentCount + 1;
+                }
+            } else {
+                if (cachedUserData?.user?.following) {
+                    cachedUserData.user.following = cachedUserData.user.following.filter(id => id !== targetUserId);
+                }
+                if (followButton) {
                     followButton.textContent = 'Follow';
+                    followButton.setAttribute('aria-label', 'Follow this user');
                     followButton.classList.remove('btn-primary');
                     followButton.classList.add('btn-outline-primary');
-                    currentLoggedInUserFollowing = currentLoggedInUserFollowing.filter(id => id !== targetUserId);
+                }
+                if (document.getElementById('profileFollowingCount')) {
+                    const currentCount = parseInt(document.getElementById('profileFollowingCount').textContent) || 0;
+                    document.getElementById('profileFollowingCount').textContent = currentCount - 1;
                 }
             }
-            // Execute callback if provided (e.g., to re-fetch profile data for follower/following counts)
-            if (callback && typeof callback === 'function') {
-                callback(data.isFollowing); // Pass the new follow status to the callback
+            if (document.getElementById('publicProfileFollowersCount')) {
+                document.getElementById('publicProfileFollowersCount').textContent = data.followersCount;
             }
-
+            if (callback) callback(data.isFollowing);
         } else {
             Toastify({
-                text: data.message || 'Failed to toggle follow status.',
+                text: data.error || 'Failed to toggle follow status.',
                 duration: 3000,
                 style: { background: '#e74c3c' },
             }).showToast();
         }
     } catch (error) {
-        console.error('Error toggling follow status:', error);
+        console.error('Error toggling follow:', error);
         Toastify({
-            text: 'An error occurred while trying to follow/unfollow.',
+            text: 'Error toggling follow status.',
             duration: 3000,
             style: { background: '#e74c3c' },
         }).showToast();
     }
 }
 
-/**
- * Checks if the current logged-in user is following a specific target user.
- * Assumes currentLoggedInUserFollowing is populated.
- * @param {string} targetUserId - The ID of the user to check.
- * @returns {boolean} - True if following, false otherwise.
- */
-function isUserFollowing(targetUserId) {
-    return currentLoggedInUserFollowing.includes(targetUserId);
+function updateHeaderUI(user) {
+    const authControls = document.getElementById('authControls');
+    const loggedInUserContainer = document.getElementById('userMenuToggle');
+    const userNameDisplay = document.getElementById('headerProfileName');
+    const userProfilePic = document.getElementById('headerProfilePic');
+    const userRoleDisplay = document.getElementById('userRoleDisplay');
+    const userPointsDisplay = document.getElementById('userPointsDisplay');
+    const adminDashboardLink = document.getElementById('adminDashboardLink');
+
+    if (user) {
+        if (authControls) authControls.style.display = 'none';
+        if (loggedInUserContainer) loggedInUserContainer.style.display = 'flex';
+        if (userNameDisplay) userNameDisplay.textContent = user.name || 'Guest';
+        if (userProfilePic) userProfilePic.src = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
+        if (userRoleDisplay) userRoleDisplay.textContent = user.role || 'user';
+        if (userPointsDisplay) userPointsDisplay.textContent = `${user.totalPoints || 0} pts`;
+        if (adminDashboardLink) {
+            adminDashboardLink.style.display = user.role === 'admin' ? 'block' : 'none';
+        }
+    } else {
+        if (authControls) authControls.style.display = 'flex';
+        if (loggedInUserContainer) loggedInUserContainer.style.display = 'none';
+        if (adminDashboardLink) adminDashboardLink.style.display = 'none';
+    }
 }
 
-/**
- * Populates a dropdown (select) element with options.
- * This is a utility function made global.
- * @param {HTMLElement} selectElement - The HTML select element.
- * @param {Array<string>} options - An array of string values for the options.
- * @param {string} defaultText - Text for the default "Select..." option.
- */
+function renderProjectCard(project) {
+    const clickAction = currentLoggedInUserId
+        ? `window.location.href='/project.html?id=${project.id || project._id}'`
+        : `window.location.href='/login.html?redirectedFrom=/project.html?id=${project.id || project._id}'`;
+
+    return `
+        <div class="col">
+            <div class="card h-100" style="cursor: pointer;" onclick="${clickAction}">
+                <img src="${project.image || 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'}" class="card-img-top" alt="${project.title}" onerror="this.src='https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'">
+                <div class="card-body">
+                    <h5 class="card-title">${project.title}</h5>
+                    <p class="card-text">${project.description ? project.description.substring(0, 100) + '...' : 'No description'}</p>
+                    <div class="project-meta">
+                        <span class="project-author">By <a href="/public-profile.html?userId=${project.userId}">${project.userName}</a></span>
+                        <span class="project-views"><i class="fas fa-eye"></i> ${project.views || 0}</span>
+                        <span class="project-likes"><i class="fas fa-heart"></i> ${project.likes || 0}</span>
+                    </div>
+                    <div class="project-tags">
+                        ${(project.tags || []).map(tag => `<span class="tag">${tag}</span>`).join('')}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function renderUserSuggestion(user) {
+    return `
+        <div class="autocomplete-item" onclick="window.location.href='/public-profile.html?userId=${user._id}'">
+            <img src="${user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'}" class="rounded-circle me-2" style="width: 30px; height: 30px; object-fit: cover;" alt="${user.name}">
+            <span>${user.name}</span>
+            <span class="user-detail">${user.major || user.department ? `(${user.major || ''}${user.major && user.department ? ', ' : ''}${user.department || ''})` : ''}</span>
+        </div>
+    `;
+}
+
 function populateDropdown(selectElement, options, defaultText = 'Select an option') {
     if (!selectElement) {
         console.warn('populateDropdown: selectElement is null or undefined.');
         return;
     }
-    // Clear existing options and add a default "All" option dynamically based on label
     const labelText = selectElement.previousElementSibling ? selectElement.previousElementSibling.textContent.replace(':', '').trim() : '';
     selectElement.innerHTML = `<option value="">${defaultText || `All ${labelText || 'Options'}`}</option>`;
     options.forEach(optionValue => {
@@ -316,26 +317,19 @@ function populateDropdown(selectElement, options, defaultText = 'Select an optio
     });
 }
 
-/**
- * Loads dynamic filter options from the backend.
- * This function is used on pages with filter modals (e.g., index.html).
- * This endpoint now relies on /dynamic-filter-options provided by projects.js
- */
 async function loadDynamicFilterOptions() {
-    // Ensure these elements are defined in the HTML page where this is called
     const courseFilter = document.getElementById('courseFilter');
     const yearFilter = document.getElementById('yearFilter');
-    const typeFilter = document.getElementById('typeFilter'); // This is 'submission type' for tags
+    const typeFilter = document.getElementById('typeFilter');
     const departmentFilter = document.getElementById('departmentFilter');
     const categoryFilter = document.getElementById('categoryFilter');
 
     if (!courseFilter && !yearFilter && !typeFilter && !departmentFilter && !categoryFilter) {
-        console.warn('Filter dropdown elements not all found. Skipping dynamic filter loading for missing ones.');
-        // Allow partial loading if some elements are missing on a page.
+        console.warn('Filter dropdown elements not all found. Skipping dynamic filter loading.');
     }
 
     try {
-        const response = await fetch('/dynamic-filter-options'); // Endpoint from projects.js
+        const response = await fetch('/dynamic-filter-options');
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -343,11 +337,9 @@ async function loadDynamicFilterOptions() {
 
         if (courseFilter) populateDropdown(courseFilter, tagsData.courses || [], 'All Courses');
         if (yearFilter) populateDropdown(yearFilter, tagsData.years || [], 'All Years');
-        // 'type' from tagsData should correspond to the specific project submission types
         if (typeFilter) populateDropdown(typeFilter, tagsData.types || [], 'All Submission Types');
         if (departmentFilter) populateDropdown(departmentFilter, tagsData.departments || [], 'All Departments');
         if (categoryFilter) populateDropdown(categoryFilter, tagsData.categories || [], 'All Categories');
-
     } catch (error) {
         console.error('Error loading dynamic filter options:', error);
         Toastify({
@@ -358,10 +350,6 @@ async function loadDynamicFilterOptions() {
     }
 }
 
-/**
- * Loads all projects for the main grid.
- * This function is specific to the index.html page and assumes elements exist.
- */
 async function loadAllProjects() {
     const projectGrid = document.getElementById('projectGrid');
     const projectGridHeader = document.getElementById('projectGridHeader');
@@ -374,27 +362,25 @@ async function loadAllProjects() {
         return;
     }
 
-    projectGrid.innerHTML = ''; // Clear existing projects
-    noProjectsFoundSearchMessage.style.display = 'none'; // Hide search-specific message
+    projectGrid.innerHTML = '';
+    noProjectsFoundSearchMessage.style.display = 'none';
     initialLoadingMessage.textContent = 'Loading latest projects...';
-    initialLoadingMessage.style.display = 'block'; // Show general loading message
-    projectGridHeader.style.display = 'block'; // Show "Latest Projects" header
-
+    initialLoadingMessage.style.display = 'block';
+    projectGridHeader.style.display = 'block';
     autocompleteSuggestions.innerHTML = '';
-    autocompleteSuggestions.style.display = 'none'; // Hide autocomplete
+    autocompleteSuggestions.style.display = 'none';
 
     try {
-        const response = await fetch('/projects'); // Assuming this route exists and works
+        const response = await fetch('/projects');
         if (response.ok) {
             const projects = await response.json();
             if (projects.length > 0) {
-                // Uses renderProjectCard from this scripts.js, which now excludes points
                 projectGrid.innerHTML = projects.map(p => renderProjectCard(p)).join('');
-                initialLoadingMessage.style.display = 'none'; // Hide loading message
+                initialLoadingMessage.style.display = 'none';
             } else {
                 projectGrid.innerHTML = '';
                 initialLoadingMessage.textContent = 'No projects found in the database.';
-                initialLoadingMessage.style.display = 'block'; // Show message if no projects at all
+                initialLoadingMessage.style.display = 'block';
             }
         } else {
             throw new Error('Failed to load all projects');
@@ -408,14 +394,10 @@ async function loadAllProjects() {
         }).showToast();
         projectGrid.innerHTML = '';
         initialLoadingMessage.textContent = 'Error loading projects. Please try again.';
-        initialLoadingMessage.style.display = 'block'; // Show error message
+        initialLoadingMessage.style.display = 'block';
     }
 }
 
-/**
- * Performs a global search for projects and users.
- * This function is specific to the index.html page and assumes elements exist.
- */
 async function performGlobalSearch() {
     const searchInput = document.getElementById('searchInput');
     const projectGrid = document.getElementById('projectGrid');
@@ -424,7 +406,6 @@ async function performGlobalSearch() {
     const initialLoadingMessage = document.getElementById('initialLoadingMessage');
     const autocompleteSuggestions = document.getElementById('autocompleteSuggestions');
 
-    // Filter elements - ensure they exist on the page
     const courseFilter = document.getElementById('courseFilter');
     const yearFilter = document.getElementById('yearFilter');
     const typeFilter = document.getElementById('typeFilter');
@@ -453,7 +434,7 @@ async function performGlobalSearch() {
     const isSearchActive = query || course || year || type || department || category;
 
     if (!isSearchActive) {
-        loadAllProjects(); // Load all projects if no active search/filters
+        loadAllProjects();
         autocompleteSuggestions.innerHTML = '';
         autocompleteSuggestions.style.display = 'none';
         return;
@@ -464,13 +445,12 @@ async function performGlobalSearch() {
     if (noProjectsFoundSearchMessage) noProjectsFoundSearchMessage.style.display = 'none';
 
     try {
-        const response = await fetch(`/search?${params.toString()}`); // Endpoint from projects.js
+        const response = await fetch(`/search?${params.toString()}`);
         if (response.ok) {
-            const data = await response.json(); // Expects { success: true, results: { projects: [], users: [] } }
+            const data = await response.json();
             const projects = data.results.projects;
             const users = data.results.users;
 
-            // Handle Autocomplete Suggestions for Users (using renderUserSuggestion from this scripts.js)
             if (query && users.length > 0 && autocompleteSuggestions) {
                 autocompleteSuggestions.innerHTML = users.map(u => renderUserSuggestion(u)).join('');
                 autocompleteSuggestions.style.display = 'block';
@@ -479,20 +459,18 @@ async function performGlobalSearch() {
                 autocompleteSuggestions.style.display = 'none';
             }
 
-            // Display Project Results (using renderProjectCard from this scripts.js, which excludes points)
             if (projectGrid) {
                 if (projects.length > 0) {
                     projectGrid.innerHTML = projects.map(p => renderProjectCard(p)).join('');
-                    if (noProjectsFoundSearchMessage) noProjectsFoundSearchMessage.style.display = 'none'; // Hide if projects are found
+                    if (noProjectsFoundSearchMessage) noProjectsFoundSearchMessage.style.display = 'none';
                 } else {
                     projectGrid.innerHTML = '';
                     if (noProjectsFoundSearchMessage) {
                         noProjectsFoundSearchMessage.textContent = 'No projects found matching your search or filters.';
-                        noProjectsFoundSearchMessage.style.display = 'block'; // Show "No projects found" message
+                        noProjectsFoundSearchMessage.style.display = 'block';
                     }
                 }
             }
-
         } else {
             throw new Error('Failed to perform search');
         }
@@ -506,7 +484,7 @@ async function performGlobalSearch() {
         if (projectGrid) projectGrid.innerHTML = '';
         if (noProjectsFoundSearchMessage) {
             noProjectsFoundSearchMessage.textContent = 'Error loading search results. Please try again.';
-            noProjectsFoundSearchMessage.style.display = 'block'; // Show error message
+            noProjectsFoundSearchMessage.style.display = 'block';
         }
         if (autocompleteSuggestions) {
             autocompleteSuggestions.innerHTML = '';
@@ -515,14 +493,6 @@ async function performGlobalSearch() {
     }
 }
 
-/**
- * Searches for users to be added as collaborators.
- * This is typically used in the project upload form.
- * @param {string} query - The search query for users.
- * @param {HTMLElement} resultsContainer - The DOM element to display search results.
- * @param {Function} addChipCallback - The function to call when a user is selected.
- * @param {Array<string>} selectedIds - An array of user IDs already selected as collaborators.
- */
 async function searchUsers(query, resultsContainer, addChipCallback, selectedIds) {
     if (!query) {
         resultsContainer.style.display = 'none';
@@ -530,7 +500,6 @@ async function searchUsers(query, resultsContainer, addChipCallback, selectedIds
     }
     try {
         const response = await fetch(`/search?q=${encodeURIComponent(query)}`);
-        
         if (!response.ok) {
             const errorData = await response.json();
             Toastify({ text: errorData.message || 'Error searching users.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
@@ -539,8 +508,7 @@ async function searchUsers(query, resultsContainer, addChipCallback, selectedIds
         }
         const data = await response.json();
         const users = data.results && Array.isArray(data.results.users) ? data.results.users : [];
-
-        renderCollaboratorSearchResults(users, resultsContainer, addChipCallback, selectedIds); 
+        renderCollaboratorSearchResults(users, resultsContainer, addChipCallback, selectedIds);
     } catch (error) {
         console.error('Error searching users:', error);
         Toastify({ text: 'Network error during user search.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
@@ -548,25 +516,17 @@ async function searchUsers(query, resultsContainer, addChipCallback, selectedIds
     }
 }
 
-/**
- * Renders the search results for the collaborator search functionality.
- * @param {Array<Object>} users - The array of user objects from the search.
- * @param {HTMLElement} resultsContainer - The DOM element to display the results.
- * @param {Function} addChipCallback - The function to call when a user is clicked.
- * @param {Array<string>} selectedIds - An array of user IDs already selected.
- */
 function renderCollaboratorSearchResults(users, resultsContainer, addChipCallback, selectedIds) {
     resultsContainer.innerHTML = '';
-
     if (users.length === 0) {
         resultsContainer.style.display = 'none';
         return;
     }
 
     users.forEach(user => {
-        if (!selectedIds.includes(user._id)) { 
+        if (!selectedIds.includes(user._id)) {
             const resultItem = document.createElement('a');
-            resultItem.href = '#'; 
+            resultItem.href = '#';
             resultItem.classList.add('list-group-item', 'list-group-item-action', 'd-flex', 'align-items-center');
             resultItem.dataset.userId = user._id;
             resultItem.dataset.userName = user.name;

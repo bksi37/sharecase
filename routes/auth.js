@@ -10,45 +10,37 @@ const crypto = require('crypto');
 const { Resend } = require('resend');
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Current User (Requires Authentication)
-router.get('/current-user', isAuthenticated, async (req, res) => {
+// --- New Current User Route (Replaces the old one) ---
+router.get('/current-user', async (req, res) => {
+    if (!req.session.userId) {
+        return res.status(401).json({ isLoggedIn: false, message: 'Not authenticated' });
+    }
     try {
-        const user = await User.findById(req.session.userId)
-            .select('name email profilePic major department linkedin github personalWebsite privacy isProfileComplete role universityEmail universityEmailVerified followers following totalPoints');
-
+        // Use .lean() for performance since we don't need Mongoose methods
+        const user = await User.findById(req.session.userId).lean();
         if (!user) {
-            req.session.destroy();
-            return res.status(404).json({ isLoggedIn: false, error: 'User not found after authentication check.' });
+            return res.status(404).json({ isLoggedIn: false, message: 'User not found' });
         }
-
         res.json({
             isLoggedIn: true,
             user: {
-                _id: user._id,
+                _id: user._id.toString(),
                 name: user.name,
                 email: user.email,
-                profilePic: user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg',
-                major: user.major || '',
-                department: user.department || '',
-                socialLinks: {
-                    linkedin: user.linkedin || '',
-                    github: user.github || '',
-                    website: user.personalWebsite || ''
-                },
-                privacy: user.privacy,
-                isProfileComplete: user.isProfileComplete,
+                profilePic: user.profilePic,
                 role: user.role,
-                universityEmail: user.universityEmail || '',
-                universityEmailVerified: user.universityEmailVerified,
+                totalPoints: user.totalPoints || 0,
+                socialLinks: user.socialLinks || { github: '', linkedin: '', website: '' },
+                isProfileComplete: user.isProfileComplete || false,
+                followers: user.followers || [],
+                following: user.following || [],
                 followersCount: user.followers ? user.followers.length : 0,
-                followingCount: user.following ? user.following.length : 0,
-                totalPoints: user.totalPoints || 0
+                followingCount: user.following ? user.following.length : 0
             }
         });
-
     } catch (error) {
         console.error('Error fetching current user:', error);
-        res.status(500).json({ error: 'Server error' });
+        res.status(500).json({ isLoggedIn: false, message: 'Server error' });
     }
 });
 
@@ -116,29 +108,29 @@ router.post('/login', async (req, res) => {
         }
 
         if (!user.isVerified) {
-            return res.status(401).json({ error: 'Please verify your email before logging in.' });
+            return res.status(401).json({ 
+                error: 'Please verify your email before logging in.',
+                resendVerification: true
+            });
         }
 
         const isMatch = await user.comparePassword(password);
         if (!isMatch) {
             return res.status(401).json({ error: 'Invalid credentials.' });
         }
-                // This is the key change.
-        if (!user.isVerified) {
-            return res.status(401).json({ 
-                error: 'Please verify your email before logging in.',
-                resendVerification: true // Signal the frontend to show a resend button
-            });
-        }
 
         req.session.userId = user._id.toString();
         req.session.userName = user.name;
         req.session.isProfileComplete = user.isProfileComplete;
         req.session.userRole = user.role;
+        console.log('Login successful - Session set:', {
+            userId: req.session.userId,
+            email: user.email,
+            sessionID: req.sessionID
+        });
 
         const redirect = user.isProfileComplete ? '/index.html' : '/create-profile.html';
         res.json({ success: true, message: 'Logged in successfully.', redirect });
-
     } catch (error) {
         console.error('Login error:', error);
         res.status(500).json({ error: 'Server error during login.' });
@@ -310,24 +302,24 @@ router.get('/logout', (req, res) => {
     });
 });
 
-// Fetch Public User Details by ID (no authentication needed for public access)
-router.get('/user-details/:id', async (req, res) => {
+// --- New Route for Public User Details ---
+router.get('/user-details/:userId', async (req, res) => {
     try {
-        const userId = req.params.id;
+        const userId = req.params.userId;
         const user = await User.findById(userId)
-            .select('name email profilePic major department bio linkedin github personalWebsite role totalPoints followers following');
+            .select('name profilePic major department bio linkedin github personalWebsite role totalPoints followers following');
 
         if (!user) {
-            return res.status(404).json({ error: 'User not found' });
+            return res.status(404).json({ success: false, error: 'User not found.' });
         }
 
         res.json({
-            _id: user._id,
+            _id: user._id.toString(),
             name: user.name,
-            email: user.email,
             profilePic: user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg',
             major: user.major || '',
             department: user.department || '',
+            bio: user.bio || '',
             socialLinks: {
                 linkedin: user.linkedin || '',
                 github: user.github || '',
@@ -335,43 +327,59 @@ router.get('/user-details/:id', async (req, res) => {
             },
             role: user.role,
             totalPoints: user.totalPoints || 0,
-            followersCount: user.followers ? user.followers.length : 0,
-            followingCount: user.following ? user.following.length : 0
+            followersCount: user.followers ? user.followers.length : 0
         });
 
     } catch (error) {
-        console.error('Error fetching public user details:', error);
+        console.error('Error in /user-details/:userId:', error);
         if (error.name === 'CastError') {
-            return res.status(400).json({ error: 'Invalid user ID format' });
+            return res.status(400).json({ success: false, error: 'Invalid user ID format' });
         }
-        res.status(500).json({ error: 'Server error', details: error.message });
+        res.status(500).json({ success: false, error: 'Internal server error.' });
     }
 });
 
-// Search Users for Collaboration (Requires Authentication)
-router.get('/users/search', isAuthenticated, async (req, res) => {
+// --- New Route to fetch a user's followers ---
+router.get('/user/:id/followers', async (req, res) => {
     try {
-        const query = req.query.q;
-        if (!query || query.trim() === '') {
-            return res.status(400).json({ error: 'Search query is required' });
+        const user = await User.findById(req.params.id).select('followers');
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'User not found.' });
         }
-
-        const searchTerm = new RegExp(query, 'i');
-
-        const users = await User.find({
-            $or: [
-                { name: { $regex: searchTerm } },
-                { email: { $regex: searchTerm } },
-                { major: { $regex: searchTerm } },
-                { department: { $regex: searchTerm } }
-            ],
-            isProfileComplete: true
-        }).select('_id name email profilePic major department role');
-
-        res.json(users);
+        const followers = await User.find({ _id: { $in: user.followers } })
+            .select('name profilePic major')
+            .lean();
+        res.json(followers.map(f => ({
+            _id: f._id.toString(),
+            name: f.name,
+            profilePic: f.profilePic,
+            major: f.major
+        })));
     } catch (error) {
-        console.error('User search error:', error);
-        res.status(500).json({ error: 'Server error' });
+        console.error('Error fetching followers:', error);
+        res.status(500).json({ success: false, error: 'Internal server error.' });
+    }
+});
+
+// --- New Route to fetch a user's following ---
+router.get('/user/:id/following', async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id).select('following');
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'User not found.' });
+        }
+        const following = await User.find({ _id: { $in: user.following } })
+            .select('name profilePic major')
+            .lean();
+        res.json(following.map(f => ({
+            _id: f._id.toString(),
+            name: f.name,
+            profilePic: f.profilePic,
+            major: f.major
+        })));
+    } catch (error) {
+        console.error('Error fetching following:', error);
+        res.status(500).json({ success: false, error: 'Internal server error.' });
     }
 });
 
@@ -380,6 +388,7 @@ router.post('/user/:id/follow', isAuthenticated, async (req, res) => {
     try {
         const targetUserId = req.params.id;
         const currentUserId = req.session.userId;
+        console.log('Follow request:', { currentUserId, targetUserId });
 
         if (currentUserId === targetUserId) {
             return res.status(400).json({ error: 'You cannot follow yourself.' });
@@ -408,6 +417,33 @@ router.post('/user/:id/follow', isAuthenticated, async (req, res) => {
     } catch (error) {
         console.error('Error toggling follow status:', error);
         res.status(500).json({ error: 'Server error toggling follow status.' });
+    }
+});
+
+// Search Users for Collaboration (Requires Authentication)
+router.get('/users/search', isAuthenticated, async (req, res) => {
+    try {
+        const query = req.query.q;
+        if (!query || query.trim() === '') {
+            return res.status(400).json({ error: 'Search query is required' });
+        }
+
+        const searchTerm = new RegExp(query, 'i');
+
+        const users = await User.find({
+            $or: [
+                { name: { $regex: searchTerm } },
+                { email: { $regex: searchTerm } },
+                { major: { $regex: searchTerm } },
+                { department: { $regex: searchTerm } }
+            ],
+            isProfileComplete: true
+        }).select('_id name email profilePic major department role');
+
+        res.json(users);
+    } catch (error) {
+        console.error('User search error:', error);
+        res.status(500).json({ error: 'Server error' });
     }
 });
 

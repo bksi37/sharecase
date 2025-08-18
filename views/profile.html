@@ -69,7 +69,21 @@
                         </div>
                         <div class="profile-stats">
                             <span><i class="fas fa-users"></i> <strong id="profileFollowersCount">0</strong>&nbsp;Followers</span>
+                            <!-- Followers dropdown -->
+                            <div class="dropdown mt-2">
+                                <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="followersDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="display: none;">
+                                    View Followers
+                                </button>
+                                <ul class="dropdown-menu" id="followersDropdownMenu" aria-labelledby="followersDropdown"></ul>
+                            </div>
                             <span><i class="fas fa-user-plus"></i> <strong id="profileFollowingCount">0</strong>&nbsp;Following</span>
+                            <!-- Following dropdown -->
+                            <div class="dropdown mt-2">
+                                <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="followingDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="display: none;">
+                                    View Following
+                                </button>
+                                <ul class="dropdown-menu" id="followingDropdownMenu" aria-labelledby="followingDropdown"></ul>
+                            </div>
                             <span><i class="fas fa-star"></i> <strong id="profileTotalPoints">0</strong>&nbsp;Points</span>
                         </div>
                         <div class="social-links">
@@ -167,7 +181,10 @@
         document.addEventListener('DOMContentLoaded', () => {
             async function loadProfileDetails() {
                 try {
-                    const response = await fetch('/current-user');
+                    const response = await fetch('/current-user', {
+                        headers: { 'Accept': 'application/json' },
+                        credentials: 'include'
+                    });
                     if (response.ok) {
                         const data = await response.json();
                         const user = data.user;
@@ -200,12 +217,89 @@
                             // Store userId for copy link functionality
                             document.body.dataset.currentUserId = user._id;
 
+                            // Load followers dropdown
+                            const followersDropdown = document.getElementById('followersDropdown');
+                            const followersDropdownMenu = document.getElementById('followersDropdownMenu');
+                            if (user.followersCount > 0 && followersDropdown && followersDropdownMenu) {
+                                try {
+                                    const followersResponse = await fetch(`/user/${user._id}/followers`, {
+                                        headers: { 'Accept': 'application/json' },
+                                        credentials: 'include'
+                                    });
+                                    console.log('Followers response status:', followersResponse.status);
+                                    if (!followersResponse.ok) {
+                                        throw new Error('Failed to load followers');
+                                    }
+                                    const followers = await followersResponse.json();
+                                    console.log('Followers data:', JSON.stringify(followers, null, 2));
+
+                                    followersDropdown.style.display = 'block';
+                                    if (followers.length > 0) {
+                                        followersDropdownMenu.innerHTML = followers.map(f => `
+                                            <li>
+                                                <a class="dropdown-item" href="/public-profile.html?userId=${f._id}">
+                                                    <img src="${f.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'}" alt="${f.name}'s profile picture" style="width: 30px; height: 30px; border-radius: 50%; margin-right: 10px;">
+                                                    <span>${f.name}</span>
+                                                    <span class="text-muted d-block" style="font-size: 0.8rem;">${f.major || ''}</span>
+                                                </a>
+                                            </li>
+                                        `).join('');
+                                    } else {
+                                        followersDropdownMenu.innerHTML = '<li><span class="dropdown-item text-muted">No followers</span></li>';
+                                    }
+                                } catch (error) {
+                                    console.error('Error loading followers:', error);
+                                    followersDropdown.style.display = 'none';
+                                }
+                            } else if (followersDropdown) {
+                                followersDropdown.style.display = 'none';
+                            }
+
+                            // Load following dropdown
+                            const followingDropdown = document.getElementById('followingDropdown');
+                            const followingDropdownMenu = document.getElementById('followingDropdownMenu');
+                            if (user.followingCount > 0 && followingDropdown && followingDropdownMenu) {
+                                try {
+                                    const followingResponse = await fetch(`/user/${user._id}/following`, {
+                                        headers: { 'Accept': 'application/json' },
+                                        credentials: 'include'
+                                    });
+                                    console.log('Following response status:', followingResponse.status);
+                                    if (!followingResponse.ok) {
+                                        throw new Error('Failed to load following');
+                                    }
+                                    const following = await followingResponse.json();
+                                    console.log('Following data:', JSON.stringify(following, null, 2));
+
+                                    followingDropdown.style.display = 'block';
+                                    if (following.length > 0) {
+                                        followingDropdownMenu.innerHTML = following.map(f => `
+                                            <li>
+                                                <a class="dropdown-item" href="/public-profile.html?userId=${f._id}">
+                                                    <img src="${f.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'}" alt="${f.name}'s profile picture" style="width: 30px; height: 30px; border-radius: 50%; margin-right: 10px;">
+                                                    <span>${f.name}</span>
+                                                    <span class="text-muted d-block" style="font-size: 0.8rem;">${f.major || ''}</span>
+                                                </a>
+                                            </li>
+                                        `).join('');
+                                    } else {
+                                        followingDropdownMenu.innerHTML = '<li><span class="dropdown-item text-muted">No following</span></li>';
+                                    }
+                                } catch (error) {
+                                    console.error('Error loading following:', error);
+                                    followingDropdown.style.display = 'none';
+                                }
+                            } else if (followingDropdown) {
+                                followingDropdown.style.display = 'none';
+                            }
+
                             if (!user.isProfileComplete && window.location.pathname !== '/create-profile.html') {
                                 Toastify({
                                     text: 'Please complete your profile to access all features.',
                                     duration: 3000,
                                     style: { background: '#e74c3c' },
                                 }).showToast();
+                                setTimeout(() => window.location.href = '/create-profile.html', 3000);
                             }
                         } else {
                             Toastify({
@@ -377,22 +471,19 @@
             loadProfileDetails();
             loadProjects();
 
-            // NEW: Copy Public Profile Link functionality
+            // Copy Public Profile Link functionality
             const copyProfileLinkBtn = document.getElementById('copyProfileLinkBtn');
             if (copyProfileLinkBtn) {
                 copyProfileLinkBtn.addEventListener('click', () => {
-                    const userId = document.body.dataset.currentUserId; // Get userId stored from loadProfileDetails
+                    const userId = document.body.dataset.currentUserId;
                     if (userId) {
                         const publicProfileUrl = `${window.location.origin}/public-profile.html?userId=${userId}`;
-                        
-                        // Use a temporary textarea to copy text to clipboard
                         const tempInput = document.createElement('textarea');
                         tempInput.value = publicProfileUrl;
                         document.body.appendChild(tempInput);
                         tempInput.select();
                         document.execCommand('copy');
                         document.body.removeChild(tempInput);
-
                         Toastify({
                             text: 'Public profile link copied to clipboard!',
                             duration: 3000,
@@ -408,7 +499,7 @@
                 });
             }
 
-            // Handle search bar in header (from scripts.js)
+            // Handle search bar in header
             const searchInput = document.getElementById('searchInput');
             const autocompleteSuggestions = document.getElementById('autocompleteSuggestions');
             const courseFilter = document.getElementById('courseFilter');
@@ -421,29 +512,29 @@
                 const applyFiltersBtn = document.getElementById('applyFilters');
                 if (applyFiltersBtn) {
                     applyFiltersBtn.addEventListener('click', () => {
-                        performGlobalSearch();
+                        window.performGlobalSearch();
                         const filterModal = bootstrap.Modal.getInstance(document.getElementById('filterModal'));
                         if (filterModal) filterModal.hide();
                     });
                 }
             }
 
-            if (searchInput) {
+            if (searchInput && autocompleteSuggestions) {
                 searchInput.addEventListener('input', () => {
-                    clearTimeout(searchTimeout);
-                    searchTimeout = setTimeout(performGlobalSearch, DEBOUNCE_DELAY);
+                    clearTimeout(window.searchTimeout);
+                    window.searchTimeout = setTimeout(window.performGlobalSearch, window.DEBOUNCE_DELAY);
                 });
                 searchInput.addEventListener('focus', () => {
                     if (searchInput.value.trim() && autocompleteSuggestions.children.length > 0) {
                         autocompleteSuggestions.style.display = 'block';
                     }
                 });
+                document.addEventListener('click', (event) => {
+                    if (!autocompleteSuggestions.contains(event.target) && event.target !== searchInput) {
+                        autocompleteSuggestions.style.display = 'none';
+                    }
+                });
             }
-            document.addEventListener('click', (event) => {
-                if (autocompleteSuggestions && !autocompleteSuggestions.contains(event.target) && event.target !== searchInput) {
-                    autocompleteSuggestions.style.display = 'none';
-                }
-            });
         });
     </script>
 </body>
