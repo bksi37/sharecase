@@ -9,13 +9,13 @@ const bcrypt = require('bcryptjs');
 const upload = require('../middleware/upload');
 
 // Update Profile (General user profile update after initial completion)
+// Update Profile
 router.post('/update-profile', isAuthenticated, upload.single('profilePic'), async (req, res) => {
     try {
-        // Now destructure `universityEmail` and `bio` from the body
-        const { name, bio, linkedin, major, github, personalWebsite, department, universityEmail } = req.body;
+        const { name, linkedin, major, github, personalWebsite, department, universityEmail } = req.body;
         const userId = req.session.userId;
 
-        console.log('Update profile attempt (profile.js):', { userId, name, major, linkedin, github, personalWebsite, bio, department, universityEmail, file: req.file ? req.file.originalname : 'no file' });
+        console.log('Update profile attempt (profile.js):', { userId, name, major, linkedin, github, personalWebsite, department, universityEmail, file: req.file ? req.file.originalname : 'no file' });
 
         let user = await User.findById(userId);
         if (!user) {
@@ -24,24 +24,22 @@ router.post('/update-profile', isAuthenticated, upload.single('profilePic'), asy
 
         user.name = name;
         user.major = major;
-        user.bio = bio;
-        user.github = github;
-        user.personalWebsite = personalWebsite;
         user.department = department;
+
+        // FIX: Ensure socialLinks object exists before setting properties
+        if (!user.socialLinks) {
+            user.socialLinks = {};
+        }
+
+        user.socialLinks.linkedin = linkedin;
+        user.socialLinks.github = github;
+        user.socialLinks.website = personalWebsite;
         
-        // NEW: Handle university email update
         user.universityEmail = universityEmail || null;
 
-        // NEW: Change role from 'external' to 'student' if a valid .edu email is provided
         if (user.role === 'external' && user.universityEmail && user.universityEmail.endsWith('.edu')) {
             user.role = 'student';
         }
-
-        let processedLinkedin = linkedin;
-        if (processedLinkedin && !processedLinkedin.startsWith('http://') && !processedLinkedin.startsWith('https://')) {
-            processedLinkedin = `https://${processedLinkedin}`;
-        }
-        user.linkedin = processedLinkedin;
 
         if (req.file && req.file.path) {
             if (user.profilePic && !user.profilePic.includes('default-profile.jpg')) {
@@ -61,7 +59,6 @@ router.post('/update-profile', isAuthenticated, upload.single('profilePic'), asy
         });
 
         req.session.userName = user.name;
-        // NEW: Update the session role to reflect the change
         req.session.userRole = user.role;
         await req.session.save();
 
@@ -69,13 +66,12 @@ router.post('/update-profile', isAuthenticated, upload.single('profilePic'), asy
             success: true,
             profilePic: user.profilePic,
             name: user.name,
-            bio: user.bio,
-            linkedin: user.linkedin,
+            linkedin: user.socialLinks.linkedin,
             major: user.major,
-            github: user.github,
-            personalWebsite: user.personalWebsite,
+            github: user.socialLinks.github,
+            personalWebsite: user.socialLinks.website,
             department: user.department,
-            role: user.role // Return the new role to the frontend
+            role: user.role
         });
     } catch (error) {
         console.error('Profile update error (profile.js):', error);
@@ -85,7 +81,6 @@ router.post('/update-profile', isAuthenticated, upload.single('profilePic'), asy
         res.status(500).json({ error: 'Server error' });
     }
 });
-
 
 // Change Password
 router.post('/change-password', isAuthenticated, async (req, res) => {

@@ -16,7 +16,6 @@ router.get('/current-user', async (req, res) => {
         return res.status(401).json({ isLoggedIn: false, message: 'Not authenticated' });
     }
     try {
-        // Use .lean() for performance since we don't need Mongoose methods
         const user = await User.findById(req.session.userId).lean();
         if (!user) {
             return res.status(404).json({ isLoggedIn: false, message: 'User not found' });
@@ -35,7 +34,14 @@ router.get('/current-user', async (req, res) => {
                 followers: user.followers || [],
                 following: user.following || [],
                 followersCount: user.followers ? user.followers.length : 0,
-                followingCount: user.following ? user.following.length : 0
+                followingCount: user.following ? user.following.length : 0,
+                major: user.major || '',
+                department: user.department || '',
+                universityEmail: user.universityEmail || '',
+                twoFactorAuth: user.twoFactorAuth || false,
+                notifications: user.notifications || 'all',
+                theme: user.theme || 'light',
+                privacy: user.privacy || 'public'
             }
         });
     } catch (error) {
@@ -307,7 +313,7 @@ router.get('/user-details/:userId', async (req, res) => {
     try {
         const userId = req.params.userId;
         const user = await User.findById(userId)
-            .select('name profilePic major department bio linkedin github personalWebsite role totalPoints followers following');
+            .select('name profilePic major department linkedin github personalWebsite role totalPoints followers following');
 
         if (!user) {
             return res.status(404).json({ success: false, error: 'User not found.' });
@@ -319,7 +325,6 @@ router.get('/user-details/:userId', async (req, res) => {
             profilePic: user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg',
             major: user.major || '',
             department: user.department || '',
-            bio: user.bio || '',
             socialLinks: {
                 linkedin: user.linkedin || '',
                 github: user.github || '',

@@ -186,6 +186,7 @@
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="/js/scripts.js"></script>
     <script>
+        // The corrected loadSettings function
         async function loadSettings() {
             try {
                 console.log("loadSettings: Attempting to fetch /current-user...");
@@ -209,7 +210,6 @@
                     const user = data.user;
                     console.log("loadSettings: User data:", JSON.stringify(user, null, 2));
 
-                    // Check if DOM elements exist before setting values
                     const profileName = document.getElementById('profileName');
                     const profileEmail = document.getElementById('profileEmail');
                     const profileUniversityEmail = document.getElementById('profileUniversityEmail');
@@ -233,14 +233,17 @@
                         return;
                     }
 
-                    profileName.value = user.name || 'N/A';
-                    profileEmail.value = user.email || 'N/A';
+                    profileName.value = user.name || '';
+                    profileEmail.value = user.email || '';
                     if (profileUniversityEmail) profileUniversityEmail.value = user.universityEmail || '';
                     if (profileMajor) profileMajor.value = user.major || '';
                     if (profileDepartment) profileDepartment.value = user.department || '';
-                    if (profileLinkedin) profileLinkedin.value = (user.socialLinks && user.socialLinks.linkedin) || '';
-                    if (profileGithub) profileGithub.value = (user.socialLinks && user.socialLinks.github) || '';
-                    if (profilePersonalWebsite) profilePersonalWebsite.value = (user.socialLinks && user.socialLinks.website) || '';
+
+                    // FIX: Access social links and other properties from the user object with optional chaining
+                    if (profileLinkedin) profileLinkedin.value = user.socialLinks?.linkedin || '';
+                    if (profileGithub) profileGithub.value = user.socialLinks?.github || '';
+                    if (profilePersonalWebsite) profilePersonalWebsite.value = user.socialLinks?.website || '';
+                    
                     if (twoFactorAuth) twoFactorAuth.checked = user.twoFactorAuth || false;
                     if (notifications) notifications.value = user.notifications || 'all';
                     if (theme) theme.value = user.theme || 'light';
@@ -249,6 +252,11 @@
                     console.log("loadSettings: Form fields populated successfully");
                     console.log("loadSettings: profileName value:", profileName.value);
                     console.log("loadSettings: profileEmail value:", profileEmail.value);
+                    console.log("loadSettings: profileMajor value:", profileMajor.value);
+                    console.log("loadSettings: profileDepartment value:", profileDepartment.value);
+                    console.log("loadSettings: profileLinkedin value:", profileLinkedin.value);
+                    console.log("loadSettings: profileGithub value:", profileGithub.value);
+                    console.log("loadSettings: profilePersonalWebsite value:", profilePersonalWebsite.value);
                 } else {
                     console.warn("loadSettings: User not logged in or no user data:", data);
                     Toastify({
