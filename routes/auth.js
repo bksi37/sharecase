@@ -234,23 +234,22 @@ router.post('/complete-profile', isAuthenticated, upload.single('profilePic'), a
         user.major = major;
         user.department = department;
         user.universityEmail = universityEmail || null;
-        user.linkedin = linkedin;
-        user.github = github;
-        user.personalWebsite = personalWebsite;
+        // Use socialLinks object
+        user.socialLinks = {
+            linkedin: linkedin || '',
+            github: github || '',
+            website: personalWebsite || ''
+        };
 
-        // Automatically change role to 'student' if a university email is provided
-        if (user.universityEmail) {
-            user.role = 'student';
+        // Add URL prefix if needed
+        if (user.socialLinks.linkedin && !user.socialLinks.linkedin.startsWith('http')) {
+            user.socialLinks.linkedin = `https://${user.socialLinks.linkedin}`;
         }
-
-        if (user.linkedin && !user.linkedin.startsWith('http')) {
-            user.linkedin = `https://${user.linkedin}`;
+        if (user.socialLinks.github && !user.socialLinks.github.startsWith('http')) {
+            user.socialLinks.github = `https://${user.socialLinks.github}`;
         }
-        if (user.github && !user.github.startsWith('http')) {
-            user.github = `https://${user.github}`;
-        }
-        if (user.personalWebsite && !user.personalWebsite.startsWith('http')) {
-            user.personalWebsite = `https://${user.personalWebsite}`;
+        if (user.socialLinks.website && !user.socialLinks.website.startsWith('http')) {
+            user.socialLinks.website = `https://${user.socialLinks.website}`;
         }
 
         if (req.file && req.file.path) {
@@ -258,10 +257,15 @@ router.post('/complete-profile', isAuthenticated, upload.single('profilePic'), a
         }
 
         user.isProfileComplete = true;
+        // Update role to 'student' if universityEmail is provided
+        if (user.universityEmail && user.universityEmail.endsWith('.edu')) {
+            user.role = 'student';
+        }
+
         await user.save();
 
         req.session.isProfileComplete = true;
-        req.session.userRole = user.role; // Update the session role
+        req.session.userRole = user.role;
         await req.session.save();
 
         res.json({ success: true, redirect: '/index.html' });
