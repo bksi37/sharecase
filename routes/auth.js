@@ -329,10 +329,10 @@ router.get('/user-details/:userId', async (req, res) => {
             profilePic: user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg',
             major: user.major || '',
             department: user.department || '',
-            socialLinks: {
-                linkedin: user.linkedin || '',
-                github: user.github || '',
-                website: user.personalWebsite || ''
+              socialLinks: { // Correctly structure the social links
+                linkedin: (user.socialLinks && user.socialLinks.linkedin) || '',
+                github: (user.socialLinks && user.socialLinks.github) || '',
+                website: (user.socialLinks && user.socialLinks.website) || ''
             },
             role: user.role,
             totalPoints: user.totalPoints || 0,

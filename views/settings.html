@@ -186,14 +186,16 @@
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="/js/scripts.js"></script>
     <script>
-        // The corrected loadSettings function
         async function loadSettings() {
             try {
                 console.log("loadSettings: Attempting to fetch /current-user...");
-                const response = await fetch('/current-user', { credentials: 'include' });
+                const response = await fetch('/current-user', {
+                    credentials: 'include',
+                    headers: { 'Cache-Control': 'no-cache' }
+                });
                 console.log("loadSettings: Response status:", response.status);
                 const data = await response.json();
-                console.log("loadSettings: Received data:", JSON.stringify(data, null, 2));
+                console.log("loadSettings: Full response data:", JSON.stringify(data, null, 2));
 
                 if (response.status === 401 || response.status === 404) {
                     console.warn("loadSettings: Unauthorized or user not found");
@@ -209,6 +211,7 @@
                 if (data.isLoggedIn && data.user) {
                     const user = data.user;
                     console.log("loadSettings: User data:", JSON.stringify(user, null, 2));
+                    console.log("loadSettings: User _id:", user._id);
 
                     const profileName = document.getElementById('profileName');
                     const profileEmail = document.getElementById('profileEmail');
@@ -222,6 +225,11 @@
                     const notifications = document.getElementById('notifications');
                     const theme = document.getElementById('theme');
                     const profilePrivacy = document.getElementById('profilePrivacy');
+
+                    console.log("loadSettings: profileName element exists:", !!profileName);
+                    console.log("loadSettings: profileLinkedin element exists:", !!profileLinkedin);
+                    console.log("loadSettings: profileGithub element exists:", !!profileGithub);
+                    console.log("loadSettings: profilePersonalWebsite element exists:", !!profilePersonalWebsite);
 
                     if (!profileName || !profileEmail) {
                         console.error("loadSettings: Missing critical DOM elements (profileName or profileEmail)");
@@ -239,10 +247,33 @@
                     if (profileMajor) profileMajor.value = user.major || '';
                     if (profileDepartment) profileDepartment.value = user.department || '';
 
-                    // FIX: Access social links and other properties from the user object with optional chaining
-                    if (profileLinkedin) profileLinkedin.value = user.socialLinks?.linkedin || '';
-                    if (profileGithub) profileGithub.value = user.socialLinks?.github || '';
-                    if (profilePersonalWebsite) profilePersonalWebsite.value = user.socialLinks?.website || '';
+                    if (profileLinkedin) {
+                        profileLinkedin.value = user.linkedin || '';
+                        console.log("loadSettings: Set profileLinkedin.value to:", profileLinkedin.value);
+                        profileLinkedin.dispatchEvent(new Event('input'));
+                        profileLinkedin.dispatchEvent(new Event('change'));
+                        profileLinkedin.setAttribute('value', user.linkedin || '');
+                    } else {
+                        console.error("loadSettings: profileLinkedin element not found");
+                    }
+                    if (profileGithub) {
+                        profileGithub.value = user.github || '';
+                        console.log("loadSettings: Set profileGithub.value to:", profileGithub.value);
+                        profileGithub.dispatchEvent(new Event('input'));
+                        profileGithub.dispatchEvent(new Event('change'));
+                        profileGithub.setAttribute('value', user.github || '');
+                    } else {
+                        console.error("loadSettings: profileGithub element not found");
+                    }
+                    if (profilePersonalWebsite) {
+                        profilePersonalWebsite.value = user.personalWebsite || '';
+                        console.log("loadSettings: Set profilePersonalWebsite.value to:", profilePersonalWebsite.value);
+                        profilePersonalWebsite.dispatchEvent(new Event('input'));
+                        profilePersonalWebsite.dispatchEvent(new Event('change'));
+                        profilePersonalWebsite.setAttribute('value', user.personalWebsite || '');
+                    } else {
+                        console.error("loadSettings: profilePersonalWebsite element not found");
+                    }
                     
                     if (twoFactorAuth) twoFactorAuth.checked = user.twoFactorAuth || false;
                     if (notifications) notifications.value = user.notifications || 'all';
@@ -250,13 +281,10 @@
                     if (profilePrivacy) profilePrivacy.value = user.privacy || 'public';
 
                     console.log("loadSettings: Form fields populated successfully");
-                    console.log("loadSettings: profileName value:", profileName.value);
-                    console.log("loadSettings: profileEmail value:", profileEmail.value);
-                    console.log("loadSettings: profileMajor value:", profileMajor.value);
-                    console.log("loadSettings: profileDepartment value:", profileDepartment.value);
-                    console.log("loadSettings: profileLinkedin value:", profileLinkedin.value);
-                    console.log("loadSettings: profileGithub value:", profileGithub.value);
-                    console.log("loadSettings: profilePersonalWebsite value:", profilePersonalWebsite.value);
+                    console.log("loadSettings: Final profileName value:", profileName.value);
+                    console.log("loadSettings: Final profileLinkedin value:", profileLinkedin.value);
+                    console.log("loadSettings: Final profileGithub value:", profileGithub.value);
+                    console.log("loadSettings: Final profilePersonalWebsite value:", profilePersonalWebsite.value);
                 } else {
                     console.warn("loadSettings: User not logged in or no user data:", data);
                     Toastify({
@@ -312,7 +340,7 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             console.log("DOMContentLoaded: Starting initialization...");
-            loadUserProfileInHeader(); // Re-enable after fixing the error
+            loadUserProfileInHeader();
             setTimeout(() => {
                 console.log("DOMContentLoaded: Executing delayed functions...");
                 loadSettings();
@@ -321,14 +349,48 @@
                 if (passwordSection) {
                     passwordSection.style.display = 'none';
                 }
-            }, 100); // Small delay to ensure DOM is ready
+            }, 100);
 
             const profileSettingsForm = document.getElementById('profileSettingsForm');
             if (profileSettingsForm) {
+                profileSettingsForm.addEventListener('reset', () => {
+                    console.warn("profileSettingsForm: Form reset detected!");
+                });
+                const profileLinkedin = document.getElementById('profileLinkedin');
+                const profileGithub = document.getElementById('profileGithub');
+                const profilePersonalWebsite = document.getElementById('profilePersonalWebsite');
+                if (profileLinkedin) {
+                    profileLinkedin.addEventListener('change', () => {
+                        console.log("profileLinkedin: Value changed to:", profileLinkedin.value);
+                    });
+                }
+                if (profileGithub) {
+                    profileGithub.addEventListener('change', () => {
+                        console.log("profileGithub: Value changed to:", profileGithub.value);
+                    });
+                }
+                if (profilePersonalWebsite) {
+                    profilePersonalWebsite.addEventListener('change', () => {
+                        console.log("profilePersonalWebsite: Value changed to:", profilePersonalWebsite.value);
+                    });
+                }
                 profileSettingsForm.addEventListener('submit', async e => {
                     e.preventDefault();
                     console.log("profileSettingsForm: Submitting form...");
+                    const profileName = document.getElementById('profileName');
+                    const profileLinkedin = document.getElementById('profileLinkedin');
+                    const profileGithub = document.getElementById('profileGithub');
+                    const profilePersonalWebsite = document.getElementById('profilePersonalWebsite');
+                    
+                    console.log("profileSettingsForm: profileName value before submission:", profileName ? profileName.value : 'Element not found');
+                    console.log("profileSettingsForm: profileLinkedin value before submission:", profileLinkedin ? profileLinkedin.value : 'Element not found');
+                    console.log("profileSettingsForm: profileGithub value before submission:", profileGithub ? profileGithub.value : 'Element not found');
+                    console.log("profileSettingsForm: profilePersonalWebsite value before submission:", profilePersonalWebsite ? profilePersonalWebsite.value : 'Element not found');
+
                     const formData = new FormData(e.target);
+                    for (let [key, value] of formData.entries()) {
+                        console.log(`profileSettingsForm: FormData ${key}: ${value}`);
+                    }
                     
                     try {
                         const response = await fetch('/profile/update-profile', {
@@ -345,8 +407,10 @@
                                 duration: 3000,
                                 style: { background: '#28a745' },
                             }).showToast();
-                            loadSettings(); // Reload settings to reflect changes
-                            loadUserProfileInHeader(); // Update header with new data
+                            console.log("profileSettingsForm: Reloading settings...");
+                            await loadSettings();
+                            console.log("profileSettingsForm: Settings reloaded");
+                            loadUserProfileInHeader();
                         } else {
                             Toastify({
                                 text: result.error || 'Failed to update profile',
@@ -441,7 +505,7 @@
                         console.log("preferencesSettingsForm: Response data:", JSON.stringify(result, null, 2));
                         if (response.ok && result.success) {
                             Toastify({ text: 'Preferences updated successfully!', duration: 3000, style: { background: '#28a745' } }).showToast();
-                            loadSettings(); // Reload settings to reflect changes
+                            loadSettings();
                         } else {
                             Toastify({ text: result.error || 'Failed to update preferences', duration: 3000, style: { background: '#e74c3c' } }).showToast();
                         }
@@ -472,6 +536,7 @@
             });
 
             document.getElementById('cancelProfileBtn').addEventListener('click', () => {
+                console.log("cancelProfileBtn: Reloading settings...");
                 loadSettings();
             });
 
@@ -507,7 +572,7 @@
 
             if (searchInput) {
                 searchInput.addEventListener('input', () => {
-                    clearTimeout(searchTimeout); // Use searchTimeout from scripts.js
+                    clearTimeout(searchTimeout);
                     searchTimeout = setTimeout(performGlobalSearch, DEBOUNCE_DELAY);
                 });
 

@@ -4,12 +4,11 @@ const router = express.Router();
 const cloudinary = require('cloudinary').v2;
 const User = require('../models/User');
 const Project = require('../models/Project');
-const { isAuthenticated, isProfileComplete } = require('../middleware/auth');
+const { isAuthenticated } = require('../middleware/auth');
 const bcrypt = require('bcryptjs');
 const upload = require('../middleware/upload');
 
 // Update Profile (General user profile update after initial completion)
-// Update Profile
 router.post('/update-profile', isAuthenticated, upload.single('profilePic'), async (req, res) => {
     try {
         const { name, linkedin, major, github, personalWebsite, department, universityEmail } = req.body;
@@ -22,25 +21,28 @@ router.post('/update-profile', isAuthenticated, upload.single('profilePic'), asy
             return res.status(404).json({ error: 'User not found' });
         }
 
-        user.name = name;
-        user.major = major;
-        user.department = department;
+        user.name = name || user.name;
+        user.major = major || user.major;
+        user.department = department || user.department;
+        user.universityEmail = universityEmail || user.universityEmail || null;
 
-        // FIX: Ensure socialLinks object exists before setting properties
-        if (!user.socialLinks) {
-            user.socialLinks = {};
+        // Only update social media fields if non-empty values are provided
+        if (linkedin && linkedin.trim() !== '') {
+            user.linkedin = linkedin.startsWith('http') ? linkedin : `https://${linkedin}`;
+        }
+        if (github && github.trim() !== '') {
+            user.github = github.startsWith('http') ? github : `https://${github}`;
+        }
+        if (personalWebsite && personalWebsite.trim() !== '') {
+            user.personalWebsite = personalWebsite.startsWith('http') ? personalWebsite : `https://${personalWebsite}`;
         }
 
-        user.socialLinks.linkedin = linkedin;
-        user.socialLinks.github = github;
-        user.socialLinks.website = personalWebsite;
-        
-        user.universityEmail = universityEmail || null;
-
+        // Change role from 'external' to 'student' if a valid .edu email is provided
         if (user.role === 'external' && user.universityEmail && user.universityEmail.endsWith('.edu')) {
             user.role = 'student';
         }
 
+        // Handle profile picture upload
         if (req.file && req.file.path) {
             if (user.profilePic && !user.profilePic.includes('default-profile.jpg')) {
                 const publicIdMatch = user.profilePic.match(/sharecase\/profiles\/(.+)\.\w+$/);
@@ -66,12 +68,12 @@ router.post('/update-profile', isAuthenticated, upload.single('profilePic'), asy
             success: true,
             profilePic: user.profilePic,
             name: user.name,
-            linkedin: user.socialLinks.linkedin,
             major: user.major,
-            github: user.socialLinks.github,
-            personalWebsite: user.socialLinks.website,
             department: user.department,
-            role: user.role
+            role: user.role,
+            linkedin: user.linkedin,
+            github: user.github,
+            personalWebsite: user.personalWebsite
         });
     } catch (error) {
         console.error('Profile update error (profile.js):', error);
@@ -198,5 +200,5 @@ router.get('/my-projects', isAuthenticated, async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 });
-
+ 
 module.exports = router;
