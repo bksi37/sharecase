@@ -71,7 +71,7 @@
                 <div class="mb-3">
                     <label for="profileUniversityEmail" class="form-label">University Email</label>
                     <input type="email" class="form-control" id="profileUniversityEmail" name="universityEmail" placeholder="e.g., yourname@university.edu" autocomplete="email">
-                    <div id="universityEmailInfo" class="form-text text-muted">
+                    <div id="universityEmailInfo" class="form-text text-muted UBmuted">
                         Adding a valid .edu email will grant you student privileges.
                     </div>
                 </div>
@@ -247,30 +247,31 @@
                     if (profileMajor) profileMajor.value = user.major || '';
                     if (profileDepartment) profileDepartment.value = user.department || '';
 
+                    // Use socialLinks object from /current-user response
                     if (profileLinkedin) {
-                        profileLinkedin.value = user.linkedin || '';
+                        profileLinkedin.value = user.socialLinks?.linkedin || '';
                         console.log("loadSettings: Set profileLinkedin.value to:", profileLinkedin.value);
                         profileLinkedin.dispatchEvent(new Event('input'));
                         profileLinkedin.dispatchEvent(new Event('change'));
-                        profileLinkedin.setAttribute('value', user.linkedin || '');
+                        profileLinkedin.setAttribute('value', user.socialLinks?.linkedin || '');
                     } else {
                         console.error("loadSettings: profileLinkedin element not found");
                     }
                     if (profileGithub) {
-                        profileGithub.value = user.github || '';
+                        profileGithub.value = user.socialLinks?.github || '';
                         console.log("loadSettings: Set profileGithub.value to:", profileGithub.value);
                         profileGithub.dispatchEvent(new Event('input'));
                         profileGithub.dispatchEvent(new Event('change'));
-                        profileGithub.setAttribute('value', user.github || '');
+                        profileGithub.setAttribute('value', user.socialLinks?.github || '');
                     } else {
                         console.error("loadSettings: profileGithub element not found");
                     }
                     if (profilePersonalWebsite) {
-                        profilePersonalWebsite.value = user.personalWebsite || '';
+                        profilePersonalWebsite.value = user.socialLinks?.website || '';
                         console.log("loadSettings: Set profilePersonalWebsite.value to:", profilePersonalWebsite.value);
                         profilePersonalWebsite.dispatchEvent(new Event('input'));
                         profilePersonalWebsite.dispatchEvent(new Event('change'));
-                        profilePersonalWebsite.setAttribute('value', user.personalWebsite || '');
+                        profilePersonalWebsite.setAttribute('value', user.socialLinks?.website || '');
                     } else {
                         console.error("loadSettings: profilePersonalWebsite element not found");
                     }
@@ -355,25 +356,8 @@
             if (profileSettingsForm) {
                 profileSettingsForm.addEventListener('reset', () => {
                     console.warn("profileSettingsForm: Form reset detected!");
+                    loadSettings();
                 });
-                const profileLinkedin = document.getElementById('profileLinkedin');
-                const profileGithub = document.getElementById('profileGithub');
-                const profilePersonalWebsite = document.getElementById('profilePersonalWebsite');
-                if (profileLinkedin) {
-                    profileLinkedin.addEventListener('change', () => {
-                        console.log("profileLinkedin: Value changed to:", profileLinkedin.value);
-                    });
-                }
-                if (profileGithub) {
-                    profileGithub.addEventListener('change', () => {
-                        console.log("profileGithub: Value changed to:", profileGithub.value);
-                    });
-                }
-                if (profilePersonalWebsite) {
-                    profilePersonalWebsite.addEventListener('change', () => {
-                        console.log("profilePersonalWebsite: Value changed to:", profilePersonalWebsite.value);
-                    });
-                }
                 profileSettingsForm.addEventListener('submit', async e => {
                     e.preventDefault();
                     console.log("profileSettingsForm: Submitting form...");
@@ -387,7 +371,21 @@
                     console.log("profileSettingsForm: profileGithub value before submission:", profileGithub ? profileGithub.value : 'Element not found');
                     console.log("profileSettingsForm: profilePersonalWebsite value before submission:", profilePersonalWebsite ? profilePersonalWebsite.value : 'Element not found');
 
-                    const formData = new FormData(e.target);
+                    const formData = new FormData();
+                    formData.append('userId', currentLoggedInUserId || '');
+                    formData.append('name', profileName ? profileName.value : '');
+                    formData.append('universityEmail', document.getElementById('profileUniversityEmail')?.value || '');
+                    formData.append('major', document.getElementById('profileMajor')?.value || '');
+                    formData.append('department', document.getElementById('profileDepartment')?.value || '');
+                    formData.append('linkedin', profileLinkedin ? profileLinkedin.value : '');
+                    formData.append('github', profileGithub ? profileGithub.value : '');
+                    formData.append('personalWebsite', profilePersonalWebsite ? profilePersonalWebsite.value : '');
+                    if (document.getElementById('profilePic')?.files[0]) {
+                        formData.append('profilePic', document.getElementById('profilePic').files[0]);
+                    } else {
+                        formData.append('file', 'no file');
+                    }
+
                     for (let [key, value] of formData.entries()) {
                         console.log(`profileSettingsForm: FormData ${key}: ${value}`);
                     }
@@ -407,9 +405,9 @@
                                 duration: 3000,
                                 style: { background: '#28a745' },
                             }).showToast();
-                            console.log("profileSettingsForm: Reloading settings...");
-                            await loadSettings();
-                            console.log("profileSettingsForm: Settings reloaded");
+                            console.log("profileSettingsForm: Reloading settings and activity log...");
+                            await Promise.all([loadSettings(), loadActivityLog()]);
+                            console.log("profileSettingsForm: Settings and activity log reloaded");
                             loadUserProfileInHeader();
                         } else {
                             Toastify({

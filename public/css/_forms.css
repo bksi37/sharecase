@@ -150,3 +150,13 @@
     border-color: #007bff;
     box-shadow: 0 0 0 0.25rem rgba(0, 123, 255, 0.25);
 }
+
+
+/* Project Image Preview Styles */
+.project-image-preview {
+    width: auto;
+    height: auto;
+    object-fit: none; /* Preserve aspect ratio, no cropping */
+    display: block;
+    margin: 0 auto; /* Center the image */
+}

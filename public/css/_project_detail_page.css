@@ -88,3 +88,12 @@
     padding: 2px 6px;
     font-size: 0.75rem;
 }
+
+/* In public/css/_project_detail_page.css */
+
+#projectImage {
+    height: auto;
+    object-fit: contain;
+    width: 100%;
+    /* Add any other necessary styles for the full-size image */
+}

@@ -181,17 +181,17 @@
                 currentUserData = { isLoggedIn: false };
             }
 
-            if (!userId) {
-                Toastify({
-                    text: currentUserData.isLoggedIn ? 'Error: No public profile ID specified in the URL.' : 'No user ID provided. Redirecting to login...',
-                    duration: 3000,
-                    style: { background: '#e74c3c' }
-                }).showToast();
-                if (!currentUserData.isLoggedIn) {
-                    setTimeout(() => window.location.href = '/login.html', 3000);
-                }
-                return;
-            }
+            //if (!userId) {
+              //  Toastify({
+               //     text: currentUserData.isLoggedIn ? 'Error: No public profile ID specified in the URL.' : 'No user ID provided. Redirecting to login...',
+              //      duration: 3000,
+                //    style: { background: '#e74c3c' }
+              //  }).showToast();
+              //  if (!currentUserData.isLoggedIn) {
+              //      setTimeout(() => window.location.href = '/login.html', 3000);
+              //  }
+            //    return;
+            //}
 
             try {
                 const userResponse = await fetch(`/user-details/${userId}`, {

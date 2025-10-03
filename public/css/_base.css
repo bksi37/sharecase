@@ -80,3 +80,16 @@ footer p {
     color: #777777; /* Slightly darker soft grey text */
     font-size: 14px;
 }
+
+/* Project Card Styles */
+.card-img-top.project-image {
+    width: 100%;
+    height: auto; /* Let height adjust to intrinsic aspect ratio */
+    max-height: 500px; /* Allow up to intrinsic size or adjust as needed */
+    object-fit: contain !important; /* Prevent cropping */
+    display: block;
+    margin: 0 auto;
+}
+.card {
+    max-width: 100%; /* Ensure card doesn’t constrain image */
+}

@@ -271,10 +271,16 @@ function renderProjectCard(project) {
         ? `window.location.href='/project.html?id=${project.id || project._id}'`
         : `window.location.href='/login.html?redirectedFrom=/project.html?id=${project.id || project._id}'`;
 
+    // 🛑 FIX: Apply Cloudinary transformation for a 500x500 cropped thumbnail.
+    // This assumes the saved project.image URL is the original, untransformed one.
+    const thumbnailURL = project.image
+        ? project.image.replace('/upload/', '/upload/w_500,h_500,c_fill/')
+        : 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg';
+
     return `
         <div class="col">
             <div class="card h-100" style="cursor: pointer;" onclick="${clickAction}">
-                <img src="${project.image || 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'}" class="card-img-top" alt="${project.title}" onerror="this.src='https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'">
+                <img src="${thumbnailURL}" class="card-img-top project-image" alt="${project.title}" onerror="this.src='https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'">
                 <div class="card-body">
                     <h5 class="card-title">${project.title}</h5>
                     <p class="card-text">${project.description ? project.description.substring(0, 100) + '...' : 'No description'}</p>
@@ -524,24 +530,33 @@ function renderCollaboratorSearchResults(users, resultsContainer, addChipCallbac
     }
 
     users.forEach(user => {
+        // Validate user._id
+        if (!user._id || !/^[0-9a-fA-F]{24}$/.test(user._id)) {
+            console.warn(`Skipping invalid user ID for ${user.name || 'unknown'}: ${user._id}`);
+            return;
+        }
+
         if (!selectedIds.includes(user._id)) {
             const resultItem = document.createElement('a');
             resultItem.href = '#';
             resultItem.classList.add('list-group-item', 'list-group-item-action', 'd-flex', 'align-items-center');
             resultItem.dataset.userId = user._id;
-            resultItem.dataset.userName = user.name;
+            resultItem.dataset.userName = user.name || user.email || 'Unknown';
             resultItem.dataset.profilePic = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
 
             resultItem.innerHTML = `
-                <img src="${user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'}" class="rounded-circle me-2" style="width: 30px; height: 30px; object-fit: cover;" alt="${user.name}">
+                <img src="${user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'}" class="rounded-circle me-2" style="width: 30px; height: 30px; object-fit: cover;" alt="${user.name || 'User'}">
                 <div>
-                    <strong>${user.name}</strong> <small class="text-muted">(${user.email || 'No email'})</small>
+                    <strong>${user.name || user.email || 'Unknown'}</strong> <small class="text-muted">(${user.email || 'No email'})</small>
                     ${user.major ? `<br><small class="text-muted">${user.major}</small>` : ''}
                 </div>
             `;
             resultItem.addEventListener('click', (e) => {
                 e.preventDefault();
-                if (addChipCallback) addChipCallback(user);
+                console.log('Clicked user:', { id: user._id, name: user.name, profilePic: user.profilePic }); // Debug
+                if (addChipCallback) {
+                    addChipCallback(user._id, user.name || user.email || 'Unknown', user.profilePic);
+                }
             });
             resultsContainer.appendChild(resultItem);
         }

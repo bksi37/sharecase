@@ -2,35 +2,47 @@ const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
-// Configure Cloudinary
+// Configure Cloudinary (Keep this part for credentials)
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-console.log('Cloudinary config:', {
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY ? '[set]' : 'missing',
-    api_secret: process.env.CLOUDINARY_API_SECRET ? '[set]' : 'missing'
-});
-
-// Storage for file uploads
+// Storage for all file uploads
 const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: async (req, file) => {
-        console.log('Multer params:', { userId: req.session.userId, file: file ? file.originalname : 'no file' });
         if (!file) {
             return {};
         }
-        const folderName = 'sharecase/profiles';
-        const publicId = `profile-${req.session.userId || Date.now()}-${file.originalname.split('.')[0]}`;
-        return {
-            folder: folderName,
-            format: 'jpg',
-            public_id: publicId,
-            transformation: [{ width: 500, height: 500, crop: 'fill' }]
+
+        // Determine upload type: Check for the hidden form field 'uploadType' 
+        // that the project form should send. Default to profile if not present.
+        const isProjectUpload = req.body.uploadType === 'project';
+
+        let options = {
+            format: 'auto' // Use auto to determine the best format
         };
+
+        if (isProjectUpload) {
+            // === PROJECT IMAGE LOGIC (Saves Original Size) ===
+            options.folder = 'sharecase/projects';
+            // Generate a unique public ID
+            options.public_id = `project-${req.session.userId || Date.now()}-${file.originalname.split('.')[0]}`;
+            // 🛑 FIX: Omit the 'transformation' property entirely to save the original file.
+        } else {
+            // === PROFILE PICTURE LOGIC (Requires 500x500 Crop) ===
+            options.folder = 'sharecase/profiles';
+            // Generate a unique public ID (using 'profile' prefix as before)
+            options.public_id = `profile-${req.session.userId || Date.now()}`;
+            // Add the fixed transformation for consistency in profile thumbnails
+            options.transformation = [{ width: 500, height: 500, crop: 'fill' }]; 
+        }
+
+        console.log(`Uploading to: ${options.folder}, applying transformation: ${options.transformation ? '500x500' : 'none'}`);
+
+        return options;
     },
 });
 
@@ -42,7 +54,7 @@ const uploadFile = multer({
         files: 1
     },
     fileFilter: (req, file, cb) => {
-        console.log('File filter:', { file: file ? file.mimetype : 'no file' });
+        // Allow no file to be uploaded (e.g., if just updating text fields)
         if (!file) {
             return cb(null, true);
         }

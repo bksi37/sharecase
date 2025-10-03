@@ -43,7 +43,15 @@ router.post('/add-project', isAuthenticated, isProfileComplete, upload.single('i
             ? otherCollaborators.split(',').map(c => c.trim()).filter(c => c)
             : [];
 
-        const imageUrl = req.file ? req.file.path : 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg';
+        let imageUrl = 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg';
+        if (req.file) {
+            const result = await cloudinary.uploader.upload(req.file.path, {
+                folder: 'sharecase/projects',
+                use_filename: true,
+                transformation: [{ fetch_format: 'auto', quality: 'auto', crop: 'scale' }], // Preserve aspect ratio
+            });
+            imageUrl = result.secure_url;
+        }
 
         let projectPoints = 0;
         if (isPublished === 'true') {

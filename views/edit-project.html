@@ -201,37 +201,46 @@
         }
 
         function addCollaboratorChip(userId, userName, profilePic, isInitialLoad = false) {
-            if (window.selectedCollaboratorIds.includes(userId)) {
-                if (!isInitialLoad) {
-                    Toastify({ text: `${userName} is already added.`, duration: 2000, style: { background: "#ffc107" } }).showToast();
+                // Validate userId (must be a 24-character hexadecimal string)
+                const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(userId);
+                if (!isValidObjectId) {
+                    if (!isInitialLoad) {
+                        Toastify({ text: `Invalid user ID for ${userName}. Cannot add collaborator.`, duration: 3000, style: { background: "#e74c3c" } }).showToast();
+                    }
+                    return;
                 }
-                return;
-            }
-            if (window.currentLoggedInUserId && userId === window.currentLoggedInUserId) {
-                if (!isInitialLoad) {
-                    Toastify({ text: `You are the project owner, no need to add yourself as a collaborator.`, duration: 3000, style: { background: "#ffc107" } }).showToast();
-                }
-                return;
-            }
 
-            window.selectedCollaboratorIds.push(userId);
-            updateCollaboratorIdsHiddenInput();
+                if (window.selectedCollaboratorIds.includes(userId)) {
+                    if (!isInitialLoad) {
+                        Toastify({ text: `${userName} is already added.`, duration: 2000, style: { background: "#ffc107" } }).showToast();
+                    }
+                    return;
+                }
+                if (window.currentLoggedInUserId && userId === window.currentLoggedInUserId) {
+                    if (!isInitialLoad) {
+                        Toastify({ text: `You are the project owner, no need to add yourself as a collaborator.`, duration: 3000, style: { background: "#ffc107" } }).showToast();
+                    }
+                    return;
+                }
 
-            if (selectedCollaboratorsDisplay) {
-                const chip = document.createElement('span');
-                chip.classList.add('badge', 'bg-primary', 'me-2', 'd-flex', 'align-items-center');
-                chip.setAttribute('data-user-id', userId);
-                chip.innerHTML = `
-                    <img src="${profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'}" class="rounded-circle me-1" style="width: 20px; height: 20px;" alt="${userName}">
-                    ${userName}
-                    <button type="button" class="btn-close btn-close-white ms-1" aria-label="Remove" data-remove-id="${userId}" style="font-size: 0.6em;"></button>
-                `;
-                selectedCollaboratorsDisplay.appendChild(chip);
-                if (!isInitialLoad) {
-                    Toastify({ text: `${userName} added as collaborator`, duration: 2000, style: { background: "#28a745" } }).showToast();
+                window.selectedCollaboratorIds.push(userId);
+                updateCollaboratorIdsHiddenInput();
+
+                if (selectedCollaboratorsDisplay) {
+                    const chip = document.createElement('span');
+                    chip.classList.add('badge', 'bg-primary', 'me-2', 'd-flex', 'align-items-center');
+                    chip.setAttribute('data-user-id', userId);
+                    chip.innerHTML = `
+                        <img src="${profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'}" class="rounded-circle me-1" style="width: 20px; height: 20px;" alt="${userName}">
+                        ${userName}
+                        <button type="button" class="btn-close btn-close-white ms-1" aria-label="Remove" data-remove-id="${userId}" style="font-size: 0.6em;"></button>
+                    `;
+                    selectedCollaboratorsDisplay.appendChild(chip);
+                    if (!isInitialLoad) {
+                        Toastify({ text: `${userName} added as collaborator`, duration: 2000, style: { background: "#28a745" } }).showToast();
+                    }
                 }
             }
-        }
 
         if (collaboratorSearchInput && collaboratorSearchResults && selectedCollaboratorsDisplay && collaboratorIdsHiddenInput) {
             collaboratorSearchInput.addEventListener('input', () => {
