@@ -1,3 +1,5 @@
+// server.js
+
 const express = require('express');
 const mongoose = require('mongoose');
 const session = require('express-session');
@@ -11,8 +13,8 @@ require('dotenv').config();
 // Assuming these are in place
 const { isAuthenticated, isProfileComplete, authorizeAdmin } = require('./middleware/auth');
 const tags = require('./config/tags');
-const Project = require('./models/Project'); // Assuming you have these models
-const User = require('./models/User'); // Assuming you have these models
+const Project = require('./models/Project'); 
+const User = require('./models/User'); 
 
 const app = express();
 
@@ -98,33 +100,20 @@ app.get('/profile/my-projects', isAuthenticated, isProfileComplete, async (req, 
     }
 });
 
-// Add the missing /user-details/:userId route for public profiles
-app.get('/user-details/:userId', async (req, res) => {
-    try {
-        const user = await User.findById(req.params.userId).select('name profilePic major department bio socialLinks followersCount followingCount');
-        if (!user) {
-            return res.status(404).json({ success: false, error: 'User not found.' });
-        }
-        res.json(user);
-    } catch (error) {
-        console.error('Error in /user-details/:userId:', error);
-        res.status(500).json({ success: false, error: 'Internal server error.' });
-    }
-});
+// Add the missing /user-details/:userId route for public profiles (already unprotected, moved to authRoutes for cleaner separation)
+// NOTE: This route should now be defined in routes/auth.js
 
 // Serve HTML files
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'views', 'landing.html')));
 app.get('/signup.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'signup.html')));
 app.get('/login.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'login.html')));
 app.get('/create-profile.html', isAuthenticated, (req, res) => res.sendFile(path.join(__dirname, 'views', 'create-profile.html')));
-app.get('/index.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'index.html')));
+app.get('/index.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'index.html'))); // Removed Auth Check
 app.get('/upload-project.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'upload-project.html')));
 app.get('/project.html', (req, res) => {
-    if (req.session.userId) {
-        res.sendFile(path.join(__dirname, 'views', 'project.html'));
-    } else {
-        res.redirect(`/login.html?redirectedFrom=/project.html?id=${req.query.id}`);
-    }
+    // Check if user is logged in for the client-side to handle interactions, but allow the page to load
+    res.sendFile(path.join(__dirname, 'views', 'project.html')); 
+    // The client-side JS handles redirects if user needs to log in for specific actions (like liking/commenting)
 });
 app.get('/profile.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'profile.html')));
 app.get('/settings.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'settings.html')));
@@ -139,19 +128,17 @@ app.get('/select-portfolio-type.html', isAuthenticated, isProfileComplete, (req,
 });
 
 // Specific routes for profile pages
+// 🛑 FIX: Allow unauthenticated access to the public profile page
 app.get('/profile/:userId', (req, res) => {
-    const isAuthenticatedUser = req.session && req.session.userId;
-    if (isAuthenticatedUser) {
-        res.sendFile(path.join(__dirname, 'views', 'public-profile.html'));
-    } else {
-        res.redirect(`/login.html?redirectedFrom=${encodeURIComponent(`/public-profile.html?userId=${req.params.userId}`)}`);
-    }
+    res.sendFile(path.join(__dirname, 'views', 'public-profile.html'));
 });
 app.get('/public-profile.html', (req, res) => {
     const userId = req.query.userId;
     if (userId) {
-        res.redirect(`/profile/${userId}`);
+        // Use a 301/308 redirect to the clean URL path
+        res.redirect(301, `/profile/${userId}`);
     } else {
+        // Default behavior when no user ID is provided (redirect to home/login/error)
         res.redirect('/login.html');
     }
 });

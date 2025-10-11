@@ -1,4 +1,12 @@
-/* Refine Comments Section */
+/* public/css/_project_detail_page.css */
+#projectImage, #artworkImage {
+    height: auto;
+    width: 100%;
+    max-width: 800px; /* Prevent overly large images */
+    object-fit: contain; /* Preserve aspect ratio */
+    margin-bottom: 20px;
+}
+
 .comments-section {
     padding-top: 20px;
     margin-top: 20px;
@@ -54,13 +62,12 @@
     margin-left: 5px;
 }
 
-/* New Input Area Styling at Bottom */
 .comment-input-area {
     display: flex;
     align-items: center;
     gap: 0.5rem;
     padding-top: 10px;
-    border-top: 1px solid #e0e0e0; /* Subtle separation */
+    border-top: 1px solid #e0e0e0;
 }
 
 .comment-input-area .form-control {
@@ -70,7 +77,7 @@
     font-size: 0.9rem;
     border: 1px solid #ced4da;
     box-shadow: none;
-    background: #f8f9fa; /* Light background for contrast */
+    background: #f8f9fa;
 }
 
 .comment-input-area .btn-sm {
@@ -80,20 +87,10 @@
     height: 34px;
 }
 
-/* Ensure delete button aligns properly */
 .comment-item .delete-comment-btn {
     position: absolute;
     top: 5px;
     right: 5px;
     padding: 2px 6px;
     font-size: 0.75rem;
-}
-
-/* In public/css/_project_detail_page.css */
-
-#projectImage {
-    height: auto;
-    object-fit: contain;
-    width: 100%;
-    /* Add any other necessary styles for the full-size image */
 }

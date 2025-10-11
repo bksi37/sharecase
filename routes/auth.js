@@ -1,3 +1,5 @@
+// routes/auth.js - The Complete & Fixed File
+
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
@@ -10,7 +12,9 @@ const crypto = require('crypto');
 const { Resend } = require('resend');
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// --- New Current User Route (Replaces the old one) ---
+// ---------------------------------------------------------------------
+// --- FIX: Current User Route (From First Snippet with all default checks) ---
+// ---------------------------------------------------------------------
 router.get('/current-user', async (req, res) => {
     if (!req.session.userId) {
         return res.status(401).json({ isLoggedIn: false, message: 'Not authenticated' });
@@ -29,6 +33,7 @@ router.get('/current-user', async (req, res) => {
                 profilePic: user.profilePic,
                 role: user.role,
                 totalPoints: user.totalPoints || 0,
+                // Ensure socialLinks is always an object, even if empty
                 socialLinks: user.socialLinks || { github: '', linkedin: '', website: '' },
                 isProfileComplete: user.isProfileComplete || false,
                 followers: user.followers || [],
@@ -50,7 +55,9 @@ router.get('/current-user', async (req, res) => {
     }
 });
 
-// --- User Signup ---
+// ---------------------------------------------------------------------
+// --- OLD: User Signup (Incorporated) ---
+// ---------------------------------------------------------------------
 router.post('/signup', async (req, res) => {
     try {
         const { email, password, name } = req.body;
@@ -78,7 +85,6 @@ router.post('/signup', async (req, res) => {
         await user.save();
 
         const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${emailVerificationToken}`;
-        console.log('Verification URL being sent:', verificationUrl);
 
         await resend.emails.send({
             from: 'noreply@sharecase.live',
@@ -103,7 +109,9 @@ router.post('/signup', async (req, res) => {
     }
 });
 
-// --- User Login ---
+// ---------------------------------------------------------------------
+// --- OLD: User Login (Incorporated) ---
+// ---------------------------------------------------------------------
 router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -114,7 +122,7 @@ router.post('/login', async (req, res) => {
         }
 
         if (!user.isVerified) {
-            return res.status(401).json({ 
+            return res.status(401).json({
                 error: 'Please verify your email before logging in.',
                 resendVerification: true
             });
@@ -129,11 +137,7 @@ router.post('/login', async (req, res) => {
         req.session.userName = user.name;
         req.session.isProfileComplete = user.isProfileComplete;
         req.session.userRole = user.role;
-        console.log('Login successful - Session set:', {
-            userId: req.session.userId,
-            email: user.email,
-            sessionID: req.sessionID
-        });
+        req.session.userProfilePic = user.profilePic; // Ensure profile pic is set on login
 
         const redirect = user.isProfileComplete ? '/index.html' : '/create-profile.html';
         res.json({ success: true, message: 'Logged in successfully.', redirect });
@@ -143,27 +147,24 @@ router.post('/login', async (req, res) => {
     }
 });
 
-// --- Email Verification Route ---
+// ---------------------------------------------------------------------
+// --- OLD: Email Verification Route (Incorporated) ---
+// ---------------------------------------------------------------------
 router.get('/verify-email', async (req, res) => {
     try {
         const { token } = req.query;
-        console.log(`Verifying token: ${token}`);
         if (!token) {
             return res.status(400).send('Verification token is missing.');
         }
 
         const user = await User.findOne({ emailVerificationToken: token });
         if (!user) {
-            console.log(`No user found for token: ${token}`);
             return res.status(404).send('Invalid or expired verification token.');
         }
-
-        console.log(`User found: ${user.email}, Token: ${user.emailVerificationToken}`);
 
         user.isVerified = true;
         user.emailVerificationToken = undefined;
         await user.save();
-        console.log(`User verified: ${user.email}`);
 
         res.redirect('/login.html?verified=true');
     } catch (error) {
@@ -172,6 +173,9 @@ router.get('/verify-email', async (req, res) => {
     }
 });
 
+// ---------------------------------------------------------------------
+// --- OLD: Resend Verification Route (Incorporated) ---
+// ---------------------------------------------------------------------
 router.post('/resend-verification', async (req, res) => {
     try {
         const { email } = req.body;
@@ -202,10 +206,9 @@ router.post('/resend-verification', async (req, res) => {
             `,
         });
 
-        // Updated success message to include a warning about the delay
-        res.json({ 
-            success: true, 
-            message: 'Verification email resent successfully. Please check your inbox in a few minutes and remember to check your spam folder.' 
+        res.json({
+            success: true,
+            message: 'Verification email resent successfully. Please check your inbox in a few minutes and remember to check your spam folder.'
         });
 
     } catch (error) {
@@ -214,7 +217,9 @@ router.post('/resend-verification', async (req, res) => {
     }
 });
 
-// Complete Profile (Initial setup after signup, uses Multer for profilePic)
+// ---------------------------------------------------------------------
+// --- FIX: Complete Profile (From First Snippet with session update fix) ---
+// ---------------------------------------------------------------------
 router.post('/complete-profile', isAuthenticated, upload.single('profilePic'), async (req, res) => {
     try {
         const userId = req.session.userId;
@@ -234,7 +239,6 @@ router.post('/complete-profile', isAuthenticated, upload.single('profilePic'), a
         user.major = major;
         user.department = department;
         user.universityEmail = universityEmail || null;
-        // Use socialLinks object
         user.socialLinks = {
             linkedin: linkedin || '',
             github: github || '',
@@ -254,16 +258,16 @@ router.post('/complete-profile', isAuthenticated, upload.single('profilePic'), a
 
         if (req.file && req.file.path) {
             user.profilePic = req.file.path;
+            // 🛑 FIX: Update session profile pic when profile is completed/updated
+            req.session.userProfilePic = user.profilePic;
         }
 
         user.isProfileComplete = true;
-        // Update role to 'student' if universityEmail is provided
         if (user.universityEmail && user.universityEmail.endsWith('.edu')) {
             user.role = 'student';
         }
 
         await user.save();
-
         req.session.isProfileComplete = true;
         req.session.userRole = user.role;
         await req.session.save();
@@ -278,7 +282,9 @@ router.post('/complete-profile', isAuthenticated, upload.single('profilePic'), a
     }
 });
 
-// Skip Profile Completion
+// ---------------------------------------------------------------------
+// --- OLD: Skip Profile Completion (Incorporated) ---
+// ---------------------------------------------------------------------
 router.post('/skip-profile-completion', isAuthenticated, async (req, res) => {
     try {
         const userId = req.session.userId;
@@ -301,7 +307,9 @@ router.post('/skip-profile-completion', isAuthenticated, async (req, res) => {
     }
 });
 
-// Logout
+// ---------------------------------------------------------------------
+// --- OLD: Logout (Incorporated) ---
+// ---------------------------------------------------------------------
 router.get('/logout', (req, res) => {
     req.session.destroy(err => {
         if (err) {
@@ -312,12 +320,14 @@ router.get('/logout', (req, res) => {
     });
 });
 
-// --- New Route for Public User Details ---
+// ---------------------------------------------------------------------
+// --- FIX: Route for Public User Details (From First Snippet with 'bio' fix) ---
+// ---------------------------------------------------------------------
 router.get('/user-details/:userId', async (req, res) => {
     try {
         const userId = req.params.userId;
         const user = await User.findById(userId)
-            .select('name profilePic major department linkedin github personalWebsite role totalPoints followers following');
+            .select('name profilePic major department bio socialLinks role totalPoints followers following'); // 🛑 FIX: Added 'bio'
 
         if (!user) {
             return res.status(404).json({ success: false, error: 'User not found.' });
@@ -329,10 +339,11 @@ router.get('/user-details/:userId', async (req, res) => {
             profilePic: user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg',
             major: user.major || '',
             department: user.department || '',
-              socialLinks: { // Correctly structure the social links
-                linkedin: (user.socialLinks && user.socialLinks.linkedin) || '',
-                github: (user.socialLinks && user.socialLinks.github) || '',
-                website: (user.socialLinks && user.socialLinks.website) || ''
+            bio: user.bio || '', // 🛑 FIX: Added bio for public profile page
+            socialLinks: { // Corrected access to nested socialLinks object
+                linkedin: user.socialLinks?.linkedin || '',
+                github: user.socialLinks?.github || '',
+                website: user.socialLinks?.website || ''
             },
             role: user.role,
             totalPoints: user.totalPoints || 0,
@@ -348,7 +359,11 @@ router.get('/user-details/:userId', async (req, res) => {
     }
 });
 
-// --- New Route to fetch a user's followers ---
+// ---------------------------------------------------------------------
+// --- OLD: Follower/Following/Search Routes (Incorporated) ---
+// ---------------------------------------------------------------------
+
+// Route to fetch a user's followers
 router.get('/user/:id/followers', async (req, res) => {
     try {
         const user = await User.findById(req.params.id).select('followers');
@@ -370,7 +385,7 @@ router.get('/user/:id/followers', async (req, res) => {
     }
 });
 
-// --- New Route to fetch a user's following ---
+// Route to fetch a user's following
 router.get('/user/:id/following', async (req, res) => {
     try {
         const user = await User.findById(req.params.id).select('following');
@@ -397,7 +412,6 @@ router.post('/user/:id/follow', isAuthenticated, async (req, res) => {
     try {
         const targetUserId = req.params.id;
         const currentUserId = req.session.userId;
-        console.log('Follow request:', { currentUserId, targetUserId });
 
         if (currentUserId === targetUserId) {
             return res.status(400).json({ error: 'You cannot follow yourself.' });
@@ -429,7 +443,7 @@ router.post('/user/:id/follow', isAuthenticated, async (req, res) => {
     }
 });
 
-// Search Users for Collaboration (Requires Authentication)
+// Search Users for Collaboration
 router.get('/users/search', isAuthenticated, async (req, res) => {
     try {
         const query = req.query.q;

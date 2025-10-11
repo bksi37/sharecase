@@ -1,3 +1,4 @@
+// routes/projects.js
 const express = require('express');
 const cloudinary = require('cloudinary').v2;
 const Project = require('../models/Project');
@@ -11,15 +12,27 @@ const pointsCalculator = require('../utils/pointsCalculator');
 
 const router = express.Router();
 
-// Add Project
-router.post('/add-project', isAuthenticated, isProfileComplete, upload.single('image'), async (req, res) => {
+// ---------------------------------------------------------------------
+// 1. Add Project
+// ---------------------------------------------------------------------
+router.post('/add-project', isAuthenticated, isProfileComplete, upload.fields([
+    { name: 'image', maxCount: 1 },
+    { name: 'artworkImage', maxCount: 1 },
+    { name: 'CADFile', maxCount: 1 }
+]), async (req, res) => {
     try {
-        const { title, description, tags, problemStatement, collaboratorIds, otherCollaborators, resources, isPublished, projectType } = req.body;
+        const {
+            title, projectType, description, problemStatement, tags, year, department, category,
+            collaboratorIds, otherContributors, resources,
+            technicalDescription, toolsSoftwareUsed, functionalGoals,
+            mediumTechnique, artistStatement, exhibitionHistory,
+            isPublished
+        } = req.body;
 
+        // Validation
         if (!title || title.trim() === '') {
             return res.status(400).json({ error: 'Project Title is required.' });
         }
-
         if (isPublished === 'true') {
             if (!projectType || !tagsConfig.types.includes(projectType)) {
                 return res.status(400).json({ error: 'Valid Project Type is required to publish.' });
@@ -27,7 +40,7 @@ router.post('/add-project', isAuthenticated, isProfileComplete, upload.single('i
             if (!description || description.trim() === '') {
                 return res.status(400).json({ error: 'Description is required to publish.' });
             }
-            if (!req.file) {
+            if (!req.files['image']) {
                 return res.status(400).json({ error: 'Project Image is required to publish.' });
             }
             if (!tags || tags.split(',').filter(t => t.trim()).length === 0) {
@@ -35,58 +48,100 @@ router.post('/add-project', isAuthenticated, isProfileComplete, upload.single('i
             }
         }
 
+        // Parse inputs
         const parsedTags = tags ? tags.split(',').map(t => t.trim()).filter(t => t) : [];
         const parsedCollaboratorIds = collaboratorIds
             ? collaboratorIds.split(',').map(id => id.trim()).filter(id => id && ObjectId.isValid(id)).map(id => new ObjectId(id))
             : [];
-        const parsedOtherCollaborators = otherCollaborators
-            ? otherCollaborators.split(',').map(c => c.trim()).filter(c => c)
+        const parsedOtherContributors = otherContributors
+            ? otherContributors.split(',').map(c => c.trim()).filter(c => c)
+            : [];
+        const parsedResources = resources
+            ? resources.split(',').map(r => r.trim()).filter(r => r)
+            : [];
+        const parsedToolsSoftware = toolsSoftwareUsed
+            ? toolsSoftwareUsed.split(',').map(t => t.trim()).filter(t => t)
             : [];
 
+        // Image uploads
         let imageUrl = 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg';
-        if (req.file) {
-            const result = await cloudinary.uploader.upload(req.file.path, {
+        if (req.files['image']) {
+            const result = await cloudinary.uploader.upload(req.files['image'][0].path, {
                 folder: 'sharecase/projects',
-                use_filename: true,
-                transformation: [{ fetch_format: 'auto', quality: 'auto', crop: 'scale' }], // Preserve aspect ratio
+                use_filename: true
             });
             imageUrl = result.secure_url;
         }
 
+        let artworkImageUrl = '';
+        if (req.files['artworkImage'] && projectType === 'Art') {
+            const result = await cloudinary.uploader.upload(req.files['artworkImage'][0].path, {
+                folder: 'sharecase/artwork',
+                use_filename: true
+            });
+            artworkImageUrl = result.secure_url;
+        }
+
+        let cadFileUrl = '';
+        if (req.files['CADFile'] && projectType === 'Engineering') {
+            const result = await cloudinary.uploader.upload(req.files['CADFile'][0].path, {
+                folder: 'sharecase/cad',
+                use_filename: true
+            });
+            cadFileUrl = result.secure_url;
+        }
+
+        // Points calculation
         let projectPoints = 0;
         if (isPublished === 'true') {
             projectPoints = pointsCalculator.calculateUploadPoints();
         }
 
+        // Create project
         const project = new Project({
             title: title.trim(),
+            projectType: projectType || 'Other',
             description: description || '',
-            tags: parsedTags,
             image: imageUrl,
+            year,
+            department,
+            category,
+            problemStatement: problemStatement || '',
+            tags: parsedTags,
+            collaborators: parsedCollaboratorIds,
+            otherContributors: parsedOtherContributors,
+            resources: parsedResources,
             userId: req.session.userId,
             userName: req.session.userName || 'Anonymous',
             userProfilePic: req.session.userProfilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg',
-            problemStatement: problemStatement || '',
-            collaborators: parsedCollaboratorIds,
-            otherCollaborators: parsedOtherCollaborators,
-            resources: resources ? resources.split(',').map(r => r.trim()) : [],
             isPublished: isPublished === 'true',
-            projectType: projectType || 'Other',
-            points: projectPoints
+            points: projectPoints,
+            projectDetails: {
+                CADFileLink: cadFileUrl,
+                technicalDescription: technicalDescription || '',
+                toolsSoftwareUsed: parsedToolsSoftware,
+                functionalGoals: functionalGoals || '',
+                artworkImage: artworkImageUrl,
+                mediumTechnique: mediumTechnique || '',
+                artistStatement: artistStatement || '',
+                exhibitionHistory: exhibitionHistory || ''
+            }
         });
 
         await project.save();
 
+        // Update user points and activity
         if (isPublished === 'true') {
             await User.findByIdAndUpdate(
                 req.session.userId,
-                { 
+                {
                     $inc: { totalPoints: projectPoints },
                     $push: { activityLog: { action: `Published project: ${project.title} (+${projectPoints} points)` } }
                 }
             );
         }
 
+        // Update collaborators
         if (parsedCollaboratorIds.length > 0) {
             await User.updateMany(
                 { _id: { $in: parsedCollaboratorIds } },
@@ -95,8 +150,8 @@ router.post('/add-project', isAuthenticated, isProfileComplete, upload.single('i
         }
 
         const message = isPublished === 'true' ? 'Project uploaded successfully!' : 'Project saved as draft!';
-        const redirectPath = isPublished === 'true' ? '/index.html' : '/profile.html?tab=drafts';
-        res.status(200).json({ success: true, message: message, projectId: project._id, redirect: redirectPath });
+        const redirectPath = isPublished === 'true' ? `/project/${project._id}` : '/profile.html?tab=drafts';
+        res.status(200).json({ success: true, message, projectId: project._id, redirect: redirectPath });
     } catch (error) {
         console.error('Add project error:', error);
         if (error.name === 'ValidationError') {
@@ -107,26 +162,15 @@ router.post('/add-project', isAuthenticated, isProfileComplete, upload.single('i
     }
 });
 
-// GET route to fetch dynamic filter options/tags
-router.get('/dynamic-filter-options', isAuthenticated, isProfileComplete, async (req, res) => {
-    try {
-        res.json({
-            courses: tagsConfig.courses,
-            categories: tagsConfig.courses,
-            years: tagsConfig.years,
-            types: tagsConfig.types,
-            departments: tagsConfig.departments
-        });
-    } catch (error) {
-        console.error('Error fetching dynamic filter options:', error);
-        res.status(500).json({ error: 'Server error' });
-    }
-});
 
-// Fetch All Projects
-router.get('/projects', isAuthenticated, isProfileComplete, async (req, res) => {
+
+// ---------------------------------------------------------------------
+// 2. Fetch Projects (FIXED: Removed Auth, added profilePic/tags to response)
+// ---------------------------------------------------------------------
+router.get('/projects', async (req, res) => {
     try {
-        const projects = await Project.find({ isPublished: true }).populate('userId', 'name');
+        // 🛑 FIX: Removed authentication middleware to allow public access
+        const projects = await Project.find({ isPublished: true }).populate('userId', 'name profilePic');
         res.json(projects.map(p => ({
             id: p._id,
             title: p.title,
@@ -134,9 +178,11 @@ router.get('/projects', isAuthenticated, isProfileComplete, async (req, res) => 
             image: p.image || 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg',
             userId: p.userId._id,
             userName: p.userId.name,
+            userProfilePic: p.userId.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg', // 🛑 FIX: Added profilePic
             likes: p.likes || 0,
             views: p.views || 0,
-            projectType: p.projectType || 'Other'
+            projectType: p.projectType || 'Other',
+            tags: p.tags || [], // 🛑 FIX: Added tags
         })));
     } catch (error) {
         console.error('Fetch projects error:', error);
@@ -144,9 +190,13 @@ router.get('/projects', isAuthenticated, isProfileComplete, async (req, res) => 
     }
 });
 
-// Consolidated Search Projects AND Users
-router.get('/search', isAuthenticated, async (req, res) => {
+
+// ---------------------------------------------------------------------
+// 3. Consolidated Search (FIXED: Removed Auth)
+// ---------------------------------------------------------------------
+router.get('/search', async (req, res) => {
     try {
+        // 🛑 FIX: Removed authentication middleware to allow public access
         const { q, course, year, type, department, category, projectType } = req.query;
         const projectQuery = {};
         const userQuery = {};
@@ -208,7 +258,7 @@ router.get('/search', isAuthenticated, async (req, res) => {
             major: u.major || 'N/A',
             department: u.department || 'N/A',
             profilePic: u.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg',
-            linkedin: u.linkedin || ''
+            linkedin: u.socialLinks?.linkedin || ''
         }));
 
         res.json({
@@ -225,9 +275,29 @@ router.get('/search', isAuthenticated, async (req, res) => {
     }
 });
 
-// Filter Options
-router.get('/filter-options', isAuthenticated, isProfileComplete, async (req, res) => {
+
+// ---------------------------------------------------------------------
+// 4. Dynamic Filter Options (FIXED: Removed Auth, kept combined dynamic/filter options)
+// ---------------------------------------------------------------------
+router.get('/dynamic-filter-options', async (req, res) => {
     try {
+        // 🛑 FIX: Removed authentication middleware to allow public access
+        res.json({
+            courses: tagsConfig.courses,
+            categories: tagsConfig.courses, // Inconsistency: using courses as categories, keeping for now.
+            years: tagsConfig.years,
+            types: tagsConfig.types,
+            departments: tagsConfig.departments
+        });
+    } catch (error) {
+        console.error('Error fetching dynamic filter options:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+router.get('/filter-options', async (req, res) => {
+    try {
+        // 🛑 FIX: Removed authentication middleware
         res.json({
             courses: tagsConfig.courses,
             years: tagsConfig.years,
@@ -241,8 +311,10 @@ router.get('/filter-options', isAuthenticated, isProfileComplete, async (req, re
     }
 });
 
-// Fetch Single Project
-router.get('/project/:id', isAuthenticated, isProfileComplete, async (req, res) => {
+// ---------------------------------------------------------------------
+// 2. Fetch Single Project
+// ---------------------------------------------------------------------
+router.get('/project/:id', async (req, res) => {
     try {
         const project = await Project.findById(req.params.id)
             .populate('userId', 'name profilePic')
@@ -252,69 +324,66 @@ router.get('/project/:id', isAuthenticated, isProfileComplete, async (req, res) 
                 select: 'name profilePic'
             });
 
-        if (!project) {
-            return res.status(404).json({ error: 'Project not found' });
+        if (!project || !project.isPublished) {
+            return res.status(404).json({ error: 'Project not found or is not published' });
         }
 
         const userId = req.session.userId;
         let pointsToAdd = 0;
         let viewerPointsToAdd = 0;
 
-        // Check if this is a unique view and within cooldown
-        const viewer = await User.findById(userId);
-        if (viewer && !project.viewedBy.includes(userId)) {
-            const lastViewLog = viewer.activityLog
-                .filter(log => log.action.includes(`Viewed project: ${project._id}`))
-                .sort((a, b) => b.timestamp - a.timestamp)[0];
+        if (userId) {
+            const viewer = await User.findById(userId);
+            if (viewer && !project.viewedBy.includes(userId)) {
+                const lastViewLog = viewer.activityLog
+                    .filter(log => log.action.includes(`Viewed project: ${project._id}`))
+                    .sort((a, b) => b.timestamp - a.timestamp)[0];
 
-            if (!lastViewLog || pointsCalculator.canAwardViewPoints(lastViewLog.timestamp)) {
-                project.views = (project.views || 0) + 1;
-                project.viewedBy.push(userId);
-                const uniqueViewCount = project.viewedBy.length;
-                pointsToAdd = pointsCalculator.calculateViewPoints(uniqueViewCount);
+                if (!lastViewLog || pointsCalculator.canAwardViewPoints(lastViewLog.timestamp)) {
+                    project.views = (project.views || 0) + 1;
+                    project.viewedBy.push(userId);
+                    const uniqueViewCount = project.viewedBy.length;
+                    pointsToAdd = pointsCalculator.calculateViewPoints(uniqueViewCount);
 
-                viewer.viewedProjects = viewer.viewedProjects || [];
-                if (!viewer.viewedProjects.includes(project._id)) {
-                    viewer.viewedProjects.push(project._id);
-                    viewerPointsToAdd = pointsCalculator.calculateViewerPoints(viewer.viewedProjects.length);
+                    viewer.viewedProjects = viewer.viewedProjects || [];
+                    if (!viewer.viewedProjects.includes(project._id)) {
+                        viewer.viewedProjects.push(project._id);
+                        viewerPointsToAdd = pointsCalculator.calculateViewerPoints(viewer.viewedProjects.length);
+                    }
+
+                    await User.findByIdAndUpdate(
+                        userId,
+                        {
+                            $addToSet: { viewedProjects: project._id },
+                            $inc: { totalPoints: viewerPointsToAdd },
+                            $push: { activityLog: { action: `Viewed project: ${project._id} (+${viewerPointsToAdd} points)` } }
+                        }
+                    );
                 }
+            }
 
-                // Update viewer
+            if (pointsToAdd > 0 && project.points < pointsCalculator.MAX_VIEW_POINTS_PER_PROJECT) {
+                project.points = Math.min((project.points || 0) + pointsToAdd, pointsCalculator.MAX_VIEW_POINTS_PER_PROJECT);
                 await User.findByIdAndUpdate(
-                    userId,
-                    { 
-                        $addToSet: { viewedProjects: project._id },
-                        $inc: { totalPoints: viewerPointsToAdd },
-                        $push: { activityLog: { action: `Viewed project: ${project._id} (+${viewerPointsToAdd} points)` } }
+                    project.userId,
+                    {
+                        $inc: { totalPoints: pointsToAdd },
+                        $push: { activityLog: { action: `Project ${project._id} viewed (+${pointsToAdd} points)` } }
                     }
                 );
             }
         }
 
-        if (pointsToAdd > 0 && project.points < pointsCalculator.MAX_VIEW_POINTS_PER_PROJECT) {
-            project.points = Math.min((project.points || 0) + pointsToAdd, pointsCalculator.MAX_VIEW_POINTS_PER_PROJECT);
-            await User.findByIdAndUpdate(
-                project.userId,
-                { 
-                    $inc: { totalPoints: pointsToAdd },
-                    $push: { activityLog: { action: `Project ${project._id} viewed (+${pointsToAdd} points)` } }
-                }
-            );
-        }
-
         await project.save();
 
-        const formattedComments = project.comments.map(comment => {
-            const commenter = comment.userId;
-            return {
-                _id: comment._id,
-                userId: commenter ? commenter._id : null,
-                userName: commenter ? commenter.name : comment.userName || 'Unknown',
-                userProfilePic: commenter ? (commenter.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg') : 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg',
-                text: comment.text,
-                timestamp: comment.timestamp
-            };
-        });
+        const formattedComments = project.comments.map(comment => ({
+            _id: comment._id,
+            userId: comment.userId ? comment.userId._id : null,
+            userName: comment.userId ? comment.userId.name : comment.userName || 'Unknown',
+            userProfilePic: comment.userId ? (comment.userId.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg') : 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg',
+            text: comment.text,
+            timestamp: comment.timestamp
+        }));
 
         const formattedCollaborators = project.collaborators.map(collab => ({
             _id: collab._id,
@@ -326,23 +395,24 @@ router.get('/project/:id', isAuthenticated, isProfileComplete, async (req, res) 
         res.json({
             id: project._id,
             title: project.title,
+            projectType: project.projectType,
             description: project.description,
-            image: project.image || 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg',
-            userId: project.userId._id,
-            userName: project.userId.name,
-            userProfilePic: project.userId.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg',
-            problemStatement: project.problemStatement || '',
+            image: project.image,
+            year: project.year,
+            department: project.department,
+            category: project.category,
+            problemStatement: project.problemStatement,
+            tags: project.tags,
             collaborators: formattedCollaborators,
-            otherCollaborators: project.otherCollaborators || [],
-            tags: project.tags || [],
-            resources: project.resources || [],
-            likes: project.likes || 0,
-            views: project.views || 0,
-            points: project.points || 0,
+            otherContributors: project.otherContributors,
+            resources: project.resources,
+            likes: project.likes,
+            views: project.views,
+            points: project.points,
             comments: formattedComments,
-            likedBy: project.likedBy || [],
+            likedBy: project.likedBy.map(id => id.toString()),
             isPublished: project.isPublished,
-            projectType: project.projectType || 'Other'
+            projectDetails: project.projectDetails
         });
     } catch (error) {
         console.error('Fetch project error:', error);
@@ -353,7 +423,11 @@ router.get('/project/:id', isAuthenticated, isProfileComplete, async (req, res) 
     }
 });
 
-// Like/Unlike Project
+
+
+// ---------------------------------------------------------------------
+// 6. Like/Unlike Project (INCORPORATED: Protected Route)
+// ---------------------------------------------------------------------
 router.post('/project/:id/like', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
         const project = await Project.findById(req.params.id);
@@ -368,7 +442,7 @@ router.post('/project/:id/like', isAuthenticated, isProfileComplete, async (req,
             project.points = Math.max(0, (project.points || 0) - pointsCalculator.calculateLikePoints());
             await User.findByIdAndUpdate(
                 project.userId,
-                { 
+                {
                     $inc: { totalPoints: -pointsCalculator.calculateLikePoints() },
                     $push: { activityLog: { action: `Unliked project: ${project._id} (-${pointsCalculator.calculateLikePoints()} points)` } }
                 }
@@ -378,7 +452,7 @@ router.post('/project/:id/like', isAuthenticated, isProfileComplete, async (req,
             project.points = (project.points || 0) + pointsCalculator.calculateLikePoints();
             await User.findByIdAndUpdate(
                 project.userId,
-                { 
+                {
                     $inc: { totalPoints: pointsCalculator.calculateLikePoints() },
                     $push: { activityLog: { action: `Liked project: ${project._id} (+${pointsCalculator.calculateLikePoints()} points)` } }
                 }
@@ -393,7 +467,10 @@ router.post('/project/:id/like', isAuthenticated, isProfileComplete, async (req,
     }
 });
 
-// Post Comment
+
+// ---------------------------------------------------------------------
+// 7. Post Comment (INCORPORATED: Protected Route)
+// ---------------------------------------------------------------------
 router.post('/project/:id/comment', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
         const project = await Project.findById(req.params.id);
@@ -420,14 +497,14 @@ router.post('/project/:id/comment', isAuthenticated, isProfileComplete, async (r
 
         await User.findByIdAndUpdate(
             project.userId,
-            { 
+            {
                 $inc: { totalPoints: pointsCalculator.calculateCommentPoints() },
                 $push: { activityLog: { action: `Received comment on project: ${project._id} (+${pointsCalculator.calculateCommentPoints()} points)` } }
             }
         );
         await User.findByIdAndUpdate(
             req.session.userId,
-            { 
+            {
                 $inc: { totalPoints: pointsCalculator.calculateCommenterPoints() },
                 $push: { activityLog: { action: `Commented on project: ${project._id} (+${pointsCalculator.calculateCommenterPoints()} points)` } }
             }
@@ -440,7 +517,11 @@ router.post('/project/:id/comment', isAuthenticated, isProfileComplete, async (r
     }
 });
 
-// DELETE /project/:projectId/comment/:commentId
+
+
+// ---------------------------------------------------------------------
+// 8. Delete Comment (INCORPORATED: Protected Route)
+// ---------------------------------------------------------------------
 router.delete('/project/:projectId/comment/:commentId', isAuthenticated, async (req, res) => {
     try {
         const { projectId, commentId } = req.params;
@@ -466,7 +547,7 @@ router.delete('/project/:projectId/comment/:commentId', isAuthenticated, async (
         if (isCommenter) {
             await User.findByIdAndUpdate(
                 currentUserId,
-                { 
+                {
                     $inc: { totalPoints: -pointsCalculator.calculateCommenterPoints() },
                     $push: { activityLog: { action: `Deleted comment on project: ${project._id} (-${pointsCalculator.calculateCommenterPoints()} points)` } }
                 }
@@ -476,7 +557,7 @@ router.delete('/project/:projectId/comment/:commentId', isAuthenticated, async (
             project.points = Math.max(0, (project.points || 0) - pointsCalculator.calculateCommentPoints());
             await User.findByIdAndUpdate(
                 project.userId,
-                { 
+                {
                     $inc: { totalPoints: -pointsCalculator.calculateCommentPoints() },
                     $push: { activityLog: { action: `Comment deleted on project: ${project._id} (-${pointsCalculator.calculateCommentPoints()} points)` } }
                 }
@@ -493,7 +574,10 @@ router.delete('/project/:projectId/comment/:commentId', isAuthenticated, async (
     }
 });
 
-// DELETE /project/:id
+
+// ---------------------------------------------------------------------
+// 9. Delete Project (INCORPORATED: Protected Route)
+// ---------------------------------------------------------------------
 router.delete('/project/:id', isAuthenticated, isProfileComplete, async (req, res) => {
     try {
         const project = await Project.findById(req.params.id);
@@ -507,13 +591,14 @@ router.delete('/project/:id', isAuthenticated, isProfileComplete, async (req, re
         if (project.points > 0) {
             await User.findByIdAndUpdate(
                 project.userId,
-                { 
+                {
                     $inc: { totalPoints: -project.points },
                     $push: { activityLog: { action: `Deleted project: ${project.title} (-${project.points} points)` } }
                 }
             );
         }
 
+        // Delete image from Cloudinary
         if (project.image && !project.image.includes('default-project.jpg')) {
             const publicIdMatch = project.image.match(/sharecase\/projects\/(.+)\.\w+$/);
             if (publicIdMatch && publicIdMatch[1]) {
@@ -530,8 +615,15 @@ router.delete('/project/:id', isAuthenticated, isProfileComplete, async (req, re
     }
 });
 
-// Edit Project
-router.put('/project/:id', isAuthenticated, isProfileComplete, upload.single('image'), async (req, res) => {
+
+// ---------------------------------------------------------------------
+// 3. Edit Project
+// ---------------------------------------------------------------------
+router.put('/project/:id', isAuthenticated, isProfileComplete, upload.fields([
+    { name: 'image', maxCount: 1 },
+    { name: 'artworkImage', maxCount: 1 },
+    { name: 'CADFile', maxCount: 1 }
+]), async (req, res) => {
     try {
         const project = await Project.findById(req.params.id);
         if (!project) {
@@ -544,14 +636,19 @@ router.put('/project/:id', isAuthenticated, isProfileComplete, upload.single('im
             return res.status(403).json({ error: 'Unauthorized to edit this project.' });
         }
 
-        const { title, description, tags, problemStatement, collaboratorIds, otherCollaborators, resources, isPublished, projectType } = req.body;
+        const {
+            title, projectType, description, problemStatement, tags, year, department, category,
+            collaboratorIds, otherContributors, resources,
+            technicalDescription, toolsSoftwareUsed, functionalGoals,
+            mediumTechnique, artistStatement, exhibitionHistory,
+            isPublished
+        } = req.body;
 
+        // Validation
         if (!title || title.trim() === '') {
             return res.status(400).json({ error: 'Project Title is required.' });
         }
-
         const newIsPublished = isPublished === 'true';
-
         if (newIsPublished) {
             if (!projectType || !tagsConfig.types.includes(projectType)) {
                 return res.status(400).json({ error: 'Valid Project Type is required to publish.' });
@@ -559,7 +656,7 @@ router.put('/project/:id', isAuthenticated, isProfileComplete, upload.single('im
             if (!description || description.trim() === '') {
                 return res.status(400).json({ error: 'Description is required to publish.' });
             }
-            if (!req.file && (!project.image || project.image.includes('default-project.jpg'))) {
+            if (!req.files['image'] && (!project.image || project.image.includes('default-project.jpg'))) {
                 return res.status(400).json({ error: 'Project Image is required to publish.' });
             }
             if (!tags || tags.split(',').filter(t => t.trim()).length === 0) {
@@ -567,47 +664,41 @@ router.put('/project/:id', isAuthenticated, isProfileComplete, upload.single('im
             }
         }
 
+        // Points update
         if (!project.isPublished && newIsPublished && project.points === 0) {
             const uploadPoints = pointsCalculator.calculateUploadPoints();
             project.points = project.points + uploadPoints;
             await User.findByIdAndUpdate(
                 project.userId,
-                { 
+                {
                     $inc: { totalPoints: uploadPoints },
                     $push: { activityLog: { action: `Published project: ${project.title} (+${uploadPoints} points)` } }
                 }
             );
         }
 
+        // Update fields
         project.title = title.trim();
+        project.projectType = projectType || project.projectType || 'Other';
         project.description = description || '';
+        project.year = year || '';
+        project.department = department || '';
+        project.category = category || '';
         project.problemStatement = problemStatement || '';
         project.tags = tags ? tags.split(',').map(t => t.trim()).filter(t => t) : [];
-        project.collaborators = collaboratorIds ? collaboratorIds.split(',').map(id => new ObjectId(id)) : [];
-        project.otherCollaborators = otherCollaborators ? otherCollaborators.split(',').map(c => c.trim()) : [];
+        project.otherContributors = otherContributors ? otherContributors.split(',').map(c => c.trim()) : [];
         project.resources = resources ? resources.split(',').map(r => r.trim()) : [];
         project.isPublished = newIsPublished;
-        project.projectType = projectType || project.projectType || 'Other';
 
-        let imageUrl = project.image;
-        if (req.file) {
-            if (imageUrl && !imageUrl.includes('default-project.jpg')) {
-                const publicIdMatch = imageUrl.match(/sharecase\/projects\/(.+)\.\w+$/);
-                if (publicIdMatch && publicIdMatch[1]) {
-                    const publicId = `sharecase/projects/${publicIdMatch[1]}`;
-                    await cloudinary.uploader.destroy(publicId);
-                }
-            }
-            imageUrl = req.file.path;
-        }
-        project.image = imageUrl;
-
+        // Collaborators
+        const newCollaboratorIds = collaboratorIds
+            ? collaboratorIds.split(',').map(id => id.trim()).filter(id => id && ObjectId.isValid(id)).map(id => new ObjectId(id))
+            : [];
         const oldCollaboratorIds = project.collaborators.map(id => id.toString());
-        const newCollaboratorIds = collaboratorIds ? collaboratorIds.split(',').map(id => id.trim()).filter(id => id && ObjectId.isValid(id)) : [];
-        
-        const addedCollaborators = newCollaboratorIds.filter(id => !oldCollaboratorIds.includes(id));
-        const removedCollaborators = oldCollaboratorIds.filter(id => !newCollaboratorIds.includes(id));
-        
+        const newCollaboratorIdStrings = newCollaboratorIds.map(id => id.toString());
+        const addedCollaborators = newCollaboratorIdStrings.filter(id => !oldCollaboratorIds.includes(id));
+        const removedCollaborators = oldCollaboratorIds.filter(id => !newCollaboratorIdStrings.includes(id));
+
         if (addedCollaborators.length > 0) {
             await User.updateMany(
                 { _id: { $in: addedCollaborators } },
@@ -622,8 +713,70 @@ router.put('/project/:id', isAuthenticated, isProfileComplete, upload.single('im
         }
         project.collaborators = newCollaboratorIds;
 
+        // Image updates
+        let imageUrl = project.image;
+        if (req.files['image']) {
+            if (imageUrl && !imageUrl.includes('default-project.jpg')) {
+                const publicIdMatch = imageUrl.match(/sharecase\/projects\/(.+)\.\w+$/);
+                if (publicIdMatch && publicIdMatch[1]) {
+                    const publicId = `sharecase/projects/${publicIdMatch[1]}`;
+                    await cloudinary.uploader.destroy(publicId);
+                }
+            }
+            const result = await cloudinary.uploader.upload(req.files['image'][0].path, {
+                folder: 'sharecase/projects',
+                use_filename: true
+            });
+            imageUrl = result.secure_url;
+        }
+        project.image = imageUrl;
+
+        let artworkImageUrl = project.projectDetails.artworkImage;
+        if (req.files['artworkImage'] && projectType === 'Art') {
+            if (artworkImageUrl && !artworkImageUrl.includes('default-project.jpg')) {
+                const publicIdMatch = artworkImageUrl.match(/sharecase\/artwork\/(.+)\.\w+$/);
+                if (publicIdMatch && publicIdMatch[1]) {
+                    const publicId = `sharecase/artwork/${publicIdMatch[1]}`;
+                    await cloudinary.uploader.destroy(publicId);
+                }
+            }
+            const result = await cloudinary.uploader.upload(req.files['artworkImage'][0].path, {
+                folder: 'sharecase/artwork',
+                use_filename: true
+            });
+            artworkImageUrl = result.secure_url;
+        }
+
+        let cadFileUrl = project.projectDetails.CADFileLink;
+        if (req.files['CADFile'] && projectType === 'Engineering') {
+            if (cadFileUrl && !cadFileUrl.includes('default-project.jpg')) {
+                const publicIdMatch = cadFileUrl.match(/sharecase\/cad\/(.+)\.\w+$/);
+                if (publicIdMatch && publicIdMatch[1]) {
+                    const publicId = `sharecase/cad/${publicIdMatch[1]}`;
+                    await cloudinary.uploader.destroy(publicId);
+                }
+            }
+            const result = await cloudinary.uploader.upload(req.files['CADFile'][0].path, {
+                folder: 'sharecase/cad',
+                use_filename: true
+            });
+            cadFileUrl = result.secure_url;
+        }
+
+        // Project details
+        project.projectDetails = {
+            CADFileLink: cadFileUrl || project.projectDetails.CADFileLink,
+            technicalDescription: technicalDescription || project.projectDetails.technicalDescription,
+            toolsSoftwareUsed: toolsSoftwareUsed ? toolsSoftwareUsed.split(',').map(t => t.trim()) : project.projectDetails.toolsSoftwareUsed,
+            functionalGoals: functionalGoals || project.projectDetails.functionalGoals,
+            artworkImage: artworkImageUrl || project.projectDetails.artworkImage,
+            mediumTechnique: mediumTechnique || project.projectDetails.mediumTechnique,
+            artistStatement: artistStatement || project.projectDetails.artistStatement,
+            exhibitionHistory: exhibitionHistory || project.projectDetails.exhibitionHistory
+        };
+
         await project.save();
-        const redirectPath = newIsPublished ? '/index.html' : '/profile.html?tab=drafts';
+        const redirectPath = newIsPublished ? `/project/${project._id}` : '/profile.html?tab=drafts';
         res.json({ success: true, message: 'Project updated successfully', redirect: redirectPath });
     } catch (error) {
         console.error('Edit project error:', error);
@@ -635,11 +788,12 @@ router.put('/project/:id', isAuthenticated, isProfileComplete, upload.single('im
     }
 });
 
-// Fetch Projects by User ID
+// ---------------------------------------------------------------------
+// 11. Fetch Projects by User ID (UNPROTECTED: Already in both, keeping latest structure)
+// ---------------------------------------------------------------------
 router.get('/projects-by-user/:userId', async (req, res) => {
     try {
         const userId = req.params.userId;
-
         const projects = await Project.find({
             isPublished: true,
             $or: [

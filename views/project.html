@@ -113,53 +113,6 @@
         </div>
     </main>
 
-    <div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="filterModalLabel">Filter Projects</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="courseFilter" class="form-label">Course</label>
-                        <select id="courseFilter" class="form-select">
-                            <option value="">All Courses</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="yearFilter" class="form-label">Year</label>
-                        <select id="yearFilter" class="form-select">
-                            <option value="">All Years</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="typeFilter" class="form-label">Type</label>
-                        <select id="typeFilter" class="form-select">
-                            <option value="">All Types</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="departmentFilter" class="form-label">Department</label>
-                        <select id="departmentFilter" class="form-select">
-                            <option value="">All Departments</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="categoryFilter" class="form-label">Category</label>
-                        <select id="categoryFilter" class="form-select">
-                            <option value="">All Categories</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary" id="applyFilters">Apply Filters</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <footer>
         <p>© 2025 ShareCase. All rights reserved.</p>
     </footer>
@@ -170,6 +123,12 @@
     <script>
         // --- Custom functions for this page ---
         async function postComment(projectId, commentText) {
+            // Check if user is logged in via the global variable
+            if (!window.currentLoggedInUserId) {
+                Toastify({ text: 'You must be logged in to comment.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                return;
+            }
+            
             try {
                 const response = await fetch(`/project/${projectId}/comment`, {
                     method: 'POST',
@@ -201,12 +160,14 @@
             }
 
             try {
+                // 🛑 NOTE: The /project/:id route on the server is now unprotected for viewing
                 const response = await fetch(`/project/${projectId}`);
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({ message: response.statusText || 'Unknown error' }));
                     if (response.status === 404) {
                         throw new Error('Project not found or is not published.');
                     } else if (response.status === 401 || response.status === 403) {
+                        // This case should be rare now, but handles specific backend authentication errors on public data
                         throw new Error('You need to be logged in and authorized to view this project.');
                     }
                     throw new Error(errorData.message || 'Failed to load project');
@@ -228,7 +189,8 @@
                 if (projectUploaderSpan) {
                     if (project.userId && project.userName) {
                         const uploaderProfilePic = project.userProfilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
-                        const uploaderLinkHref = `/public-profile.html?userId=${project.userId}`;
+                        // 🛑 FIX: Use clean URL path for uploader profile link
+                        const uploaderLinkHref = `/profile/${project.userId}`;
                         projectUploaderSpan.innerHTML = `
                             <a href="${uploaderLinkHref}" class="text-decoration-none text-muted d-flex align-items-center">
                                 <img src="${uploaderProfilePic}" alt="Uploader Profile" class="rounded-circle me-2" style="width: 24px; height: 24px; object-fit: cover; border: 1px solid #eee;">
@@ -251,7 +213,8 @@
                             const collabId = collabUser._id || collabUser;
                             const collabName = collabUser.name || 'Unknown';
                             const collabProfilePic = collabUser.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
-                            const collabLinkHref = `/public-profile.html?userId=${collabId}`;
+                            // 🛑 FIX: Use clean URL path for collaborator profile link
+                            const collabLinkHref = `/profile/${collabId}`;
                             
                             allCollaboratorsHtml.push(`
                                 <li class="d-inline-block me-2 mb-1">
@@ -314,14 +277,23 @@
                     const hasLiked = window.currentLoggedInUserId && (project.likedBy || []).includes(window.currentLoggedInUserId);
                     likeBtn.textContent = hasLiked ? 'Unlike' : 'Like';
                     likeBtn.className = hasLiked ? 'btn btn-primary' : 'btn btn-outline-primary';
-                    likeBtn.onclick = () => window.toggleLike(projectId);
+                    
+                    // 🛑 NOTE: This needs a function in scripts.js, assuming it exists
+                    likeBtn.onclick = () => {
+                        if (window.currentLoggedInUserId) {
+                            window.toggleLike(projectId);
+                        } else {
+                            // Redirect to login if user clicks like button while logged out
+                            window.location.href = `/login.html?redirectedFrom=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+                        }
+                    };
                 }
 
                 await loadComments(projectId, project.comments || [], project.userId);
             } catch (error) {
                 console.error('Error loading project:', error);
                 Toastify({ text: error.message || 'Error loading project', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                setTimeout(() => window.location.href = '/index.html', 3000);
+                document.getElementById('projectTitle').textContent = 'Project Not Found';
             }
         }
 
@@ -329,10 +301,16 @@
             const commentsListDiv = document.getElementById('commentsList');
             const commentCountSpan = document.getElementById('commentCount');
             const noCommentsMessage = document.getElementById('noCommentsMessage');
+            const commentInputArea = document.querySelector('.comment-input-area');
 
-            if (!commentsListDiv || !noCommentsMessage || !commentCountSpan) {
+            if (!commentsListDiv || !noCommentsMessage || !commentCountSpan || !commentInputArea) {
                 console.error("Comments display elements not found in the DOM.");
                 return;
+            }
+            
+            // Hide comment input area if user is not logged in (to force login)
+            if (!window.currentLoggedInUserId) {
+                commentInputArea.innerHTML = '<p class="text-muted text-center mb-0">Please <a href="/login.html">log in</a> to post comments.</p>';
             }
 
             commentsListDiv.innerHTML = '';
@@ -343,7 +321,8 @@
                     commentElement.classList.add('comment-item', 'card', 'p-3', 'mb-2', 'shadow-sm', 'position-relative'); 
                     
                     const userNameHtml = c.userId
-                        ? `<a href="/public-profile.html?userId=${c.userId}" class="text-decoration-none" style="color: inherit;"><strong>${c.userName}</strong></a>`
+                        // 🛑 FIX: Use clean URL path for commenter profile link
+                        ? `<a href="/profile/${c.userId}" class="text-decoration-none" style="color: inherit;"><strong>${c.userName}</strong></a>`
                         : `<strong>${c.userName}</strong>`;
 
                     let deleteButtonHtml = '';
@@ -371,7 +350,7 @@
                 commentsListDiv.querySelectorAll('.delete-comment-btn').forEach(button => {
                     button.addEventListener('click', () => {
                         const commentId = button.dataset.commentId;
-                        window.deleteComment(projectId, commentId);
+                        window.deleteComment(projectId, commentId); // Assuming deleteComment is a global function
                     });
                 });
 
@@ -424,7 +403,7 @@
                     }
                 });
                 commentTextarea.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
+                    if (e.key === 'Enter' && !e.shiftKey) { // Allow shift+enter for new line
                         e.preventDefault();
                         postCommentBtn.click();
                     }

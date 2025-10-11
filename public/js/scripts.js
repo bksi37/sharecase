@@ -13,16 +13,14 @@ window.renderUserSuggestion = renderUserSuggestion;
 window.isUserFollowing = isUserFollowing;
 window.toggleFollow = toggleFollow;
 window.loadUserProfileInHeader = loadUserProfileInHeader;
-window.performGlobalSearch = performGlobalSearch;
 window.searchUsers = searchUsers;
 window.renderCollaboratorSearchResults = renderCollaboratorSearchResults;
+window.populateDropdown = populateDropdown;
 window.loadDynamicFilterOptions = loadDynamicFilterOptions;
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Load user data into the header
     loadUserProfileInHeader();
 
-    // Dropdown Menu Toggle
     const userMenuToggle = document.getElementById('userMenuToggle');
     const userDropdown = document.getElementById('userDropdown');
 
@@ -39,7 +37,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Logout Functionality
     const logoutLink = document.getElementById('logoutLink');
     if (logoutLink) {
         logoutLink.addEventListener('click', async (event) => {
@@ -271,8 +268,6 @@ function renderProjectCard(project) {
         ? `window.location.href='/project.html?id=${project.id || project._id}'`
         : `window.location.href='/login.html?redirectedFrom=/project.html?id=${project.id || project._id}'`;
 
-    // 🛑 FIX: Apply Cloudinary transformation for a 500x500 cropped thumbnail.
-    // This assumes the saved project.image URL is the original, untransformed one.
     const thumbnailURL = project.image
         ? project.image.replace('/upload/', '/upload/w_500,h_500,c_fill/')
         : 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg';
@@ -280,7 +275,7 @@ function renderProjectCard(project) {
     return `
         <div class="col">
             <div class="card h-100" style="cursor: pointer;" onclick="${clickAction}">
-                <img src="${thumbnailURL}" class="card-img-top project-image" alt="${project.title}" onerror="this.src='https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'">
+                <img src="${thumbnailURL}" class="card-img-top project-image" alt="${project.title}" style="object-fit: cover; height: 200px;" onerror="this.src='https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'">
                 <div class="card-body">
                     <h5 class="card-title">${project.title}</h5>
                     <p class="card-text">${project.description ? project.description.substring(0, 100) + '...' : 'No description'}</p>
@@ -361,9 +356,8 @@ async function loadAllProjects() {
     const projectGridHeader = document.getElementById('projectGridHeader');
     const noProjectsFoundSearchMessage = document.getElementById('noProjectsFoundSearchMessage');
     const initialLoadingMessage = document.getElementById('initialLoadingMessage');
-    const autocompleteSuggestions = document.getElementById('autocompleteSuggestions');
 
-    if (!projectGrid || !projectGridHeader || !noProjectsFoundSearchMessage || !initialLoadingMessage || !autocompleteSuggestions) {
+    if (!projectGrid || !projectGridHeader || !noProjectsFoundSearchMessage || !initialLoadingMessage) {
         console.warn('One or more project grid elements not found. Skipping loadAllProjects.');
         return;
     }
@@ -373,8 +367,6 @@ async function loadAllProjects() {
     initialLoadingMessage.textContent = 'Loading latest projects...';
     initialLoadingMessage.style.display = 'block';
     projectGridHeader.style.display = 'block';
-    autocompleteSuggestions.innerHTML = '';
-    autocompleteSuggestions.style.display = 'none';
 
     try {
         const response = await fetch('/projects');
@@ -401,101 +393,6 @@ async function loadAllProjects() {
         projectGrid.innerHTML = '';
         initialLoadingMessage.textContent = 'Error loading projects. Please try again.';
         initialLoadingMessage.style.display = 'block';
-    }
-}
-
-async function performGlobalSearch() {
-    const searchInput = document.getElementById('searchInput');
-    const projectGrid = document.getElementById('projectGrid');
-    const projectGridHeader = document.getElementById('projectGridHeader');
-    const noProjectsFoundSearchMessage = document.getElementById('noProjectsFoundSearchMessage');
-    const initialLoadingMessage = document.getElementById('initialLoadingMessage');
-    const autocompleteSuggestions = document.getElementById('autocompleteSuggestions');
-
-    const courseFilter = document.getElementById('courseFilter');
-    const yearFilter = document.getElementById('yearFilter');
-    const typeFilter = document.getElementById('typeFilter');
-    const departmentFilter = document.getElementById('departmentFilter');
-    const categoryFilter = document.getElementById('categoryFilter');
-
-    if (!searchInput || !projectGrid || !projectGridHeader || !noProjectsFoundSearchMessage || !initialLoadingMessage || !autocompleteSuggestions) {
-        console.warn('One or more search/project grid elements not found. Skipping global search.');
-    }
-
-    const query = searchInput ? searchInput.value.trim() : '';
-    const course = courseFilter ? courseFilter.value : '';
-    const year = yearFilter ? yearFilter.value : '';
-    const type = typeFilter ? typeFilter.value : '';
-    const department = departmentFilter ? departmentFilter.value : '';
-    const category = categoryFilter ? categoryFilter.value : '';
-
-    const params = new URLSearchParams();
-    if (query) params.append('q', query);
-    if (course) params.append('course', course);
-    if (year) params.append('year', year);
-    if (type) params.append('type', type);
-    if (department) params.append('department', department);
-    if (category) params.append('category', category);
-
-    const isSearchActive = query || course || year || type || department || category;
-
-    if (!isSearchActive) {
-        loadAllProjects();
-        autocompleteSuggestions.innerHTML = '';
-        autocompleteSuggestions.style.display = 'none';
-        return;
-    }
-
-    if (initialLoadingMessage) initialLoadingMessage.style.display = 'none';
-    if (projectGridHeader) projectGridHeader.style.display = 'none';
-    if (noProjectsFoundSearchMessage) noProjectsFoundSearchMessage.style.display = 'none';
-
-    try {
-        const response = await fetch(`/search?${params.toString()}`);
-        if (response.ok) {
-            const data = await response.json();
-            const projects = data.results.projects;
-            const users = data.results.users;
-
-            if (query && users.length > 0 && autocompleteSuggestions) {
-                autocompleteSuggestions.innerHTML = users.map(u => renderUserSuggestion(u)).join('');
-                autocompleteSuggestions.style.display = 'block';
-            } else if (autocompleteSuggestions) {
-                autocompleteSuggestions.innerHTML = '';
-                autocompleteSuggestions.style.display = 'none';
-            }
-
-            if (projectGrid) {
-                if (projects.length > 0) {
-                    projectGrid.innerHTML = projects.map(p => renderProjectCard(p)).join('');
-                    if (noProjectsFoundSearchMessage) noProjectsFoundSearchMessage.style.display = 'none';
-                } else {
-                    projectGrid.innerHTML = '';
-                    if (noProjectsFoundSearchMessage) {
-                        noProjectsFoundSearchMessage.textContent = 'No projects found matching your search or filters.';
-                        noProjectsFoundSearchMessage.style.display = 'block';
-                    }
-                }
-            }
-        } else {
-            throw new Error('Failed to perform search');
-        }
-    } catch (error) {
-        console.error('Error performing global search:', error);
-        Toastify({
-            text: 'Error performing search.',
-            duration: 3000,
-            style: { background: '#e74c3c' },
-        }).showToast();
-        if (projectGrid) projectGrid.innerHTML = '';
-        if (noProjectsFoundSearchMessage) {
-            noProjectsFoundSearchMessage.textContent = 'Error loading search results. Please try again.';
-            noProjectsFoundSearchMessage.style.display = 'block';
-        }
-        if (autocompleteSuggestions) {
-            autocompleteSuggestions.innerHTML = '';
-            autocompleteSuggestions.style.display = 'none';
-        }
     }
 }
 
@@ -530,7 +427,6 @@ function renderCollaboratorSearchResults(users, resultsContainer, addChipCallbac
     }
 
     users.forEach(user => {
-        // Validate user._id
         if (!user._id || !/^[0-9a-fA-F]{24}$/.test(user._id)) {
             console.warn(`Skipping invalid user ID for ${user.name || 'unknown'}: ${user._id}`);
             return;
@@ -553,7 +449,7 @@ function renderCollaboratorSearchResults(users, resultsContainer, addChipCallbac
             `;
             resultItem.addEventListener('click', (e) => {
                 e.preventDefault();
-                console.log('Clicked user:', { id: user._id, name: user.name, profilePic: user.profilePic }); // Debug
+                console.log('Clicked user:', { id: user._id, name: user.name, profilePic: user.profilePic });
                 if (addChipCallback) {
                     addChipCallback(user._id, user.name || user.email || 'Unknown', user.profilePic);
                 }
