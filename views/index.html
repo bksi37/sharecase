@@ -7,7 +7,6 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-
     <link rel="stylesheet" href="/css/_base.css">
     <link rel="stylesheet" href="/css/_header.css">
     <link rel="stylesheet" href="/css/_forms.css">
@@ -31,7 +30,22 @@
             </div>
             <div id="autocompleteSuggestions" class="autocomplete-suggestions"></div>
         </div>
-        <div class="user-menu">
+        <div class="user-menu d-flex align-items-center">
+            <a href="/store-placeholder.html" class="btn btn-outline-dark me-3" id="storeButton" aria-label="Store" title="Store Placeholder">
+                <i class="fas fa-store"></i>
+            </a>
+            <div class="dropdown">
+                <button class="btn btn-outline-dark me-2" id="notificationButton" aria-label="Notifications" title="Notifications" data-bs-toggle="dropdown">
+                    <i class="fas fa-bell"></i>
+                    <span class="badge bg-danger" id="notificationCount" style="display: none;">0</span>
+                </button>
+                <div class="dropdown-menu dropdown-menu-end" id="notificationDropdown" style="min-width: 300px;">
+                    <div class="dropdown-header">Notifications</div>
+                    <div id="notificationList">
+                        <div class="dropdown-item-text">No new notifications</div>
+                    </div>
+                </div>
+            </div>
             <div class="profile-container" id="userMenuToggle" style="display: none;">
                 <img id="headerProfilePic" src="https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg" alt="Profile Picture">
                 <span id="headerProfileName">Guest</span>
@@ -54,16 +68,17 @@
             </div>
         </div>
     </header>
-    <main>
-        <div class="container mt-4">
-            <h2 id="projectGridHeader" class="mt-4">Latest Projects</h2>
-            <div class="row row-cols-1 row-cols-md-3 g-4" id="projectGrid">
-                <p id="noProjectsFoundSearchMessage" class="text-center w-100 mt-5" style="display: none;">No projects found matching your search or filters.</p>
-                <p id="initialLoadingMessage" class="text-center w-100 mt-5">Loading projects...</p>
-            </div>
-        </div>
-    </main>
+  <main>
+    <div class="container mt-4">
+        <h2 id="projectGridHeader" class="mt-4">Latest Projects</h2>
 
+        <p id="initialLoadingMessage" class="text-center w-100 mt-5">Loading projects...</p>
+        <p id="noProjectsFoundSearchMessage" class="text-center w-100 mt-5" style="display: none;">No projects found matching your search or filters.</p>
+        
+        <div class="row row-cols-1 row-cols-md-3 g-4" id="projectGrid">
+            </div>
+    </div>
+</main>
     <div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -110,96 +125,121 @@
             </div>
         </div>
     </div>
-
     <footer>
         <p>© 2025 ShareCase. All rights reserved.</p>
     </footer>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="/js/scripts.js"></script>
     <script>
-        // Get DOM elements specific to index.html and its search/filters
-        // These are accessed by the global functions from scripts.js,
-        // so defining them here makes them easily accessible within this script block.
+    async function fetchNotifications() {
+        try {
+            const response = await fetch('/notifications', { credentials: 'include' });
+            if (!response.ok) throw new Error('Failed to fetch notifications');
+            const notifications = await response.json();
+            const notificationList = document.getElementById('notificationList');
+            const notificationCount = document.getElementById('notificationCount');
+            if (notifications.length > 0) {
+                notificationList.innerHTML = notifications.map(n => `
+                    <div class="dropdown-item-text">${n.message}</div>
+                `).join('');
+                notificationCount.textContent = notifications.length;
+                notificationCount.style.display = 'inline';
+            } else {
+                notificationList.innerHTML = '<div class="dropdown-item-text">No new notifications</div>';
+                notificationCount.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Error fetching notifications:', error);
+            document.getElementById('notificationList').innerHTML = '<div class="dropdown-item-text">Error loading notifications</div>';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if (typeof window.loadDynamicFilterOptions === 'function') {
+            window.loadDynamicFilterOptions();
+        } else {
+            console.error('loadDynamicFilterOptions is not defined.');
+        }
+
+        const notificationButton = document.getElementById('notificationButton');
+        if (notificationButton) {
+            notificationButton.addEventListener('click', fetchNotifications);
+        }
+
         const searchInput = document.getElementById('searchInput');
         const autocompleteSuggestions = document.getElementById('autocompleteSuggestions');
-        const courseFilter = document.getElementById('courseFilter');
-        const yearFilter = document.getElementById('yearFilter');
-        const typeFilter = document.getElementById('typeFilter');
-        const departmentFilter = document.getElementById('departmentFilter');
-        const categoryFilter = document.getElementById('categoryFilter');
+        if (searchInput && autocompleteSuggestions) {
+            searchInput.addEventListener('input', () => {
+                if (document.readyState !== 'complete') {
+                    console.log('DOM not ready for search. Waiting for load.');
+                    window.addEventListener('load', () => {
+                        clearTimeout(window.searchTimeout);
+                        window.searchTimeout = setTimeout(window.performGlobalSearch, window.DEBOUNCE_DELAY || 300);
+                    }, { once: true });
+                    return;
+                }
+                clearTimeout(window.searchTimeout);
+                window.searchTimeout = setTimeout(window.performGlobalSearch, window.DEBOUNCE_DELAY || 300);
+            });
 
-        // --- Event Listeners and Initial Load Logic for Index Page ---
-        document.addEventListener('DOMContentLoaded', () => {
-            // Event listeners for search input and filter button
-            if (searchInput) {
-                searchInput.addEventListener('input', () => {
-                    clearTimeout(searchTimeout); // searchTimeout is global from scripts.js
-                    searchTimeout = setTimeout(performGlobalSearch, DEBOUNCE_DELAY); // DEBOUNCE_DELAY & performGlobalSearch are global from scripts.js
-                });
+            searchInput.addEventListener('focus', () => {
+                const query = searchInput.value.trim();
+                if (query && autocompleteSuggestions.children.length > 0) {
+                    autocompleteSuggestions.style.display = 'block';
+                }
+            });
+        }
 
-                // Re-show autocomplete if input is refocused and has text
-                searchInput.addEventListener('focus', () => {
-                    const query = searchInput.value.trim();
-                    if (query && autocompleteSuggestions && autocompleteSuggestions.children.length > 0) {
-                        autocompleteSuggestions.style.display = 'block';
-                    }
-                });
-            }
-
-            const applyFiltersBtn = document.getElementById('applyFilters');
-            if (applyFiltersBtn) {
-                applyFiltersBtn.addEventListener('click', () => {
-                    performGlobalSearch(); // performGlobalSearch is global from scripts.js
-                    // Hide the modal using Bootstrap's API
+        const applyFiltersBtn = document.getElementById('applyFilters');
+        if (applyFiltersBtn) {
+            applyFiltersBtn.addEventListener('click', () => {
+                if (typeof window.performGlobalSearch === 'function') {
+                    window.performGlobalSearch();
                     const filterModal = bootstrap.Modal.getInstance(document.getElementById('filterModal'));
-                    if (filterModal) {
-                        filterModal.hide();
-                    }
-                });
-            }
-
-            // Hide autocomplete when clicking outside (global listener)
-            document.addEventListener('click', (event) => {
-                if (autocompleteSuggestions && !autocompleteSuggestions.contains(event.target) && event.target !== searchInput) {
-                    autocompleteSuggestions.style.display = 'none';
-                }
-            });
-
-            // Initial page load logic
-            // Using 'load' to ensure all resources (including images and external scripts) are fully loaded
-            window.addEventListener('load', () => {
-                console.log('index.html: window.load event triggered for initial project and filter loading.');
-
-                loadDynamicFilterOptions(); // loadDynamicFilterOptions is global from scripts.js
-
-                // Check URL for existing search query/filters
-                const urlParams = new URLSearchParams(window.location.search);
-                const initialQuery = urlParams.get('q');
-                const initialCourse = urlParams.get('course');
-                const initialYear = urlParams.get('year');
-                const initialType = urlParams.get('type');
-                const initialDepartment = urlParams.get('department');
-                const initialCategory = urlParams.get('category');
-
-                // Set filter dropdowns if params exist (must happen after loadDynamicFilterOptions populates them)
-                if (initialCourse && courseFilter) courseFilter.value = initialCourse;
-                if (initialYear && yearFilter) yearFilter.value = initialYear;
-                if (initialType && typeFilter) typeFilter.value = initialType;
-                if (initialDepartment && departmentFilter) departmentFilter.value = initialDepartment;
-                if (initialCategory && categoryFilter) categoryFilter.value = initialCategory;
-
-                // If there's an initial query or any filter from URL, perform search
-                if (initialQuery || initialCourse || initialYear || initialType || initialDepartment || initialCategory) {
-                    if (searchInput) searchInput.value = initialQuery || ''; // Populate search input
-                    performGlobalSearch(); // Calls the function from scripts.js
+                    if (filterModal) filterModal.hide();
                 } else {
-                    // Otherwise, load all projects by default
-                    loadAllProjects(); // Calls the function from scripts.js
+                    console.error('performGlobalSearch is not defined.');
                 }
             });
+        }
+
+        document.addEventListener('click', (event) => {
+            if (autocompleteSuggestions && !autocompleteSuggestions.contains(event.target) && event.target !== searchInput) {
+                autocompleteSuggestions.style.display = 'none';
+            }
         });
-    </script>
+
+        window.addEventListener('load', () => {
+            console.log('index.html: window.load event triggered.');
+            const urlParams = new URLSearchParams(window.location.search);
+            const initialQuery = urlParams.get('q');
+            const initialCourse = urlParams.get('course');
+            const initialYear = urlParams.get('year');
+            const initialType = urlParams.get('type');
+            const initialDepartment = urlParams.get('department');
+            const initialCategory = urlParams.get('category');
+
+            if (initialCourse && document.getElementById('courseFilter')) document.getElementById('courseFilter').value = initialCourse;
+            if (initialYear && document.getElementById('yearFilter')) document.getElementById('yearFilter').value = initialYear;
+            if (initialType && document.getElementById('typeFilter')) document.getElementById('typeFilter').value = initialType;
+            if (initialDepartment && document.getElementById('departmentFilter')) document.getElementById('departmentFilter').value = initialDepartment;
+            if (initialCategory && document.getElementById('categoryFilter')) document.getElementById('categoryFilter').value = initialCategory;
+
+            if (initialQuery || initialCourse || initialYear || initialType || initialDepartment || initialCategory) {
+                if (searchInput) searchInput.value = initialQuery || '';
+                if (typeof window.performGlobalSearch === 'function') {
+                    window.performGlobalSearch();
+                } else {
+                    console.error('performGlobalSearch is not defined.');
+                }
+            } else if (typeof window.loadAllProjects === 'function') {
+                window.loadAllProjects();
+            } else {
+                console.error('loadAllProjects is not defined.');
+            }
+        });
+    });
+</script>
 </body>
 </html>

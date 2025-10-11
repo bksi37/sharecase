@@ -1,63 +1,16 @@
-// routes/auth.js - The Complete & Fixed File
-
+// routes/auth.js
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const Project = require('../models/Project');
 const bcrypt = require('bcryptjs');
-const { isAuthenticated, isProfileComplete } = require('../middleware/auth');
-const upload = require('../middleware/upload');
-const cloudinary = require('cloudinary').v2;
 const crypto = require('crypto');
 const { Resend } = require('resend');
 const resend = new Resend(process.env.RESEND_API_KEY);
+const { isAuthenticated, isProfileComplete } = require('../middleware/auth');
+const uploadFields = require('../middleware/upload');
 
-// ---------------------------------------------------------------------
-// --- FIX: Current User Route (From First Snippet with all default checks) ---
-// ---------------------------------------------------------------------
-router.get('/current-user', async (req, res) => {
-    if (!req.session.userId) {
-        return res.status(401).json({ isLoggedIn: false, message: 'Not authenticated' });
-    }
-    try {
-        const user = await User.findById(req.session.userId).lean();
-        if (!user) {
-            return res.status(404).json({ isLoggedIn: false, message: 'User not found' });
-        }
-        res.json({
-            isLoggedIn: true,
-            user: {
-                _id: user._id.toString(),
-                name: user.name,
-                email: user.email,
-                profilePic: user.profilePic,
-                role: user.role,
-                totalPoints: user.totalPoints || 0,
-                // Ensure socialLinks is always an object, even if empty
-                socialLinks: user.socialLinks || { github: '', linkedin: '', website: '' },
-                isProfileComplete: user.isProfileComplete || false,
-                followers: user.followers || [],
-                following: user.following || [],
-                followersCount: user.followers ? user.followers.length : 0,
-                followingCount: user.following ? user.following.length : 0,
-                major: user.major || '',
-                department: user.department || '',
-                universityEmail: user.universityEmail || '',
-                twoFactorAuth: user.twoFactorAuth || false,
-                notifications: user.notifications || 'all',
-                theme: user.theme || 'light',
-                privacy: user.privacy || 'public'
-            }
-        });
-    } catch (error) {
-        console.error('Error fetching current user:', error);
-        res.status(500).json({ isLoggedIn: false, message: 'Server error' });
-    }
-});
-
-// ---------------------------------------------------------------------
-// --- OLD: User Signup (Incorporated) ---
-// ---------------------------------------------------------------------
+// Signup
 router.post('/signup', async (req, res) => {
     try {
         const { email, password, name } = req.body;
@@ -102,54 +55,13 @@ router.post('/signup', async (req, res) => {
             success: true,
             message: 'User created successfully. Please check your email to verify your account.'
         });
-
     } catch (error) {
         console.error('Signup error:', error);
         res.status(500).json({ error: 'Server error during signup.' });
     }
 });
 
-// ---------------------------------------------------------------------
-// --- OLD: User Login (Incorporated) ---
-// ---------------------------------------------------------------------
-router.post('/login', async (req, res) => {
-    try {
-        const { email, password } = req.body;
-        const user = await User.findOne({ email });
-
-        if (!user) {
-            return res.status(401).json({ error: 'Invalid credentials.' });
-        }
-
-        if (!user.isVerified) {
-            return res.status(401).json({
-                error: 'Please verify your email before logging in.',
-                resendVerification: true
-            });
-        }
-
-        const isMatch = await user.comparePassword(password);
-        if (!isMatch) {
-            return res.status(401).json({ error: 'Invalid credentials.' });
-        }
-
-        req.session.userId = user._id.toString();
-        req.session.userName = user.name;
-        req.session.isProfileComplete = user.isProfileComplete;
-        req.session.userRole = user.role;
-        req.session.userProfilePic = user.profilePic; // Ensure profile pic is set on login
-
-        const redirect = user.isProfileComplete ? '/index.html' : '/create-profile.html';
-        res.json({ success: true, message: 'Logged in successfully.', redirect });
-    } catch (error) {
-        console.error('Login error:', error);
-        res.status(500).json({ error: 'Server error during login.' });
-    }
-});
-
-// ---------------------------------------------------------------------
-// --- OLD: Email Verification Route (Incorporated) ---
-// ---------------------------------------------------------------------
+// Email Verification
 router.get('/verify-email', async (req, res) => {
     try {
         const { token } = req.query;
@@ -173,9 +85,7 @@ router.get('/verify-email', async (req, res) => {
     }
 });
 
-// ---------------------------------------------------------------------
-// --- OLD: Resend Verification Route (Incorporated) ---
-// ---------------------------------------------------------------------
+// Resend Verification Email
 router.post('/resend-verification', async (req, res) => {
     try {
         const { email } = req.body;
@@ -210,21 +120,53 @@ router.post('/resend-verification', async (req, res) => {
             success: true,
             message: 'Verification email resent successfully. Please check your inbox in a few minutes and remember to check your spam folder.'
         });
-
     } catch (error) {
         console.error('Error resending verification email:', error);
         res.status(500).json({ success: false, error: 'Server error during resending verification email.' });
     }
 });
 
-// ---------------------------------------------------------------------
-// --- FIX: Complete Profile (From First Snippet with session update fix) ---
-// ---------------------------------------------------------------------
-router.post('/complete-profile', isAuthenticated, upload.single('profilePic'), async (req, res) => {
+// Login
+router.post('/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            return res.status(401).json({ error: 'Invalid credentials.' });
+        }
+
+        if (!user.isVerified) {
+            return res.status(401).json({
+                error: 'Please verify your email before logging in.',
+                resendVerification: true
+            });
+        }
+
+        const isMatch = await user.comparePassword(password);
+        if (!isMatch) {
+            return res.status(401).json({ error: 'Invalid credentials.' });
+        }
+
+        req.session.userId = user._id.toString();
+        req.session.userName = user.name;
+        req.session.isProfileComplete = user.isProfileComplete;
+        req.session.userRole = user.role;
+        req.session.userProfilePic = user.profilePic;
+
+        const redirect = user.isProfileComplete ? '/index.html' : '/create-profile.html?redirected=true';
+        res.json({ success: true, message: 'Logged in successfully.', redirect });
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({ error: 'Server error during login.' });
+    }
+});
+
+// Complete Profile
+router.post('/complete-profile', isAuthenticated, uploadFields.single('profilePic'), async (req, res) => {
     try {
         const userId = req.session.userId;
-        const name = req.session.userName;
-        const { major, linkedin, github, personalWebsite, department, universityEmail } = req.body;
+        const { name, major, department, schoolEmail, graduationYear, linkedin, github, personalWebsite, isStudent, isAlumni } = req.body;
 
         if (!name || !major) {
             return res.status(400).json({ success: false, error: 'Name and Major are required.' });
@@ -237,34 +179,31 @@ router.post('/complete-profile', isAuthenticated, upload.single('profilePic'), a
 
         user.name = name;
         user.major = major;
-        user.department = department;
-        user.universityEmail = universityEmail || null;
+        user.department = department || '';
+        user.schoolEmail = schoolEmail || '';
+        user.graduationYear = graduationYear || '';
         user.socialLinks = {
-            linkedin: linkedin || '',
-            github: github || '',
-            website: personalWebsite || ''
+            linkedin: linkedin ? (linkedin.startsWith('http') ? linkedin : `https://${linkedin}`) : '',
+            github: github ? (github.startsWith('http') ? github : `https://${github}`) : '',
+            website: personalWebsite ? (personalWebsite.startsWith('http') ? personalWebsite : `https://${personalWebsite}`) : ''
         };
-
-        // Add URL prefix if needed
-        if (user.socialLinks.linkedin && !user.socialLinks.linkedin.startsWith('http')) {
-            user.socialLinks.linkedin = `https://${user.socialLinks.linkedin}`;
-        }
-        if (user.socialLinks.github && !user.socialLinks.github.startsWith('http')) {
-            user.socialLinks.github = `https://${user.socialLinks.github}`;
-        }
-        if (user.socialLinks.website && !user.socialLinks.website.startsWith('http')) {
-            user.socialLinks.website = `https://${user.socialLinks.website}`;
-        }
 
         if (req.file && req.file.path) {
             user.profilePic = req.file.path;
-            // 🛑 FIX: Update session profile pic when profile is completed/updated
             req.session.userProfilePic = user.profilePic;
         }
 
         user.isProfileComplete = true;
-        if (user.universityEmail && user.universityEmail.endsWith('.edu')) {
+        if (isStudent === 'on' && schoolEmail && schoolEmail.match(/\.edu$/)) {
             user.role = 'student';
+            user.isVerifiedStudent = true;
+        } else if (isAlumni === 'on' && schoolEmail && schoolEmail.match(/\.edu$/)) {
+            user.role = 'alumni';
+            user.isVerifiedAlumni = true;
+        } else {
+            user.role = 'external';
+            user.isVerifiedStudent = false;
+            user.isVerifiedAlumni = false;
         }
 
         await user.save();
@@ -278,38 +217,37 @@ router.post('/complete-profile', isAuthenticated, upload.single('profilePic'), a
         if (error.name === 'ValidationError') {
             return res.status(400).json({ success: false, error: error.message });
         }
+        if (error instanceof multer.MulterError) {
+            return res.status(400).json({ success: false, error: error.message });
+        }
         res.status(500).json({ success: false, error: 'Server error', details: error.message });
     }
 });
 
-// ---------------------------------------------------------------------
-// --- OLD: Skip Profile Completion (Incorporated) ---
-// ---------------------------------------------------------------------
+// Skip Profile Completion
 router.post('/skip-profile-completion', isAuthenticated, async (req, res) => {
     try {
-        const userId = req.session.userId;
-        const user = await User.findById(userId);
-
+        const user = await User.findById(req.session.userId);
         if (!user) {
             return res.status(404).json({ success: false, error: 'User not found' });
         }
 
         user.isProfileComplete = true;
+        user.role = 'external';
         await user.save();
 
         req.session.isProfileComplete = true;
+        req.session.userRole = user.role;
         await req.session.save();
 
         res.json({ success: true, redirect: '/index.html' });
     } catch (error) {
-        console.error('Error skipping profile completion:', error);
-        res.status(500).json({ success: false, error: 'Server error' });
+        console.error('Error skipping profile:', error);
+        res.status(500).json({ success: false, error: 'Server error', details: error.message });
     }
 });
 
-// ---------------------------------------------------------------------
-// --- OLD: Logout (Incorporated) ---
-// ---------------------------------------------------------------------
+// Logout
 router.get('/logout', (req, res) => {
     req.session.destroy(err => {
         if (err) {
@@ -320,14 +258,55 @@ router.get('/logout', (req, res) => {
     });
 });
 
-// ---------------------------------------------------------------------
-// --- FIX: Route for Public User Details (From First Snippet with 'bio' fix) ---
-// ---------------------------------------------------------------------
+// Current User
+router.get('/current-user', async (req, res) => {
+    if (!req.session.userId) {
+        return res.status(401).json({ isLoggedIn: false, message: 'Not authenticated' });
+    }
+    try {
+        const user = await User.findById(req.session.userId).lean();
+        if (!user) {
+            return res.status(404).json({ isLoggedIn: false, message: 'User not found' });
+        }
+        res.json({
+            isLoggedIn: true,
+            user: {
+                _id: user._id.toString(),
+                name: user.name,
+                email: user.email,
+                profilePic: user.profilePic,
+                role: user.role,
+                totalPoints: user.totalPoints || 0,
+                socialLinks: user.socialLinks || { github: '', linkedin: '', website: '' },
+                isProfileComplete: user.isProfileComplete || false,
+                followers: user.followers || [],
+                following: user.following || [],
+                followersCount: user.followers ? user.followers.length : 0,
+                followingCount: user.following ? user.following.length : 0,
+                major: user.major || '',
+                department: user.department || '',
+                schoolEmail: user.schoolEmail || '',
+                graduationYear: user.graduationYear || '',
+                isVerifiedStudent: user.isVerifiedStudent || false,
+                isVerifiedAlumni: user.isVerifiedAlumni || false,
+                twoFactorAuth: user.twoFactorAuth || false,
+                notifications: user.notifications || 'all',
+                theme: user.theme || 'light',
+                privacy: user.privacy || 'public'
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching current user:', error);
+        res.status(500).json({ isLoggedIn: false, message: 'Server error' });
+    }
+});
+
+// Public User Details
 router.get('/user-details/:userId', async (req, res) => {
     try {
         const userId = req.params.userId;
         const user = await User.findById(userId)
-            .select('name profilePic major department bio socialLinks role totalPoints followers following'); // 🛑 FIX: Added 'bio'
+            .select('name profilePic major department socialLinks role totalPoints followers following');
 
         if (!user) {
             return res.status(404).json({ success: false, error: 'User not found.' });
@@ -339,8 +318,7 @@ router.get('/user-details/:userId', async (req, res) => {
             profilePic: user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg',
             major: user.major || '',
             department: user.department || '',
-            bio: user.bio || '', // 🛑 FIX: Added bio for public profile page
-            socialLinks: { // Corrected access to nested socialLinks object
+            socialLinks: {
                 linkedin: user.socialLinks?.linkedin || '',
                 github: user.socialLinks?.github || '',
                 website: user.socialLinks?.website || ''
@@ -349,7 +327,6 @@ router.get('/user-details/:userId', async (req, res) => {
             totalPoints: user.totalPoints || 0,
             followersCount: user.followers ? user.followers.length : 0
         });
-
     } catch (error) {
         console.error('Error in /user-details/:userId:', error);
         if (error.name === 'CastError') {
@@ -359,11 +336,7 @@ router.get('/user-details/:userId', async (req, res) => {
     }
 });
 
-// ---------------------------------------------------------------------
-// --- OLD: Follower/Following/Search Routes (Incorporated) ---
-// ---------------------------------------------------------------------
-
-// Route to fetch a user's followers
+// Fetch User's Followers
 router.get('/user/:id/followers', async (req, res) => {
     try {
         const user = await User.findById(req.params.id).select('followers');
@@ -385,7 +358,7 @@ router.get('/user/:id/followers', async (req, res) => {
     }
 });
 
-// Route to fetch a user's following
+// Fetch User's Following
 router.get('/user/:id/following', async (req, res) => {
     try {
         const user = await User.findById(req.params.id).select('following');
@@ -407,7 +380,7 @@ router.get('/user/:id/following', async (req, res) => {
     }
 });
 
-// Route to toggle a follow/unfollow action
+// Toggle Follow/Unfollow
 router.post('/user/:id/follow', isAuthenticated, async (req, res) => {
     try {
         const targetUserId = req.params.id;
@@ -467,6 +440,21 @@ router.get('/users/search', isAuthenticated, async (req, res) => {
     } catch (error) {
         console.error('User search error:', error);
         res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Notifications (Placeholder)
+router.get('/notifications', isAuthenticated, async (req, res) => {
+    try {
+        // Placeholder notifications
+        const notifications = [
+            { message: 'New like on your project "Sharecase"', timestamp: new Date() },
+            { message: 'User John followed you', timestamp: new Date() }
+        ];
+        res.json(notifications);
+    } catch (error) {
+        console.error('Error fetching notifications:', error);
+        res.status(500).json({ error: 'Server error fetching notifications' });
     }
 });
 

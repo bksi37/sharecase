@@ -3,151 +3,114 @@ const mongoose = require('mongoose');
 const tagsConfig = require('../config/tags');
 
 const projectSchema = new mongoose.Schema({
-    // CORE FIELDS
-    title: { 
-        type: String, 
-        required: [true, 'Project Title is required'],
-        trim: true
-    },
-    description: { 
-        type: String, 
-        default: '',
-        required: [function() { return this.isPublished; }, 'Description is required for published projects'],
-        trim: true
-    },
-    image: { 
-        type: String, 
-        default: 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg',
-        validate: {
-            validator: function(value) { 
-                return !this.isPublished || value !== 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'; 
-            },
-            message: 'A non-default image is required for published projects'
-        }
-    },
-    projectType: { 
+    title: {
         type: String,
-        enum: tagsConfig.types,
-        default: 'Other',
-        required: [function() { return this.isPublished; }, 'Project Type is required for published projects']
+        required: true,
+        trim: true,
+        maxlength: 100
     },
-    year: { 
-        type: String, 
-        enum: tagsConfig.years.concat(''), // Allow empty for drafts
-        default: '' 
-    },
-    department: { 
-        type: String, 
-        enum: tagsConfig.departments.concat(''), // Allow empty for drafts
-        default: '' 
-    },
-    category: { 
-        type: String, 
-        enum: tagsConfig.categories.concat(''), // Allow empty for drafts
-        default: '' 
-    },
-    
-    // BASIC METADATA & TEXT
-    problemStatement: { 
-        type: String, 
-        default: '',
-        trim: true
-    },
-    tags: { 
-        type: [String],
-        validate: {
-            validator: function(tags) { 
-                const essentialTags = [this.year, this.department, this.category].filter(t => t);
-                return !this.isPublished || tags.length > 0 || essentialTags.length > 0; 
-            },
-            message: 'At least one descriptive tag (or Course/Year/Dept/Category) is required for published projects'
-        }
-    },
-    
-    // COLLABORATORS & RESOURCES
-    collaborators: [{ 
-        type: mongoose.Schema.Types.ObjectId, 
+    userId: {
+        type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        validate: {
-            validator: async function(ids) {
-                if (!ids.length) return true;
-                const users = await mongoose.model('User').find({ _id: { $in: ids } });
-                return users.length === ids.length;
-            },
-            message: 'Invalid collaborator IDs'
-        }
-    }],
-    otherContributors: [{ 
+        required: true
+    },
+    userName: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    projectType: {
+        type: String,
+        enum: tagsConfig.types || ['Engineering', 'Art', 'Other'],
+        required: true,
+        default: 'Other'
+    },
+    description: {
+        type: String,
+        required: true,
+        maxlength: 500
+    },
+    problemStatement: {
+        type: String,
+        maxlength: 1000,
+        default: ''
+    },
+    year: {
+        type: String,
+        enum: tagsConfig.years.concat('') || ['2020', '2021', '2022', '2023', '2024', '2025', ''],
+        default: ''
+    },
+    department: {
+        type: String,
+        enum: tagsConfig.departments.concat('') || ['Mechanical Engineering', 'Computer Science', 'Fine Arts', 'Physics', 'Other', ''],
+        default: ''
+    },
+    category: {
+        type: String,
+        enum: tagsConfig.categories.concat('') || ['Robotics', 'Software', 'Painting', 'Sculpture', 'Research', ''],
+        default: ''
+    },
+    tags: [{
         type: String,
         trim: true,
-        validate: {
-            validator: function(v) { return !v || v.length <= 100; },
-            message: 'Other contributors must be 100 characters or less'
-        }
+        // Allow custom tags by not strictly enforcing enum; fallback if tagsConfig.tools is missing
+        enum: tagsConfig.tools ? tagsConfig.tools.concat('') : ['Python', 'SolidWorks', 'MATLAB', 'Oil Painting', 'Sustainability', 'AI', '']
     }],
-    resources: [{ 
+    collaboratorIds: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    }],
+    otherContributors: {
+        type: String,
+        maxlength: 500,
+        default: ''
+    },
+    resources: [{
         type: String,
         trim: true,
-        validate: {
-            validator: function(v) { return !v || /^https?:\/\/.+$/.test(v); },
-            message: 'Resources must be valid URLs'
-        }
+        match: [/^https?:\/\/[^\s$.?#].[^\s]*$/, 'Please enter a valid URL']
     }],
-
-    // INTERACTION
-    likes: { type: Number, default: 0 },
-    views: { type: Number, default: 0 },
-    viewedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-    points: { type: Number, default: 0 },
-    comments: [
-        {
-            userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-            userName: { type: String, required: true, trim: true },
-            userProfilePic: { type: String, default: 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg' },
-            text: { type: String, required: true, trim: true },
-            timestamp: { type: Date, default: Date.now }
-        }
-    ],
-    likedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-
-    // SYSTEM & AUTH
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    userName: { type: String, required: true, trim: true },
-    userProfilePic: { type: String, default: 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg' },
-    isPublished: { type: Boolean, default: false },
-
-    // PROJECT TYPE-SPECIFIC DETAILS
+    image: {
+        type: String,
+        required: true
+    },
     projectDetails: {
-        // Engineering Fields
-        CADFileLink: { 
-            type: String, 
-            default: '',
-            validate: {
-                validator: function(v) { return !v || /^https?:\/\/.+$/.test(v); },
-                message: 'CAD file link must be a valid URL'
-            }
-        },
-        technicalDescription: { type: String, default: '', trim: true },
-        toolsSoftwareUsed: [{ 
-            type: String, 
-            enum: tagsConfig.tools.concat(''), // Allow custom tools
-            default: [] 
-        }],
-        functionalGoals: { type: String, default: '', trim: true },
-
-        // Art Fields
-        artworkImage: { 
-            type: String, 
-            default: '',
-            validate: {
-                validator: function(v) { return !v || /^https?:\/\/.+$/.test(v); },
-                message: 'Artwork image must be a valid URL'
-            }
-        },
-        mediumTechnique: { type: String, default: '', trim: true },
-        artistStatement: { type: String, default: '', trim: true },
-        exhibitionHistory: { type: String, default: '', trim: true }
+        type: Map,
+        of: mongoose.Schema.Types.Mixed,
+        default: {}
+    },
+    views: {
+        type: Number,
+        default: 0
+    },
+    likes: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    }],
+    comments: [{
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+        userName: { type: String, required: true },
+        comment: { type: String, required: true, maxlength: 500 },
+        createdAt: { type: Date, default: Date.now }
+    }],
+    isPublished: {
+        type: Boolean,
+        default: false
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now
+    },
+    updatedAt: {
+        type: Date,
+        default: Date.now
     }
-}, { timestamps: true });
+});
+
+// Pre-save hook to update timestamp
+projectSchema.pre('save', function(next) {
+    this.updatedAt = Date.now();
+    next();
+});
 
 module.exports = mongoose.model('Project', projectSchema);

@@ -134,279 +134,300 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="/js/scripts.js"></script>
-    <script>
-        // --- Local Variables ---
-        const DEBOUNCE_DELAY_SEARCH = 300; // ms for search input
-        let debounceTimeout;
+ <script>
+// --- Local Variables ---
+const DEBOUNCE_DELAY_SEARCH = 300; // ms for search input
+let debounceTimeout;
 
-        // --- Global elements and variables exposed to window for scripts.js functions ---
-        const collaboratorSearchInput = document.getElementById('collaboratorSearchInput');
-        const collaboratorSearchResults = document.getElementById('collaboratorSearchResults');
-        const selectedCollaboratorsDisplay = document.getElementById('selectedCollaboratorsDisplay');
-        const collaboratorIdsHiddenInput = document.getElementById('collaboratorIds');
-        let selectedCollaboratorIds = [];
-        window.selectedCollaboratorIds = selectedCollaboratorIds; // Expose to window object
+// --- Global elements and variables exposed to window for scripts.js functions ---
+const collaboratorSearchInput = document.getElementById('collaboratorSearchInput');
+const collaboratorSearchResults = document.getElementById('collaboratorSearchResults');
+const selectedCollaboratorsDisplay = document.getElementById('selectedCollaboratorsDisplay');
+const collaboratorIdsHiddenInput = document.getElementById('collaboratorIds');
+let selectedCollaboratorIds = [];
+window.selectedCollaboratorIds = selectedCollaboratorIds; // Expose to window object
 
-        // --- Collaborator Search and Selection Logic ---
-        function updateCollaboratorIdsHiddenInput() {
-            if (collaboratorIdsHiddenInput) {
-                collaboratorIdsHiddenInput.value = window.selectedCollaboratorIds.join(',');
+// --- Collaborator Search and Selection Logic ---
+function updateCollaboratorIdsHiddenInput() {
+    if (collaboratorIdsHiddenInput) {
+        collaboratorIdsHiddenInput.value = window.selectedCollaboratorIds.join(',');
+    }
+}
+
+function addCollaboratorChip(userId, userName, profilePic) {
+    if (!selectedCollaboratorIds.includes(userId)) {
+        selectedCollaboratorIds.push(userId);
+        const chip = document.createElement('div');
+        chip.classList.add('collaborator-chip', 'd-flex', 'align-items-center', 'bg-light', 'border', 'rounded', 'px-2', 'py-1');
+        chip.innerHTML = `
+            <img src="${profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'}" class="rounded-circle me-1" style="width: 24px; height: 24px; object-fit: cover;" alt="${userName}">
+            <span>${userName}</span>
+            <button type="button" class="btn-close btn-close-small ms-2" aria-label="Remove collaborator"></button>
+        `;
+        chip.querySelector('.btn-close').addEventListener('click', () => {
+            selectedCollaboratorIds = selectedCollaboratorIds.filter(id => id !== userId);
+            chip.remove();
+            updateCollaboratorIdsHiddenInput();
+        });
+        selectedCollaboratorsDisplay.appendChild(chip);
+        updateCollaboratorIdsHiddenInput();
+        collaboratorSearchInput.value = '';
+        collaboratorSearchResults.style.display = 'none';
+    }
+}
+
+if (collaboratorSearchInput && collaboratorSearchResults) {
+    collaboratorSearchInput.addEventListener('input', () => {
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(() => {
+            const query = collaboratorSearchInput.value.trim();
+            window.searchUsers(query, collaboratorSearchResults, addCollaboratorChip, selectedCollaboratorIds);
+        }, DEBOUNCE_DELAY_SEARCH);
+    });
+}
+
+// --- Dynamic Form Rendering ---
+const dynamicFieldsContainer = document.getElementById('dynamic-fields-container');
+const projectTypeSelect = document.getElementById('projectType');
+
+async function loadProjectSchemas() {
+    try {
+        const response = await fetch('/dynamic-filter-options');
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log('Dynamic filter options response:', JSON.stringify(data, null, 2)); // Debug log
+        window.projectSchemas = data.projectSchemas || { Default: [] };
+
+        if (projectTypeSelect) {
+            window.populateDropdown(projectTypeSelect, data.types || [], 'Select Project Type');
+            projectTypeSelect.addEventListener('change', renderDynamicFields);
+        }
+
+        // Handle tags placeholder safely
+        const tagsInput = document.getElementById('tags');
+        if (tagsInput) {
+            tagsInput.placeholder = data.toolsThemes && Array.isArray(data.toolsThemes) && data.toolsThemes.length > 0
+                ? `e.g., ${data.toolsThemes.slice(0, 3).join(', ')}`
+                : 'e.g., Python, SolidWorks, Sustainability';
+        }
+
+        window.populateDropdown(document.getElementById('year'), data.years || [], 'Select Year');
+        window.populateDropdown(document.getElementById('department'), data.departments || [], 'Select Department');
+        window.populateDropdown(document.getElementById('category'), data.categories || [], 'Select Category');
+    } catch (error) {
+        console.error('Error loading project schemas:', error);
+        Toastify({ text: 'Error loading project options. Please try again.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+        // Fallback: Populate dropdowns with defaults
+        if (projectTypeSelect) {
+            window.populateDropdown(projectTypeSelect, ['Engineering', 'Art', 'Other'], 'Select Project Type');
+            projectTypeSelect.addEventListener('change', renderDynamicFields);
+        }
+        window.populateDropdown(document.getElementById('year'), [], 'Select Year');
+        window.populateDropdown(document.getElementById('department'), [], 'Select Department');
+        window.populateDropdown(document.getElementById('category'), [], 'Select Category');
+    }
+}
+
+function renderDynamicFields() {
+    const selectedType = projectTypeSelect.value;
+    dynamicFieldsContainer.innerHTML = '';
+    if (!window.projectSchemas || !selectedType) return;
+    const schema = window.projectSchemas[selectedType] || window.projectSchemas['Default'] || [];
+    schema.forEach(field => {
+        let inputHtml = '';
+        const requiredIndicator = field.required ? '<span class="text-danger">*</span>' : '';
+        if (field.type === 'textarea') {
+            inputHtml = `<textarea class="form-control" id="${field.name}" name="${field.name}" rows="4" placeholder="${field.placeholder}" ${field.required ? 'required' : ''}></textarea>`;
+        } else if (field.type === 'text') {
+            inputHtml = `<input type="text" class="form-control" id="${field.name}" name="${field.name}" placeholder="${field.placeholder}" ${field.required ? 'required' : ''}>`;
+        } else if (field.type === 'file') {
+            inputHtml = `<input type="file" class="form-control" id="${field.name}" name="${field.name}" accept="${field.accept}" ${field.required ? 'required' : ''}>`;
+        }
+        const fieldDiv = document.createElement('div');
+        fieldDiv.classList.add('mb-3');
+        fieldDiv.innerHTML = `
+            <label for="${field.name}" class="form-label">${field.label} ${requiredIndicator}</label>
+            ${inputHtml}
+            ${field.note ? `<small class="form-text text-muted">${field.note}</small>` : ''}
+        `;
+        dynamicFieldsContainer.appendChild(fieldDiv);
+    });
+}
+
+// --- File Size Validation ---
+const imageInput = document.getElementById('image');
+function validateFileSize(input, maxSizeMB, fieldName) {
+    if (input.files && input.files[0]) {
+        const fileSizeMB = input.files[0].size / (1024 * 1024);
+        if (fileSizeMB > maxSizeMB) {
+            Toastify({ text: `${fieldName} exceeds ${maxSizeMB}MB limit.`, duration: 3000, style: { background: '#e74c3c' } }).showToast();
+            input.value = '';
+            return false;
+        }
+        return true;
+    }
+    return true;
+}
+
+if (imageInput) {
+    imageInput.addEventListener('change', () => {
+        validateFileSize(imageInput, 2, 'Project Image');
+    });
+}
+
+// --- Form Submission Logic ---
+document.addEventListener('DOMContentLoaded', () => {
+    const uploadForm = document.getElementById('uploadForm');
+    const uploadProjectBtn = document.getElementById('uploadProjectBtn');
+    const saveDraftBtn = document.getElementById('saveDraftBtn');
+    const cancelUploadBtn = document.getElementById('cancelUploadBtn');
+
+    if (uploadForm && uploadProjectBtn && saveDraftBtn) {
+        uploadProjectBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            if (!validateForm(true)) return;
+            await submitProject(true); // Publish
+        });
+
+        saveDraftBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            if (!document.getElementById('title').value.trim()) {
+                Toastify({ text: 'Project Title is required to save as draft.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                return;
             }
-        }
+            await submitProject(false); // Draft
+        });
 
-        function addCollaboratorChip(userId, userName, profilePic) {
-            if (!selectedCollaboratorIds.includes(userId)) {
-                selectedCollaboratorIds.push(userId);
-                const chip = document.createElement('div');
-                chip.classList.add('collaborator-chip', 'd-flex', 'align-items-center', 'bg-light', 'border', 'rounded', 'px-2', 'py-1');
-                chip.innerHTML = `
-                    <img src="${profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'}" class="rounded-circle me-1" style="width: 24px; height: 24px; object-fit: cover;" alt="${userName}">
-                    <span>${userName}</span>
-                    <button type="button" class="btn-close btn-close-small ms-2" aria-label="Remove collaborator"></button>
-                `;
-                chip.querySelector('.btn-close').addEventListener('click', () => {
-                    selectedCollaboratorIds = selectedCollaboratorIds.filter(id => id !== userId);
-                    chip.remove();
-                    updateCollaboratorIdsHiddenInput();
-                });
-                selectedCollaboratorsDisplay.appendChild(chip);
-                updateCollaboratorIdsHiddenInput();
-                collaboratorSearchInput.value = '';
-                collaboratorSearchResults.style.display = 'none';
+        function validateForm(isPublishing) {
+            if (!document.getElementById('title').value.trim()) {
+                Toastify({ text: 'Project Title is required.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                return false;
             }
-        }
-
-        if (collaboratorSearchInput && collaboratorSearchResults) {
-            collaboratorSearchInput.addEventListener('input', () => {
-                clearTimeout(debounceTimeout);
-                debounceTimeout = setTimeout(() => {
-                    const query = collaboratorSearchInput.value.trim();
-                    window.searchUsers(query, collaboratorSearchResults, addCollaboratorChip, selectedCollaboratorIds);
-                }, DEBOUNCE_DELAY_SEARCH);
-            });
-        }
-
-        // --- Dynamic Form Rendering ---
-        const dynamicFieldsContainer = document.getElementById('dynamic-fields-container');
-        const projectTypeSelect = document.getElementById('projectType');
-
-        async function loadProjectSchemas() {
-            try {
-                const response = await fetch('/dynamic-filter-options');
-                const data = await response.json();
-                window.projectSchemas = data.projectSchemas;
-                if (projectTypeSelect) {
-                    window.populateDropdown(projectTypeSelect, data.types || [], 'Select Project Type');
-                    projectTypeSelect.addEventListener('change', renderDynamicFields);
-                }
-                if (document.getElementById('tags')) document.getElementById('tags').placeholder = `e.g., ${data.toolsThemes.slice(0, 3).join(', ')}`;
-                window.populateDropdown(document.getElementById('year'), data.years || [], 'Select Year');
-                window.populateDropdown(document.getElementById('department'), data.departments || [], 'Select Department');
-                window.populateDropdown(document.getElementById('category'), data.categories || [], 'Select Category');
-            } catch (error) {
-                console.error('Error loading project schemas:', error);
-                Toastify({ text: 'Error loading project options.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-            }
-        }
-
-        function renderDynamicFields() {
-            const selectedType = projectTypeSelect.value;
-            dynamicFieldsContainer.innerHTML = '';
-            if (!window.projectSchemas || !selectedType) return;
-            const schema = window.projectSchemas[selectedType] || window.projectSchemas['Default'] || [];
-            schema.forEach(field => {
-                let inputHtml = '';
-                const requiredIndicator = field.required ? '<span class="text-danger">*</span>' : '';
-                if (field.type === 'textarea') {
-                    inputHtml = `<textarea class="form-control" id="${field.name}" name="${field.name}" rows="4" placeholder="${field.placeholder}" ${field.required ? 'required' : ''}></textarea>`;
-                } else if (field.type === 'text') {
-                    inputHtml = `<input type="text" class="form-control" id="${field.name}" name="${field.name}" placeholder="${field.placeholder}" ${field.required ? 'required' : ''}>`;
-                } else if (field.type === 'file') {
-                    inputHtml = `<input type="file" class="form-control" id="${field.name}" name="${field.name}" accept="${field.accept}" ${field.required ? 'required' : ''}>`;
-                }
-                const fieldDiv = document.createElement('div');
-                fieldDiv.classList.add('mb-3');
-                fieldDiv.innerHTML = `
-                    <label for="${field.name}" class="form-label">${field.label} ${requiredIndicator}</label>
-                    ${inputHtml}
-                    ${field.note ? `<small class="form-text text-muted">${field.note}</small>` : ''}
-                `;
-                dynamicFieldsContainer.appendChild(fieldDiv);
-            });
-        }
-
-        // --- File Size Validation ---
-        const imageInput = document.getElementById('image');
-        function validateFileSize(input, maxSizeMB, fieldName) {
-            if (input.files && input.files[0]) {
-                const fileSizeMB = input.files[0].size / (1024 * 1024);
-                if (fileSizeMB > maxSizeMB) {
-                    Toastify({ text: `${fieldName} exceeds ${maxSizeMB}MB limit.`, duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                    input.value = '';
+            if (isPublishing) {
+                if (!projectTypeSelect.value) {
+                    Toastify({ text: 'Project Type is required to publish.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
                     return false;
                 }
-                return true;
+                if (!document.getElementById('description').value.trim()) {
+                    Toastify({ text: 'Description is required to publish.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                    return false;
+                }
+                if (!imageInput.files[0]) {
+                    Toastify({ text: 'Project Image is required to publish.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                    return false;
+                }
+                if (!validateFileSize(imageInput, 2, 'Project Image')) return false;
+                const selectedTags = document.getElementById('tags').value.split(',').filter(t => t.trim()).length;
+                const coreTags = [document.getElementById('year').value, document.getElementById('department').value, document.getElementById('category').value].filter(t => t).length;
+                if (selectedTags === 0 && coreTags === 0) {
+                    Toastify({ text: 'At least one tag (General or Core) is required to publish.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                    return false;
+                }
+                if (!validateDynamicFields()) {
+                    Toastify({ text: 'Please fill out all required fields for the selected Project Type.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                    return false;
+                }
             }
             return true;
         }
 
-        if (imageInput) {
-            imageInput.addEventListener('change', () => {
-                validateFileSize(imageInput, 2, 'Project Image');
+        function validateDynamicFields() {
+            const currentSchema = window.projectSchemas[projectTypeSelect.value] || [];
+            let isValid = true;
+            currentSchema.forEach(field => {
+                if (field.required) {
+                    const input = document.getElementById(field.name);
+                    if (input) {
+                        if (input.type === 'file' && !input.files[0]) {
+                            isValid = false;
+                        } else if (input.type !== 'file' && !input.value.trim()) {
+                            isValid = false;
+                        }
+                        if (field.name === 'CADFile' && input.files[0] && !validateFileSize(input, 10, 'CAD File')) {
+                            isValid = false;
+                        }
+                    }
+                }
             });
+            return isValid;
         }
 
-        // --- Form Submission Logic ---
-        document.addEventListener('DOMContentLoaded', () => {
-            const uploadForm = document.getElementById('uploadForm');
-            const uploadProjectBtn = document.getElementById('uploadProjectBtn');
-            const saveDraftBtn = document.getElementById('saveDraftBtn');
-            const cancelUploadBtn = document.getElementById('cancelUploadBtn');
-
-            if (uploadForm && uploadProjectBtn && saveDraftBtn) {
-                uploadProjectBtn.addEventListener('click', async (e) => {
-                    e.preventDefault();
-                    if (!validateForm(true)) return;
-                    await submitProject(true); // Publish
-                });
-
-                saveDraftBtn.addEventListener('click', async (e) => {
-                    e.preventDefault();
-                    if (!document.getElementById('title').value.trim()) {
-                        Toastify({ text: 'Project Title is required to save as draft.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                        return;
-                    }
-                    await submitProject(false); // Draft
-                });
-
-                function validateForm(isPublishing) {
-                    if (!document.getElementById('title').value.trim()) {
-                        Toastify({ text: 'Project Title is required.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                        return false;
-                    }
-                    if (isPublishing) {
-                        if (!projectTypeSelect.value) {
-                            Toastify({ text: 'Project Type is required to publish.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                            return false;
-                        }
-                        if (!document.getElementById('description').value.trim()) {
-                            Toastify({ text: 'Description is required to publish.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                            return false;
-                        }
-                        if (!imageInput.files[0]) {
-                            Toastify({ text: 'Project Image is required to publish.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                            return false;
-                        }
-                        if (!validateFileSize(imageInput, 2, 'Project Image')) return false;
-                        const selectedTags = document.getElementById('tags').value.split(',').filter(t => t.trim()).length;
-                        const coreTags = [document.getElementById('year').value, document.getElementById('department').value, document.getElementById('category').value].filter(t => t).length;
-                        if (selectedTags === 0 && coreTags === 0) {
-                            Toastify({ text: 'At least one tag (General or Core) is required to publish.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                            return false;
-                        }
-                        if (!validateDynamicFields()) {
-                            Toastify({ text: 'Please fill out all required fields for the selected Project Type.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                            return false;
-                        }
-                    }
-                    return true;
-                }
-
-                function validateDynamicFields() {
-                    const currentSchema = window.projectSchemas[projectTypeSelect.value] || [];
-                    let isValid = true;
-                    currentSchema.forEach(field => {
-                        if (field.required) {
-                            const input = document.getElementById(field.name);
-                            if (input) {
-                                if (input.type === 'file' && !input.files[0]) {
-                                    isValid = false;
-                                } else if (input.type !== 'file' && !input.value.trim()) {
-                                    isValid = false;
-                                }
-                                if (field.name === 'cadFile' && input.files[0] && !validateFileSize(input, 10, 'CAD File')) {
-                                    isValid = false;
-                                }
-                            }
-                        }
-                    });
-                    return isValid;
-                }
-
-                async function submitProject(isPublishedStatus) {
-                    const formData = new FormData();
-                    formData.append('title', document.getElementById('title').value.trim());
-                    formData.append('projectType', projectTypeSelect.value || 'Other');
-                    formData.append('description', document.getElementById('description').value);
-                    formData.append('problemStatement', document.getElementById('problemStatement').value);
-                    formData.append('year', document.getElementById('year').value);
-                    formData.append('department', document.getElementById('department').value);
-                    formData.append('category', document.getElementById('category').value);
-                    const generalTags = document.getElementById('tags').value.split(',').map(t => t.trim()).filter(t => t);
-                    const coreTags = [document.getElementById('year').value, document.getElementById('department').value, document.getElementById('category').value].filter(t => t);
-                    const uniqueTags = [...new Set([...generalTags, ...coreTags])];
-                    formData.append('tags', uniqueTags.join(','));
-                    formData.append('collaboratorIds', collaboratorIdsHiddenInput.value);
-                    formData.append('otherContributors', document.getElementById('otherContributors').value);
-                    formData.append('resources', document.getElementById('resources').value);
-                    formData.append('isPublished', isPublishedStatus ? 'true' : 'false');
-                    if (imageInput.files[0]) {
-                        formData.append('image', imageInput.files[0]);
-                    }
-                    const currentSchema = window.projectSchemas[projectTypeSelect.value] || [];
-                    currentSchema.forEach(field => {
-                        const input = document.getElementById(field.name);
-                        if (input) {
-                            if (input.type === 'file' && input.files[0]) {
-                                formData.append(field.name, input.files[0]);
-                            } else {
-                                formData.append(field.name, input.value);
-                            }
-                        }
-                    });
-
-                    try {
-                        const response = await fetch('/projects/add-project', {
-                            method: 'POST',
-                            body: formData,
-                            credentials: 'include'
-                        });
-                        if (response.ok) {
-                            const data = await response.json();
-                            Toastify({ text: data.message, duration: 3000, style: { background: '#28a745' } }).showToast();
-                            uploadForm.reset();
-                            selectedCollaboratorIds = [];
-                            selectedCollaboratorsDisplay.innerHTML = '';
-                            updateCollaboratorIdsHiddenInput();
-                            dynamicFieldsContainer.innerHTML = '';
-                            setTimeout(() => window.location.href = data.redirect, 3000);
-                        } else {
-                            const errorData = await response.json();
-                            throw new Error(errorData.error || errorData.details || 'Failed to process project');
-                        }
-                    } catch (error) {
-                        console.error('Error processing project:', error);
-                        Toastify({ text: error.message || 'Error processing project', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                    }
-                }
+        async function submitProject(isPublishedStatus) {
+            const formData = new FormData();
+            formData.append('title', document.getElementById('title').value.trim());
+            formData.append('projectType', projectTypeSelect.value || 'Other');
+            formData.append('description', document.getElementById('description').value);
+            formData.append('problemStatement', document.getElementById('problemStatement').value);
+            formData.append('year', document.getElementById('year').value);
+            formData.append('department', document.getElementById('department').value);
+            formData.append('category', document.getElementById('category').value);
+            const generalTags = document.getElementById('tags').value.split(',').map(t => t.trim()).filter(t => t);
+            const coreTags = [document.getElementById('year').value, document.getElementById('department').value, document.getElementById('category').value].filter(t => t);
+            const uniqueTags = [...new Set([...generalTags, ...coreTags])];
+            formData.append('tags', uniqueTags.join(','));
+            formData.append('collaboratorIds', collaboratorIdsHiddenInput.value);
+            formData.append('otherContributors', document.getElementById('otherContributors').value);
+            formData.append('resources', document.getElementById('resources').value);
+            formData.append('isPublished', isPublishedStatus ? 'true' : 'false');
+            if (imageInput.files[0]) {
+                formData.append('image', imageInput.files[0]);
             }
+            const currentSchema = window.projectSchemas[projectTypeSelect.value] || [];
+            currentSchema.forEach(field => {
+                const input = document.getElementById(field.name);
+                if (input) {
+                    if (input.type === 'file' && input.files[0]) {
+                        formData.append(field.name, input.files[0]);
+                    } else {
+                        formData.append(field.name, input.value);
+                    }
+                }
+            });
 
-            if (cancelUploadBtn) {
-                cancelUploadBtn.addEventListener('click', () => {
+            try {
+                const response = await fetch('/projects/add-project', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'include'
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    Toastify({ text: data.message, duration: 3000, style: { background: '#28a745' } }).showToast();
                     uploadForm.reset();
                     selectedCollaboratorIds = [];
                     selectedCollaboratorsDisplay.innerHTML = '';
                     updateCollaboratorIdsHiddenInput();
                     dynamicFieldsContainer.innerHTML = '';
-                    Toastify({ text: 'Upload cancelled', duration: 2000, style: { background: '#6c757d' } }).showToast();
-                });
+                    setTimeout(() => window.location.href = data.redirect, 3000);
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || errorData.details || 'Failed to process project');
+                }
+            } catch (error) {
+                console.error('Error processing project:', error);
+                Toastify({ text: error.message || 'Error processing project', duration: 3000, style: { background: '#e74c3c' } }).showToast();
             }
+        }
+    }
 
-            window.addEventListener('load', () => {
-                window.loadUserProfileInHeader();
-                loadProjectSchemas();
-            });
+    if (cancelUploadBtn) {
+        cancelUploadBtn.addEventListener('click', () => {
+            uploadForm.reset();
+            selectedCollaboratorIds = [];
+            selectedCollaboratorsDisplay.innerHTML = '';
+            updateCollaboratorIdsHiddenInput();
+            dynamicFieldsContainer.innerHTML = '';
+            Toastify({ text: 'Upload cancelled', duration: 2000, style: { background: '#6c757d' } }).showToast();
         });
-    </script>
+    }
+
+    window.addEventListener('load', () => {
+        window.loadUserProfileInHeader();
+        loadProjectSchemas();
+    });
+});
+</script>
 </body>
 </html>

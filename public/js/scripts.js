@@ -1,4 +1,4 @@
-// Global variables to store user session data
+// public/js/scripts.js
 let currentLoggedInUserId = null;
 let currentLoggedInUserRole = null;
 let currentLoggedInUserFollowing = [];
@@ -7,7 +7,7 @@ let cachedUserData = null;
 let searchTimeout;
 const DEBOUNCE_DELAY = 300; // ms
 
-// Expose global functions
+// Expose global functions and variables
 window.renderProjectCard = renderProjectCard;
 window.renderUserSuggestion = renderUserSuggestion;
 window.isUserFollowing = isUserFollowing;
@@ -17,12 +17,18 @@ window.searchUsers = searchUsers;
 window.renderCollaboratorSearchResults = renderCollaboratorSearchResults;
 window.populateDropdown = populateDropdown;
 window.loadDynamicFilterOptions = loadDynamicFilterOptions;
+window.performGlobalSearch = performGlobalSearch;
+window.DEBOUNCE_DELAY = DEBOUNCE_DELAY;
+window.searchTimeout = searchTimeout;
 
 document.addEventListener('DOMContentLoaded', () => {
     loadUserProfileInHeader();
 
     const userMenuToggle = document.getElementById('userMenuToggle');
     const userDropdown = document.getElementById('userDropdown');
+    const notificationButton = document.getElementById('notificationButton');
+    const notificationList = document.getElementById('notificationList');
+    const notificationCount = document.getElementById('notificationCount');
 
     if (userMenuToggle && userDropdown) {
         userMenuToggle.addEventListener('click', (event) => {
@@ -37,12 +43,26 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    if (notificationButton && notificationList && notificationCount) {
+        notificationButton.addEventListener('click', async () => {
+            if (!currentLoggedInUserId) {
+                Toastify({
+                    text: 'Please log in to view notifications.',
+                    duration: 3000,
+                    style: { background: '#e74c3c' },
+                }).showToast();
+                return;
+            }
+            await fetchNotifications();
+        });
+    }
+
     const logoutLink = document.getElementById('logoutLink');
     if (logoutLink) {
         logoutLink.addEventListener('click', async (event) => {
             event.preventDefault();
             try {
-                const response = await fetch('/logout');
+                const response = await fetch('/logout', { credentials: 'include' });
                 const data = await response.json();
                 if (data.success && data.redirect) {
                     currentLoggedInUserId = null;
@@ -51,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     cachedUserData = null;
                     window.location.href = data.redirect;
                 } else {
-                    console.error('Logout failed or redirect URL missing:', data);
+                    console.error('Logout failed:', data);
                     Toastify({
                         text: data.error || 'Logout failed. Please try again.',
                         duration: 3000,
@@ -70,79 +90,111 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+async function fetchNotifications() {
+    const notificationList = document.getElementById('notificationList');
+    const notificationCount = document.getElementById('notificationCount');
+    if (!notificationList || !notificationCount) return;
+
+    try {
+        const response = await fetch('/notifications', { credentials: 'include' });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const notifications = await response.json();
+        notificationList.innerHTML = notifications.length > 0
+            ? notifications.map(n => `<div class="dropdown-item-text">${n.message}</div>`).join('')
+            : '<div class="dropdown-item-text">No new notifications</div>';
+        notificationCount.textContent = notifications.length;
+        notificationCount.style.display = notifications.length > 0 ? 'inline' : 'none';
+    } catch (error) {
+        console.error('Error fetching notifications:', error);
+        notificationList.innerHTML = '<div class="dropdown-item-text">Error loading notifications</div>';
+        Toastify({
+            text: 'Error loading notifications.',
+            duration: 3000,
+            style: { background: '#e74c3c' },
+        }).showToast();
+    }
+}
+
 async function loadUserProfileInHeader() {
     if (cachedUserData) {
-        console.log('Using cached user data:', JSON.stringify(cachedUserData, null, 2));
+        console.log('Using cached user data:', cachedUserData);
+        updateHeaderUI(cachedUserData.user);
         return cachedUserData;
     }
+
+    const authControls = document.getElementById('authControls');
+    const loggedInUserContainer = document.getElementById('userMenuToggle');
+    const userNameDisplay = document.getElementById('headerProfileName');
+    const userProfilePic = document.getElementById('headerProfilePic');
+    const userRoleDisplay = document.getElementById('userRoleDisplay');
+    const userPointsDisplay = document.getElementById('userPointsDisplay');
+    const adminDashboardLink = document.getElementById('adminDashboardLink');
 
     try {
         const response = await fetch('/current-user', {
             credentials: 'include',
             headers: { 'Accept': 'application/json' }
         });
-        console.log('Current-user response status:', response.status);
         const data = await response.json();
-        console.log('Current-user response data:', JSON.stringify(data, null, 2));
-
-        const authControls = document.getElementById('authControls');
-        const loggedInUserContainer = document.getElementById('userMenuToggle');
-        const userNameDisplay = document.getElementById('headerProfileName');
-        const userProfilePic = document.getElementById('headerProfilePic');
-        const userRoleDisplay = document.getElementById('userRoleDisplay');
-        const userPointsDisplay = document.getElementById('userPointsDisplay');
-        const adminDashboardLink = document.getElementById('adminDashboardLink');
 
         if (response.ok && data.isLoggedIn && data.user && data.user._id) {
-            const user = data.user;
-            currentLoggedInUserId = user._id.toString();
-            currentLoggedInUserRole = user.role || 'user';
-            currentLoggedInUserFollowing = Array.isArray(user.following) ? user.following.map(id => id.toString()) : [];
             cachedUserData = data;
+            currentLoggedInUserId = data.user._id.toString();
+            currentLoggedInUserRole = data.user.role || 'external';
+            currentLoggedInUserFollowing = Array.isArray(data.user.following) ? data.user.following.map(id => id.toString()) : [];
+            updateHeaderUI(data.user);
 
-            console.log('Set currentLoggedInUserId:', currentLoggedInUserId);
-
-            if (authControls) authControls.style.display = 'none';
-            if (loggedInUserContainer) loggedInUserContainer.style.display = 'flex';
-            if (userNameDisplay) userNameDisplay.textContent = user.name || 'Guest';
-            if (userProfilePic) userProfilePic.src = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
-            if (userRoleDisplay) userRoleDisplay.textContent = user.role || 'user';
-            if (userPointsDisplay) userPointsDisplay.textContent = `${user.totalPoints || 0} pts`;
-            if (adminDashboardLink) {
-                adminDashboardLink.style.display = user.role === 'admin' ? 'block' : 'none';
-            }
-
-            if (!user.isProfileComplete && window.location.pathname !== '/create-profile.html') {
-                console.warn('User profile not complete. Redirecting to create-profile.html');
+            if (!data.user.isProfileComplete && window.location.pathname !== '/create-profile.html') {
                 window.location.href = '/create-profile.html';
             }
         } else {
-            console.warn('User not logged in or invalid response:', JSON.stringify(data, null, 2));
+            cachedUserData = { isLoggedIn: false };
             currentLoggedInUserId = null;
             currentLoggedInUserRole = null;
             currentLoggedInUserFollowing = [];
-            cachedUserData = { isLoggedIn: false };
-            if (authControls) authControls.style.display = 'flex';
-            if (loggedInUserContainer) loggedInUserContainer.style.display = 'none';
-            if (adminDashboardLink) adminDashboardLink.style.display = 'none';
+            updateHeaderUI(null);
         }
     } catch (error) {
-        console.error('Error fetching current user profile for header:', error);
+        console.error('Error fetching current user:', error);
+        cachedUserData = { isLoggedIn: false };
         currentLoggedInUserId = null;
         currentLoggedInUserRole = null;
         currentLoggedInUserFollowing = [];
-        cachedUserData = { isLoggedIn: false };
-        if (authControls) authControls.style.display = 'flex';
-        if (loggedInUserContainer) loggedInUserContainer.style.display = 'none';
-        if (adminDashboardLink) adminDashboardLink.style.display = 'none';
+        updateHeaderUI(null);
         Toastify({
-            text: 'Error loading user session. Please log in again.',
+            text: 'Error loading user session.',
             duration: 3000,
             style: { background: '#e74c3c' },
         }).showToast();
     }
-    console.log('Final currentLoggedInUserId after loadUserProfileInHeader:', currentLoggedInUserId);
     return cachedUserData;
+}
+
+function updateHeaderUI(user) {
+    const authControls = document.getElementById('authControls');
+    const loggedInUserContainer = document.getElementById('userMenuToggle');
+    const userNameDisplay = document.getElementById('headerProfileName');
+    const userProfilePic = document.getElementById('headerProfilePic');
+    const userRoleDisplay = document.getElementById('userRoleDisplay');
+    const userPointsDisplay = document.getElementById('userPointsDisplay');
+    const adminDashboardLink = document.getElementById('adminDashboardLink');
+    const notificationButton = document.getElementById('notificationButton');
+
+    if (user) {
+        if (authControls) authControls.style.display = 'none';
+        if (loggedInUserContainer) loggedInUserContainer.style.display = 'flex';
+        if (userNameDisplay) userNameDisplay.textContent = user.name || 'Guest';
+        if (userProfilePic) userProfilePic.src = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
+        if (userRoleDisplay) userRoleDisplay.textContent = user.role || 'external';
+        if (userPointsDisplay) userPointsDisplay.textContent = `${user.totalPoints || 0} pts`;
+        if (adminDashboardLink) adminDashboardLink.style.display = user.role === 'admin' ? 'block' : 'none';
+        if (notificationButton) notificationButton.style.display = 'inline-block';
+    } else {
+        if (authControls) authControls.style.display = 'flex';
+        if (loggedInUserContainer) loggedInUserContainer.style.display = 'none';
+        if (adminDashboardLink) adminDashboardLink.style.display = 'none';
+        if (notificationButton) notificationButton.style.display = 'none'; // Hide for guests
+    }
 }
 
 function isUserFollowing(targetUserId) {
@@ -154,7 +206,7 @@ function isUserFollowing(targetUserId) {
 async function toggleFollow(targetUserId, followButton, callback) {
     if (!currentLoggedInUserId) {
         Toastify({
-            text: 'You must be logged in to follow users.',
+            text: 'Please log in to follow users.',
             duration: 3000,
             style: { background: '#e74c3c' },
         }).showToast();
@@ -172,54 +224,41 @@ async function toggleFollow(targetUserId, followButton, callback) {
     try {
         const response = await fetch(`/user/${targetUserId}/follow`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             credentials: 'include'
         });
         const data = await response.json();
 
         if (response.ok && data.success) {
-            Toastify({
-                text: data.message || (data.isFollowing ? 'Followed user!' : 'Unfollowed user!'),
-                duration: 3000,
-                style: { background: '#28a745' },
-            }).showToast();
-
             if (data.isFollowing) {
-                if (cachedUserData?.user?.following) {
-                    cachedUserData.user.following.push(targetUserId);
-                }
+                cachedUserData.user.following.push(targetUserId);
                 if (followButton) {
                     followButton.textContent = 'Following';
                     followButton.setAttribute('aria-label', 'Unfollow this user');
                     followButton.classList.remove('btn-outline-primary');
                     followButton.classList.add('btn-primary');
                 }
-                if (document.getElementById('profileFollowingCount')) {
-                    const currentCount = parseInt(document.getElementById('profileFollowingCount').textContent) || 0;
-                    document.getElementById('profileFollowingCount').textContent = currentCount + 1;
-                }
             } else {
-                if (cachedUserData?.user?.following) {
-                    cachedUserData.user.following = cachedUserData.user.following.filter(id => id !== targetUserId);
-                }
+                cachedUserData.user.following = cachedUserData.user.following.filter(id => id !== targetUserId);
                 if (followButton) {
                     followButton.textContent = 'Follow';
                     followButton.setAttribute('aria-label', 'Follow this user');
                     followButton.classList.remove('btn-primary');
                     followButton.classList.add('btn-outline-primary');
                 }
-                if (document.getElementById('profileFollowingCount')) {
-                    const currentCount = parseInt(document.getElementById('profileFollowingCount').textContent) || 0;
-                    document.getElementById('profileFollowingCount').textContent = currentCount - 1;
-                }
+            }
+            if (document.getElementById('profileFollowingCount')) {
+                document.getElementById('profileFollowingCount').textContent = cachedUserData.user.following.length;
             }
             if (document.getElementById('publicProfileFollowersCount')) {
                 document.getElementById('publicProfileFollowersCount').textContent = data.followersCount;
             }
             if (callback) callback(data.isFollowing);
+            Toastify({
+                text: data.isFollowing ? 'Followed user!' : 'Unfollowed user!',
+                duration: 3000,
+                style: { background: '#28a745' },
+            }).showToast();
         } else {
             Toastify({
                 text: data.error || 'Failed to toggle follow status.',
@@ -237,36 +276,10 @@ async function toggleFollow(targetUserId, followButton, callback) {
     }
 }
 
-function updateHeaderUI(user) {
-    const authControls = document.getElementById('authControls');
-    const loggedInUserContainer = document.getElementById('userMenuToggle');
-    const userNameDisplay = document.getElementById('headerProfileName');
-    const userProfilePic = document.getElementById('headerProfilePic');
-    const userRoleDisplay = document.getElementById('userRoleDisplay');
-    const userPointsDisplay = document.getElementById('userPointsDisplay');
-    const adminDashboardLink = document.getElementById('adminDashboardLink');
-
-    if (user) {
-        if (authControls) authControls.style.display = 'none';
-        if (loggedInUserContainer) loggedInUserContainer.style.display = 'flex';
-        if (userNameDisplay) userNameDisplay.textContent = user.name || 'Guest';
-        if (userProfilePic) userProfilePic.src = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
-        if (userRoleDisplay) userRoleDisplay.textContent = user.role || 'user';
-        if (userPointsDisplay) userPointsDisplay.textContent = `${user.totalPoints || 0} pts`;
-        if (adminDashboardLink) {
-            adminDashboardLink.style.display = user.role === 'admin' ? 'block' : 'none';
-        }
-    } else {
-        if (authControls) authControls.style.display = 'flex';
-        if (loggedInUserContainer) loggedInUserContainer.style.display = 'none';
-        if (adminDashboardLink) adminDashboardLink.style.display = 'none';
-    }
-}
-
 function renderProjectCard(project) {
     const clickAction = currentLoggedInUserId
-        ? `window.location.href='/project.html?id=${project.id || project._id}'`
-        : `window.location.href='/login.html?redirectedFrom=/project.html?id=${project.id || project._id}'`;
+        ? `window.location.href='/project.html?id=${project._id}'`
+        : `window.location.href='/login.html?redirectedFrom=/project.html?id=${project._id}'`;
 
     const thumbnailURL = project.image
         ? project.image.replace('/upload/', '/upload/w_500,h_500,c_fill/')
@@ -275,12 +288,12 @@ function renderProjectCard(project) {
     return `
         <div class="col">
             <div class="card h-100" style="cursor: pointer;" onclick="${clickAction}">
-                <img src="${thumbnailURL}" class="card-img-top project-image" alt="${project.title}" style="object-fit: cover; height: 200px;" onerror="this.src='https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'">
+                <img src="${thumbnailURL}" class="card-img-top project-image" alt="${project.title || 'Project'}" style="object-fit: cover; height: 200px;" onerror="this.src='https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'">
                 <div class="card-body">
-                    <h5 class="card-title">${project.title}</h5>
+                    <h5 class="card-title">${project.title || 'Untitled'}</h5>
                     <p class="card-text">${project.description ? project.description.substring(0, 100) + '...' : 'No description'}</p>
                     <div class="project-meta">
-                        <span class="project-author">By <a href="/public-profile.html?userId=${project.userId}">${project.userName}</a></span>
+                        <span class="project-author">By <a href="/profile/${project.userId}">${project.userName || 'Unknown'}</a></span>
                         <span class="project-views"><i class="fas fa-eye"></i> ${project.views || 0}</span>
                         <span class="project-likes"><i class="fas fa-heart"></i> ${project.likes || 0}</span>
                     </div>
@@ -293,28 +306,25 @@ function renderProjectCard(project) {
     `;
 }
 
+// scripts.js (Inside renderUserSuggestion)
 function renderUserSuggestion(user) {
     return `
-        <div class="autocomplete-item" onclick="window.location.href='/public-profile.html?userId=${user._id}'">
+        <div class="autocomplete-item" onclick="window.location.href='/profile/${user._id}'"> 
             <img src="${user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'}" class="rounded-circle me-2" style="width: 30px; height: 30px; object-fit: cover;" alt="${user.name}">
-            <span>${user.name}</span>
+            <span>${user.name || 'Unknown'}</span>
             <span class="user-detail">${user.major || user.department ? `(${user.major || ''}${user.major && user.department ? ', ' : ''}${user.department || ''})` : ''}</span>
         </div>
     `;
 }
 
-function populateDropdown(selectElement, options, defaultText = 'Select an option') {
-    if (!selectElement) {
-        console.warn('populateDropdown: selectElement is null or undefined.');
-        return;
-    }
-    const labelText = selectElement.previousElementSibling ? selectElement.previousElementSibling.textContent.replace(':', '').trim() : '';
-    selectElement.innerHTML = `<option value="">${defaultText || `All ${labelText || 'Options'}`}</option>`;
-    options.forEach(optionValue => {
-        const option = document.createElement('option');
-        option.value = optionValue;
-        option.textContent = optionValue;
-        selectElement.appendChild(option);
+function populateDropdown(dropdown, options, defaultOption) {
+    if (!dropdown) return;
+    dropdown.innerHTML = `<option value="">${defaultOption}</option>`;
+    options.forEach(option => {
+        const opt = document.createElement('option');
+        opt.value = option;
+        opt.textContent = option;
+        dropdown.appendChild(opt);
     });
 }
 
@@ -326,14 +336,13 @@ async function loadDynamicFilterOptions() {
     const categoryFilter = document.getElementById('categoryFilter');
 
     if (!courseFilter && !yearFilter && !typeFilter && !departmentFilter && !categoryFilter) {
-        console.warn('Filter dropdown elements not all found. Skipping dynamic filter loading.');
+        console.log('No filter dropdowns found. Skipping loadDynamicFilterOptions.');
+        return;
     }
 
     try {
-        const response = await fetch('/dynamic-filter-options');
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
+        const response = await fetch('/dynamic-filter-options', { credentials: 'include' });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const tagsData = await response.json();
 
         if (courseFilter) populateDropdown(courseFilter, tagsData.courses || [], 'All Courses');
@@ -351,14 +360,124 @@ async function loadDynamicFilterOptions() {
     }
 }
 
+async function performGlobalSearch() {
+    // Ensure DOM is ready
+    if (document.readyState !== 'complete') {
+        console.log('DOM not ready. Delaying performGlobalSearch.');
+        return new Promise(resolve => window.addEventListener('load', resolve)).then(performGlobalSearch);
+    }
+
+    const projectGrid = document.getElementById('projectGrid');
+    const projectGridHeader = document.getElementById('projectGridHeader');
+    const noProjectsFoundSearchMessage = document.getElementById('noProjectsFoundSearchMessage');
+    const initialLoadingMessage = document.getElementById('initialLoadingMessage');
+    const autocompleteSuggestions = document.getElementById('autocompleteSuggestions');
+
+    if (!projectGrid || !projectGridHeader || !noProjectsFoundSearchMessage || !initialLoadingMessage) {
+        console.warn('Missing project grid elements:', {
+            projectGrid: !!projectGrid,
+            projectGridHeader: !!projectGridHeader,
+            noProjectsFoundSearchMessage: !!noProjectsFoundSearchMessage,
+            initialLoadingMessage: !!initialLoadingMessage
+        });
+        return;
+    }
+
+    const searchInput = document.getElementById('searchInput');
+    const courseFilter = document.getElementById('courseFilter');
+    const yearFilter = document.getElementById('yearFilter');
+    const typeFilter = document.getElementById('typeFilter');
+    const departmentFilter = document.getElementById('departmentFilter');
+    const categoryFilter = document.getElementById('categoryFilter');
+
+    const query = searchInput?.value.trim() || '';
+    const course = courseFilter?.value || '';
+    const year = yearFilter?.value || '';
+    const type = typeFilter?.value || '';
+    const department = departmentFilter?.value || '';
+    const category = categoryFilter?.value || '';
+
+    const params = new URLSearchParams();
+    if (query) params.append('q', query);
+    if (course) params.append('course', course);
+    if (year) params.append('year', year);
+    if (type) params.append('type', type);
+    if (department) params.append('department', department);
+    if (category) params.append('category', category);
+
+    const queryString = params.toString();
+    console.log('Performing search with query:', queryString);
+
+    projectGrid.innerHTML = '';
+    noProjectsFoundSearchMessage.style.display = 'none';
+    initialLoadingMessage.textContent = 'Searching...';
+    initialLoadingMessage.style.display = 'block';
+
+    try {
+        const response = await fetch(`/search?${queryString}`, { credentials: 'include' });
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+
+        if (data.success) {
+            const projects = data.results?.projects || [];
+            const users = data.results?.users || [];
+
+            console.log('Search results:', { projects: projects.length, users: users.length });
+
+            window.history.pushState({ path: `/index.html?${queryString}` }, '', `/index.html?${queryString}`);
+
+            if (autocompleteSuggestions) {
+                autocompleteSuggestions.innerHTML = users.map(u => renderUserSuggestion(u)).join('');
+                autocompleteSuggestions.style.display = users.length > 0 && query ? 'block' : 'none';
+            }
+
+            if (projects.length > 0) {
+                projectGridHeader.textContent = `Search Results (${projects.length} Projects, ${users.length} Users)`;
+                projectGrid.innerHTML = projects.map(p => renderProjectCard(p)).join('');
+                initialLoadingMessage.style.display = 'none';
+            } else {
+                projectGridHeader.textContent = 'Search Results';
+                initialLoadingMessage.style.display = 'none';
+                noProjectsFoundSearchMessage.textContent = 'No projects found matching your criteria.';
+                noProjectsFoundSearchMessage.style.display = 'block';
+            }
+        } else {
+            throw new Error(data.error || 'Search failed.');
+        }
+    } catch (error) {
+        console.error('Error performing global search:', error);
+        projectGridHeader.textContent = 'Search Failed';
+        initialLoadingMessage.textContent = 'Error during search. Please try again.';
+        initialLoadingMessage.style.display = 'block';
+        Toastify({
+            text: 'Search failed: ' + error.message,
+            duration: 3000,
+            style: { background: '#e74c3c' },
+        }).showToast();
+    }
+}
+
 async function loadAllProjects() {
+    if (document.readyState !== 'complete') {
+        console.log('DOM not ready. Delaying loadAllProjects.');
+        return new Promise(resolve => window.addEventListener('load', resolve)).then(loadAllProjects);
+    }
+
     const projectGrid = document.getElementById('projectGrid');
     const projectGridHeader = document.getElementById('projectGridHeader');
     const noProjectsFoundSearchMessage = document.getElementById('noProjectsFoundSearchMessage');
     const initialLoadingMessage = document.getElementById('initialLoadingMessage');
 
     if (!projectGrid || !projectGridHeader || !noProjectsFoundSearchMessage || !initialLoadingMessage) {
-        console.warn('One or more project grid elements not found. Skipping loadAllProjects.');
+        console.warn('Missing project grid elements for loadAllProjects:', {
+            projectGrid: !!projectGrid,
+            projectGridHeader: !!projectGridHeader,
+            noProjectsFoundSearchMessage: !!noProjectsFoundSearchMessage,
+            initialLoadingMessage: !!initialLoadingMessage
+        });
         return;
     }
 
@@ -366,101 +485,91 @@ async function loadAllProjects() {
     noProjectsFoundSearchMessage.style.display = 'none';
     initialLoadingMessage.textContent = 'Loading latest projects...';
     initialLoadingMessage.style.display = 'block';
-    projectGridHeader.style.display = 'block';
+    projectGridHeader.textContent = 'Latest Projects';
 
     try {
-        const response = await fetch('/projects');
-        if (response.ok) {
-            const projects = await response.json();
-            if (projects.length > 0) {
-                projectGrid.innerHTML = projects.map(p => renderProjectCard(p)).join('');
-                initialLoadingMessage.style.display = 'none';
-            } else {
-                projectGrid.innerHTML = '';
-                initialLoadingMessage.textContent = 'No projects found in the database.';
-                initialLoadingMessage.style.display = 'block';
-            }
+        const response = await fetch('/projects', { credentials: 'include' });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const projects = await response.json();
+        console.log('Loaded projects:', projects.length);
+        if (projects.length > 0) {
+            projectGrid.innerHTML = projects.map(p => renderProjectCard(p)).join('');
+            initialLoadingMessage.style.display = 'none';
         } else {
-            throw new Error('Failed to load all projects');
+            initialLoadingMessage.textContent = 'No projects found.';
+            initialLoadingMessage.style.display = 'block';
         }
     } catch (error) {
-        console.error('Error loading all projects:', error);
+        console.error('Error loading projects:', error);
+        initialLoadingMessage.textContent = 'Error loading projects. Please try again.';
         Toastify({
             text: 'Error loading projects.',
             duration: 3000,
             style: { background: '#e74c3c' },
         }).showToast();
-        projectGrid.innerHTML = '';
-        initialLoadingMessage.textContent = 'Error loading projects. Please try again.';
-        initialLoadingMessage.style.display = 'block';
     }
 }
-
 async function searchUsers(query, resultsContainer, addChipCallback, selectedIds) {
-    if (!query) {
-        resultsContainer.style.display = 'none';
+    if (!query || !resultsContainer) {
+        console.log('No query or resultsContainer for searchUsers:', { query, resultsContainer });
+        if (resultsContainer) resultsContainer.style.display = 'none';
         return;
     }
     try {
-        const response = await fetch(`/search?q=${encodeURIComponent(query)}`);
+        const response = await fetch(`/search?q=${encodeURIComponent(query)}`, { credentials: 'include' });
         if (!response.ok) {
             const errorData = await response.json();
-            Toastify({ text: errorData.message || 'Error searching users.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-            resultsContainer.style.display = 'none';
-            return;
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        const users = data.results && Array.isArray(data.results.users) ? data.results.users : [];
-        renderCollaboratorSearchResults(users, resultsContainer, addChipCallback, selectedIds);
+        const users = data.results?.users || [];
+        console.log('User search results:', users.length);
+        renderCollaboratorSearchResults(users, resultsContainer, addChipCallback, selectedIds || []);
     } catch (error) {
         console.error('Error searching users:', error);
-        Toastify({ text: 'Network error during user search.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-        resultsContainer.style.display = 'none';
+        if (resultsContainer) resultsContainer.style.display = 'none';
+        Toastify({
+            text: 'Error searching users.',
+            duration: 3000,
+            style: { background: '#e74c3c' },
+        }).showToast();
     }
 }
-
 function renderCollaboratorSearchResults(users, resultsContainer, addChipCallback, selectedIds) {
     resultsContainer.innerHTML = '';
-    if (users.length === 0) {
+    if (!users.length) {
         resultsContainer.style.display = 'none';
         return;
     }
 
     users.forEach(user => {
-        if (!user._id || !/^[0-9a-fA-F]{24}$/.test(user._id)) {
-            console.warn(`Skipping invalid user ID for ${user.name || 'unknown'}: ${user._id}`);
+        if (!/^[0-9a-fA-F]{24}$/.test(user._id)) {
+            console.warn(`Invalid user ID: ${user._id}`);
             return;
         }
-
         if (!selectedIds.includes(user._id)) {
             const resultItem = document.createElement('a');
             resultItem.href = '#';
             resultItem.classList.add('list-group-item', 'list-group-item-action', 'd-flex', 'align-items-center');
             resultItem.dataset.userId = user._id;
-            resultItem.dataset.userName = user.name || user.email || 'Unknown';
+            resultItem.dataset.userName = user.name || 'Unknown';
             resultItem.dataset.profilePic = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
-
             resultItem.innerHTML = `
                 <img src="${user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'}" class="rounded-circle me-2" style="width: 30px; height: 30px; object-fit: cover;" alt="${user.name || 'User'}">
                 <div>
-                    <strong>${user.name || user.email || 'Unknown'}</strong> <small class="text-muted">(${user.email || 'No email'})</small>
+                    <strong>${user.name || 'Unknown'}</strong> <small class="text-muted">(${user.email || 'No email'})</small>
                     ${user.major ? `<br><small class="text-muted">${user.major}</small>` : ''}
                 </div>
             `;
             resultItem.addEventListener('click', (e) => {
                 e.preventDefault();
-                console.log('Clicked user:', { id: user._id, name: user.name, profilePic: user.profilePic });
                 if (addChipCallback) {
-                    addChipCallback(user._id, user.name || user.email || 'Unknown', user.profilePic);
+                    addChipCallback(user._id, user.name || 'Unknown', user.profilePic);
                 }
             });
             resultsContainer.appendChild(resultItem);
         }
     });
 
-    if (resultsContainer.children.length > 0) {
-        resultsContainer.style.display = 'block';
-    } else {
-        resultsContainer.style.display = 'none';
-    }
+    resultsContainer.style.display = resultsContainer.children.length > 0 ? 'block' : 'none';
 }

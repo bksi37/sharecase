@@ -1,41 +1,40 @@
+// models/User.js
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
+    name: {
+        type: String,
+        required: true,
+        trim: true,
+        maxlength: 50
+    },
     email: {
         type: String,
         required: true,
-        unique: true
+        unique: true,
+        trim: true,
+        lowercase: true,
+        match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email']
     },
     password: {
         type: String,
-        required: true
+        required: true,
+        minlength: 6
     },
-    name: {
+    profilePic: {
         type: String,
-        default: ''
+        default: 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'
     },
     role: {
         type: String,
-        enum: ['external', 'student', 'alumni', 'faculty', 'sharecase_worker', 'admin'],
+        enum: ['student', 'admin', 'external', 'alumni'],
         default: 'external'
     },
-    universityEmail: {
-        type: String,
-        unique: true,
-        sparse: true
+    totalPoints: {
+        type: Number,
+        default: 0
     },
-    universityEmailVerified: {
-        type: Boolean,
-        default: false
-    },
-    major: { type: String, default: '' },
-    department: { type: String, default: '' },
-    profilePic: { type: String, default: 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg' },
-    linkedin: { type: String, default: '' },
-    github: { type: String, default: '' },
-    personalWebsite: { type: String, default: '' },
-    isProfileComplete: { type: Boolean, default: false },
     followers: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
@@ -44,55 +43,78 @@ const userSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     }],
-    totalPoints: {
-        type: Number,
-        default: 0
+    isProfileComplete: {
+        type: Boolean,
+        default: false
+    },
+    major: {
+        type: String,
+        default: ''
+    },
+    department: {
+        type: String,
+        default: ''
+    },
+    schoolEmail: {
+        type: String,
+        trim: true,
+        lowercase: true,
+        default: ''
+    },
+    graduationYear: {
+        type: String,
+        default: ''
+    },
+    socialLinks: {
+        linkedin: { type: String, default: '' },
+        github: { type: String, default: '' },
+        website: { type: String, default: '' }
+    },
+    isVerified: {
+        type: Boolean,
+        default: false
+    },
+    emailVerificationToken: {
+        type: String
+    },
+    isVerifiedStudent: {
+        type: Boolean,
+        default: false
+    },
+    isVerifiedAlumni: {
+        type: Boolean,
+        default: false
+    },
+    twoFactorAuth: {
+        type: Boolean,
+        default: false
     },
     notifications: {
         type: String,
-        enum: ['all', 'important', 'none'],
+        enum: ['all', 'mentions', 'none'],
         default: 'all'
     },
     theme: {
         type: String,
-        enum: ['light', 'dark', 'system'],
+        enum: ['light', 'dark'],
         default: 'light'
     },
     privacy: {
         type: String,
         enum: ['public', 'private'],
         default: 'public'
-    },
-    twoFactorAuth: {
-        type: Boolean,
-        default: false
-    },
-    activityLog: [{
-        action: { type: String, required: true },
-        timestamp: { type: Date, default: Date.now }
-    }],
-    projectsCollaboratedOn: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Project' }],
-    viewedProjects: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Project' }],
-    emailVerificationToken: {
-        type: String,
-        required: false,
-        sparse: true // Keep sparse: true to allow null values
-    },
-    isVerified: {
-        type: Boolean,
-        default: false
     }
-}, { timestamps: true });
+});
 
 userSchema.pre('save', async function(next) {
-    if (this.isModified('password') && this.password) {
+    if (this.isModified('password')) {
         this.password = await bcrypt.hash(this.password, 10);
     }
     next();
 });
 
-userSchema.methods.comparePassword = async function(candidatePassword) {
-    return bcrypt.compare(candidatePassword, this.password);
+userSchema.methods.comparePassword = async function(password) {
+    return await bcrypt.compare(password, this.password);
 };
 
 module.exports = mongoose.model('User', userSchema);
