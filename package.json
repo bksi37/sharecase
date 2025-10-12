@@ -8,6 +8,7 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
+    "@google/model-viewer": "^4.1.0",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^1.41.3",
     "connect-mongo": "^5.1.0",

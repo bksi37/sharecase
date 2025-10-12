@@ -15,60 +15,150 @@ const router = express.Router();
 // ---------------------------------------------------------------------
 // 1. Add Project
 // ---------------------------------------------------------------------
-// Other routes (e.g., /projects/add-project, /search)
 router.post('/add-project', isAuthenticated, isProfileComplete, upload.fields([
     { name: 'image', maxCount: 1 },
     { name: 'artworkImage', maxCount: 1 },
     { name: 'CADFile', maxCount: 1 }
 ]), async (req, res) => {
     try {
-        const { title, projectType, description, problemStatement, year, department, category, tags, collaboratorIds, otherContributors, resources, isPublished } = req.body;
-        const user = await User.findById(req.session.userId);
-        if (!user) {
-            return res.status(401).json({ error: 'User not found' });
+        const {
+            title, projectType, description, problemStatement, tags, year, department, category,
+            collaboratorIds, otherContributors, resources,
+            technicalDescription, toolsSoftwareUsed, functionalGoals,
+            mediumTechnique, artistStatement, exhibitionHistory,
+            isPublished
+        } = req.body;
+
+        // Validation
+        if (!title || title.trim() === '') {
+            return res.status(400).json({ error: 'Project Title is required.' });
+        }
+        if (isPublished === 'true') {
+            if (!projectType || !tagsConfig.types.includes(projectType)) {
+                return res.status(400).json({ error: 'Valid Project Type is required to publish.' });
+            }
+            if (!description || description.trim() === '') {
+                return res.status(400).json({ error: 'Description is required to publish.' });
+            }
+            if (!req.files['image']) {
+                return res.status(400).json({ error: 'Project Image is required to publish.' });
+            }
+            if (!tags || tags.split(',').filter(t => t.trim()).length === 0) {
+                return res.status(400).json({ error: 'At least one tag is required to publish.' });
+            }
         }
 
-        const projectDetails = {};
-        if (projectType === 'Engineering') {
-            projectDetails.technicalDescription = req.body.technicalDescription || '';
-            projectDetails.toolsSoftware = req.body.toolsSoftware || '';
-            projectDetails.functionalGoals = req.body.functionalGoals || '';
-            if (req.files && req.files.CADFile) {
-                projectDetails.CADFile = req.files.CADFile[0].path;
-            }
-        } else if (projectType === 'Art') {
-            projectDetails.mediumTechnique = req.body.mediumTechnique || '';
-            projectDetails.artistStatement = req.body.artistStatement || '';
-            projectDetails.exhibitionHistory = req.body.exhibitionHistory || '';
-            if (req.files && req.files.artworkImage) {
-                projectDetails.artworkImage = req.files.artworkImage[0].path;
-            }
+        // Parse inputs
+        const parsedTags = tags ? tags.split(',').map(t => t.trim()).filter(t => t) : [];
+        const parsedCollaboratorIds = collaboratorIds
+            ? collaboratorIds.split(',').map(id => id.trim()).filter(id => id && ObjectId.isValid(id)).map(id => new ObjectId(id))
+            : [];
+        const parsedOtherContributors = otherContributors
+            ? otherContributors.split(',').map(c => c.trim()).filter(c => c)
+            : [];
+        const parsedResources = resources
+            ? resources.split(',').map(r => r.trim()).filter(r => r)
+            : [];
+        const parsedToolsSoftware = toolsSoftwareUsed
+            ? toolsSoftwareUsed.split(',').map(t => t.trim()).filter(t => t)
+            : [];
+
+        // Image uploads
+        let imageUrl = 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg';
+        if (req.files['image']) {
+            const result = await cloudinary.uploader.upload(req.files['image'][0].path, {
+                folder: 'sharecase/projects',
+                use_filename: true
+            });
+            imageUrl = result.secure_url;
         }
 
+        let artworkImageUrl = '';
+        if (req.files['artworkImage'] && projectType === 'Art') {
+            const result = await cloudinary.uploader.upload(req.files['artworkImage'][0].path, {
+                folder: 'sharecase/artwork',
+                use_filename: true
+            });
+            artworkImageUrl = result.secure_url;
+        }
+
+        let cadFileUrl = '';
+        if (req.files['CADFile'] && projectType === 'Engineering') {
+            const result = await cloudinary.uploader.upload(req.files['CADFile'][0].path, {
+                folder: 'sharecase/cad',
+                use_filename: true
+            });
+            cadFileUrl = result.secure_url;
+        }
+
+        // Points calculation
+        let projectPoints = 0;
+        if (isPublished === 'true') {
+            projectPoints = pointsCalculator.calculateUploadPoints();
+        }
+
+        // Create project
         const project = new Project({
-            title,
-            userId: req.session.userId,
-            userName: user.name,
+            title: title.trim(),
             projectType: projectType || 'Other',
-            description,
-            problemStatement,
+            description: description || '',
+            image: imageUrl,
             year,
             department,
             category,
-            tags: tags ? tags.split(',').map(t => t.trim()).filter(t => t) : [],
-            collaboratorIds: collaboratorIds ? collaboratorIds.split(',').filter(id => mongoose.Types.ObjectId.isValid(id)) : [],
-            otherContributors,
-            resources: resources ? resources.split(',').map(r => r.trim()).filter(r => r) : [],
-            image: req.files && req.files.image ? req.files.image[0].path : '',
-            projectDetails,
-            isPublished: isPublished === 'true'
+            problemStatement: problemStatement || '',
+            tags: parsedTags,
+            collaborators: parsedCollaboratorIds,
+            otherContributors: parsedOtherContributors,
+            resources: parsedResources,
+            userId: req.session.userId,
+            userName: req.session.userName || 'Anonymous',
+            userProfilePic: req.session.userProfilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg',
+            isPublished: isPublished === 'true',
+            points: projectPoints,
+            projectDetails: {
+                CADFileLink: cadFileUrl,
+                technicalDescription: technicalDescription || '',
+                toolsSoftwareUsed: parsedToolsSoftware,
+                functionalGoals: functionalGoals || '',
+                artworkImage: artworkImageUrl,
+                mediumTechnique: mediumTechnique || '',
+                artistStatement: artistStatement || '',
+                exhibitionHistory: exhibitionHistory || ''
+            }
         });
 
         await project.save();
-        res.json({ message: isPublished === 'true' ? 'Project published successfully' : 'Project saved as draft', redirect: '/profile.html' });
+
+        // Update user points and activity
+        if (isPublished === 'true') {
+            await User.findByIdAndUpdate(
+                req.session.userId,
+                {
+                    $inc: { totalPoints: projectPoints },
+                    $push: { activityLog: { action: `Published project: ${project.title} (+${projectPoints} points)` } }
+                }
+            );
+        }
+
+        // Update collaborators
+        if (parsedCollaboratorIds.length > 0) {
+            await User.updateMany(
+                { _id: { $in: parsedCollaboratorIds } },
+                { $addToSet: { projectsCollaboratedOn: project._id } }
+            );
+        }
+
+        const message = isPublished === 'true' ? 'Project uploaded successfully!' : 'Project saved as draft!';
+        const redirectPath = isPublished === 'true' ? `/project/${project._id}` : '/profile.html?tab=drafts';
+        res.status(200).json({ success: true, message, projectId: project._id, redirect: redirectPath });
     } catch (error) {
-        console.error('Error adding project:', error);
-        res.status(500).json({ error: 'Failed to add project', details: error.message });
+        console.error('Add project error:', error);
+        if (error.name === 'ValidationError') {
+            const messages = Object.values(error.errors).map(err => err.message);
+            return res.status(400).json({ error: 'Validation Error', details: messages.join(', ') });
+        }
+        res.status(500).json({ error: 'Server error', details: error.message });
     }
 });
 
@@ -86,9 +176,9 @@ router.get('/projects', async (req, res) => {
             title: p.title,
             description: p.description,
             image: p.image || 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg',
-            userId: p.userId ? p.userId._id : null,
-            userName: p.userId ? p.userId.name : 'Deleted User',
-            userProfilePic: p.userId ? (p.userId.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg') : 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg',
+            userId: p.userId._id,
+            userName: p.userId.name,
+            userProfilePic: p.userId.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg', // 🛑 FIX: Added profilePic
             likes: p.likes || 0,
             views: p.views || 0,
             projectType: p.projectType || 'Other',
@@ -102,87 +192,74 @@ router.get('/projects', async (req, res) => {
 
 
 // ---------------------------------------------------------------------
-// 3. Consolidated Search (FIXED: Added population and formatting for client)
+// 3. Consolidated Search (FIXED: Removed Auth)
 // ---------------------------------------------------------------------
 router.get('/search', async (req, res) => {
     try {
-        const { q, course, year, type, department, category } = req.query;
-        console.log('Search query:', { q, course, year, type, department, category });
+        // 🛑 FIX: Removed authentication middleware to allow public access
+        const { q, course, year, type, department, category, projectType } = req.query;
+        const projectQuery = {};
+        const userQuery = {};
 
-        // --- Build Project Query ---
-        const projectQuery = { isPublished: true };
-        const regex = q ? { $regex: q, $options: 'i' } : null;
-
-        if (regex) {
+        if (q) {
             projectQuery.$or = [
-                { title: regex },
-                { description: regex },
-                { tags: regex },
-                { 'projectDetails.technicalDescription': regex },
-                { 'projectDetails.artistStatement': regex },
-                { 'projectDetails.toolsSoftware': regex }
+                { title: { $regex: q, $options: 'i' } },
+                { description: { $regex: q, $options: 'i' } },
+                { problemStatement: { $regex: q, $options: 'i' } },
+                { tags: { $regex: q, $options: 'i' } }
             ];
-        }
-        
-        // Filter tags (assuming your filter dropdowns send explicit values, not just 'All')
-        if (course && course !== 'All') projectQuery.course = course; 
-        if (year && year !== 'All') projectQuery.year = year;
-        if (type && type !== 'All') projectQuery.projectType = type;
-        if (department && department !== 'All') projectQuery.department = department;
-        if (category && category !== 'All') projectQuery.category = category;
-
-
-        // --- Build User Query ---
-        const userQuery = { isProfileComplete: true };
-        if (regex) {
             userQuery.$or = [
-                { name: regex },
-                { email: regex },
-                { major: regex },
-                { department: regex }
+                { name: { $regex: q, $options: 'i' } },
+                { email: { $regex: q, $options: 'i' } },
+                { major: { $regex: q, $options: 'i' } },
+                { department: { $regex: q, $options: 'i' } }
             ];
         }
 
-        // --- Execute Queries ---
-        const [rawProjects, rawUsers] = await Promise.all([
-            // Use populate to get user details for project card rendering
+        projectQuery.isPublished = true;
+
+        const filterTags = [course, year, type, department, category].filter(t => t && t !== 'All');
+        if (filterTags.length > 0) {
+            projectQuery.tags = { $all: filterTags };
+        }
+        if (projectType && projectType !== 'All') {
+            projectQuery.projectType = projectType;
+        }
+
+        userQuery.isProfileComplete = true;
+
+        const [projects, users] = await Promise.all([
             Project.find(projectQuery)
                    .populate('userId', 'name profilePic')
-                   .select('title userId description image tags views likes projectType')
                    .limit(20),
-                   
             User.find(userQuery)
-                .select('_id name email profilePic major department')
+                .select('name major department profilePic linkedin')
                 .limit(10)
         ]);
-        
-        // --- Format Project Results for Client ---
-        const formattedProjects = rawProjects.map(p => ({
+
+        const formattedProjects = projects.map(p => ({
             id: p._id,
             title: p.title,
             description: p.description,
             image: p.image || 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg',
-            // Use null checks (p.userId is null if user was deleted)
             userId: p.userId ? p.userId._id : null,
-            userName: p.userId ? p.userId.name : 'Deleted User',
+            userName: p.userId ? p.userId.name : 'Unknown',
             userProfilePic: p.userId ? (p.userId.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg') : 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg',
             likes: p.likes || 0,
             views: p.views || 0,
-            projectType: p.projectType || 'Other',
-            tags: p.tags || [], 
+            tags: p.tags || [],
+            isPublished: p.isPublished,
+            projectType: p.projectType || 'Other'
         }));
 
-        // --- Format User Results for Client (The rawUsers from the query are fine, but let's map them for consistency) ---
-        const formattedUsers = rawUsers.map(u => ({
+        const formattedUsers = users.map(u => ({
             _id: u._id,
             name: u.name,
-            major: u.major || '',
-            department: u.department || '',
+            major: u.major || 'N/A',
+            department: u.department || 'N/A',
             profilePic: u.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg',
-            // Include email since you use it in renderCollaboratorSearchResults (scripts.js)
-            email: u.email
+            linkedin: u.socialLinks?.linkedin || ''
         }));
-
 
         res.json({
             success: true,
@@ -191,30 +268,30 @@ router.get('/search', async (req, res) => {
                 users: formattedUsers
             }
         });
+
     } catch (error) {
-        console.error('Error in /search:', error);
-        res.status(500).json({ error: 'Search failed', message: error.message });
+        console.error('Global search error:', error);
+        res.status(500).json({ error: 'Server error during search' });
     }
 });
 
+
 // ---------------------------------------------------------------------
 // 4. Dynamic Filter Options (FIXED: Removed Auth, kept combined dynamic/filter options)
-// GET dynamic filter options
-router.get('/dynamic-filter-options', (req, res) => {
+// ---------------------------------------------------------------------
+router.get('/dynamic-filter-options', async (req, res) => {
     try {
-        console.log('Serving /dynamic-filter-options:', JSON.stringify(tagsConfig, null, 2));
+        // 🛑 FIX: Removed authentication middleware to allow public access
         res.json({
-            types: tagsConfig.types || [],
-            departments: tagsConfig.departments || [],
-            categories: tagsConfig.categories || [],
-            years: tagsConfig.years || [],
-            courses: tagsConfig.courses || [],
-            tools: tagsConfig.tools || [],
-            projectSchemas: tagsConfig.projectSchemas || { Default: [] }
+            courses: tagsConfig.courses,
+            categories: tagsConfig.courses, // Inconsistency: using courses as categories, keeping for now.
+            years: tagsConfig.years,
+            types: tagsConfig.types,
+            departments: tagsConfig.departments
         });
     } catch (error) {
-        console.error('Error in /dynamic-filter-options:', error);
-        res.status(500).json({ error: 'Failed to load filter options' });
+        console.error('Error fetching dynamic filter options:', error);
+        res.status(500).json({ error: 'Server error' });
     }
 });
 

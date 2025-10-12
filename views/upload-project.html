@@ -9,9 +9,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/_base.css">
     <link rel="stylesheet" href="/css/_header.css">
-    <link rel="stylesheet" href="/css/_forms.css"> 
+    <link rel="stylesheet" href="/css/_forms.css">
     <link rel="stylesheet" href="/css/_utilities.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <script type="module" src="https://unpkg.com/@google/model-viewer@2.1.1/dist/model-viewer.min.js"></script>
 </head>
 <body>
     <header class="d-flex justify-content-between align-items-center">
@@ -21,20 +22,29 @@
             </a>
         </div>
         <div class="user-menu d-flex align-items-center">
-            <button class="btn btn-outline-dark me-2" id="notificationButton" aria-label="Notifications" title="Notifications Placeholder">
-                <i class="fas fa-bell"></i>
-            </button>
-            <a href="/store-placeholder.html" class="btn btn-outline-dark me-3" id="storeButton" aria-label="Store" title="Store Placeholder">
+            <div class="dropdown">
+                <button class="btn btn-outline-dark me-2" id="notificationButton" aria-label="Notifications" title="Notifications" data-bs-toggle="dropdown">
+                    <i class="fas fa-bell"></i>
+                    <span class="badge bg-danger" id="notificationCount" style="display: none;">0</span>
+                </button>
+                <div class="dropdown-menu dropdown-menu-end" id="notificationDropdown" style="min-width: 300px;">
+                    <div class="dropdown-header">Notifications</div>
+                    <div id="notificationList">
+                        <div class="dropdown-item-text">No new notifications</div>
+                    </div>
+                </div>
+            </div>
+            <a href="/store-placeholder.html" class="btn btn-outline-dark me-3" id="storeButton" aria-label="Store" title="Store">
                 <i class="fas fa-store"></i>
             </a>
             <div class="profile-container" id="userMenuToggle" style="display: none;">
-                <img id="headerProfilePic" src="https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg" alt="Profile Picture">
-                <span id="headerProfileName">Guest</span>
+                <img id="headerProfilePic" src="https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg" alt="Profile Picture" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover;">
+                <span id="headerProfileName" class="ms-2">Guest</span>
                 <div class="dropdown-menu" id="userDropdown">
                     <a href="/profile.html" class="dropdown-item">Profile</a>
                     <a href="/settings.html" class="dropdown-item">Settings</a>
                     <a href="/upload-project.html" class="dropdown-item">Upload Project</a>
-                    <a id="adminDashboardLink" href="/admin-dashboard.html" class="dropdown-item" style="display: none;">Admin Dashboard</a>
+                    <a id="adminDashboardLink" href="/admin/dashboard.html" class="dropdown-item" style="display: none;">Admin Dashboard</a>
                     <a id="logoutLink" href="/logout" class="dropdown-item">Logout</a>
                     <a href="/about.html" class="dropdown-item">About</a>
                     <div class="dropdown-item-text text-muted small mt-2">
@@ -49,312 +59,384 @@
             </div>
         </div>
     </header>
-    <main>
-        <div class="container">
-            <div class="upload-container card p-4 shadow-sm my-4">
-                <h2>Upload a New Project</h2>
-                <form id="uploadForm" enctype="multipart/form-data">
-                    <div class="mb-3">
-                        <label for="title" class="form-label">Project Title <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="title" name="title" required>
+    <main class="container my-5">
+        <div class="card p-4 shadow-sm">
+            <h2 class="mb-4" id="uploadFormTitle">Upload a New Project</h2>
+            <form id="uploadForm" enctype="multipart/form-data" aria-labelledby="uploadFormTitle">
+                <div class="mb-3">
+                    <label for="title" class="form-label">Project Title <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="title" name="title" required aria-required="true" placeholder="e.g., 3D Printed Drone">
+                    <div class="invalid-feedback">Project Title is required.</div>
+                </div>
+                <div class="row mb-3 g-3">
+                    <div class="col-md-6">
+                        <label for="projectType" class="form-label">Project Type <span class="text-danger">*</span></label>
+                        <select class="form-select" id="projectType" name="projectType" required aria-required="true">
+                            <option value="">Select Project Type</option>
+                        </select>
+                        <div class="invalid-feedback">Project Type is required.</div>
                     </div>
-                    <div class="row mb-3 g-3">
-                        <div class="col-md-6">
-                            <label for="projectType" class="form-label">Project Type <span class="text-danger">*</span></label>
-                            <select class="form-select" id="projectType" name="projectType" required>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="category" class="form-label">Category</label>
-                            <select class="form-select" id="category" name="category">
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="department" class="form-label">Department</label>
-                            <select class="form-select" id="department" name="department">
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="year" class="form-label">Year/Graduation</label>
-                            <select class="form-select" id="year" name="year">
-                            </select>
-                        </div>
+                    <div class="col-md-6">
+                        <label for="category" class="form-label">Category</label>
+                        <select class="form-select" id="category" name="category">
+                            <option value="">Select Category</option>
+                        </select>
                     </div>
-                    <div class="mb-3">
-                        <label for="description" class="form-label">Short Description <span class="text-danger">*</span></label>
-                        <textarea class="form-control" id="description" name="description" rows="3" placeholder="A short, catchy summary (1-2 sentences)..." required></textarea>
+                    <div class="col-md-6">
+                        <label for="department" class="form-label">Department</label>
+                        <select class="form-select" id="department" name="department">
+                            <option value="">Select Department</option>
+                        </select>
                     </div>
-                    <div class="mb-3">
-                        <label for="problemStatement" class="form-label">Problem Statement</label>
-                        <textarea class="form-control" id="problemStatement" name="problemStatement" rows="4" placeholder="What problem does your project solve?"></textarea>
+                    <div class="col-md-6">
+                        <label for="year" class="form-label">Year/Graduation</label>
+                        <select class="form-select" id="year" name="year">
+                            <option value="">Select Year</option>
+                        </select>
                     </div>
-                    <div id="dynamic-fields-container"></div>
-                    <div class="mb-3">
-                        <label for="tags" class="form-label">Additional Tags (Comma-separated tools, courses, themes)</label>
-                        <input type="text" class="form-control" id="tags" name="tags" placeholder="e.g., Python, SolidWorks, ENGR 101, Sustainability">
-                        <small class="form-text text-muted">Use tags to make your project searchable by tool, course code, or theme.</small>
+                </div>
+                <div class="mb-3">
+                    <label for="description" class="form-label">Description <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="description" name="description" rows="4" required aria-required="true" placeholder="A short, catchy summary (1-2 sentences)"></textarea>
+                    <div class="invalid-feedback">Description is required.</div>
+                </div>
+                <div class="mb-3">
+                    <label for="problemStatement" class="form-label">Problem Statement</label>
+                    <textarea class="form-control" id="problemStatement" name="problemStatement" rows="4" placeholder="What problem does your project solve?"></textarea>
+                </div>
+                <div id="dynamic-fields-container" class="mb-3"></div>
+                <div class="mb-3 position-relative">
+                    <label for="tags" class="form-label">Tags (comma-separated)</label>
+                    <input type="text" class="form-control" id="tags" name="tags" placeholder="Loading tags..." aria-describedby="tagsHelp">
+                    <div id="tagsSuggestions" class="list-group position-absolute w-100 mt-1 shadow" style="max-height: 200px; overflow-y: auto; display: none; z-index: 1000;"></div>
+                    <small id="tagsHelp" class="form-text text-muted">Add tags for tools, courses, or themes (e.g., SolidWorks, ENGR 101).</small>
+                    <div class="invalid-feedback">At least one tag is required to publish.</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Collaborators (Registered Users)</label>
+                    <div class="form-control collaborator-input-container p-2" style="min-height: 50px;">
+                        <div id="selectedCollaboratorsDisplay" class="d-flex flex-wrap gap-2 mb-2"></div>
+                        <input type="text" id="collaboratorSearchInput" class="collaborator-search-input" placeholder="Search by name or email..." aria-label="Search for collaborators">
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Collaborators (Registered Users)</label>
-                        <div class="form-control collaborator-input-container">
-                            <div id="selectedCollaboratorsDisplay" class="d-flex flex-wrap align-items-center gap-2"></div>
-                            <input type="text" id="collaboratorSearchInput" class="form-control flex-grow-1" placeholder="Search by name or email..." style="border: none; outline: none; box-shadow: none; padding: 0; min-width: 150px;">
-                        </div>
-                        <div id="collaboratorSearchResults" class="list-group position-absolute z-index-1000 w-100 mt-1 shadow" style="max-height: 200px; overflow-y: auto; display: none; background-color: white;"></div>
-                        <input type="hidden" id="collaboratorIds" name="collaboratorIds">
+                    <div id="collaboratorSearchResults" class="list-group position-absolute w-100 mt-1 shadow" style="max-height: 200px; overflow-y: auto; display: none; z-index: 1000;"></div>
+                    <input type="hidden" id="collaboratorIds" name="collaboratorIds">
+                </div>
+                <div class="mb-3">
+                    <label for="otherContributors" class="form-label">Other Contributors</label>
+                    <input type="text" class="form-control" id="otherContributors" name="otherContributors" placeholder="e.g., Professor X, Guest Speaker">
+                    <small class="form-text text-muted">For non-registered contributors (faculty, mentors).</small>
+                </div>
+                <div class="mb-3">
+                    <label for="resources" class="form-label">Resources (comma-separated URLs)</label>
+                    <input type="text" class="form-control" id="resources" name="resources" placeholder="e.g., https://github.com/user/repo">
+                    <small class="form-text text-muted">Links to documentation, source code, or other files.</small>
+                </div>
+                <div class="mb-3">
+                    <label for="image" class="form-label">Project Image <span class="text-danger">*</span></label>
+                    <div class="dropzone p-3 border rounded text-center" id="imageDropzone" role="region" aria-label="Dropzone for project image">
+                        <p class="mb-0">Drag & drop an image or click to select (JPEG, PNG, GIF, max 2MB)</p>
+                        <input type="file" class="form-control d-none" id="image" name="image" accept="image/jpeg,image/png,image/gif" required aria-required="true">
                     </div>
-                    <div class="mb-3">
-                        <label for="otherContributors" class="form-label">Other Contributors (Faculty, Mentors, comma-separated)</label>
-                        <input type="text" class="form-control" id="otherContributors" name="otherContributors" placeholder="Guest Speaker, Professor X, External Advisor">
-                        <small class="form-text text-muted">For individuals not registered on ShareCase.</small>
+                    <div id="imagePreview" class="mt-2" style="display: none;">
+                        <img src="" alt="Image preview" class="rounded" style="max-width: 200px; max-height: 200px; object-fit: cover;">
                     </div>
-                    <div class="mb-3">
-                        <label for="resources" class="form-label">Resources (comma-separated URLs)</label>
-                        <input type="text" class="form-control" id="resources" name="resources" placeholder="e.g., http://example.com/doc.pdf, https://github.com/user/repo">
-                        <small class="form-text text-muted">Provide links to project files, external documentation, or source code.</small>
-                    </div>
-                    <div class="mb-3">
-                        <label for="image" class="form-label">Project Image <span class="text-danger">*</span></label>
-                        <input type="file" class="form-control" id="image" name="image" accept="image/jpeg,image/png,image/gif" required>
-                        <small class="form-text text-muted">Max 2MB. Supported formats: JPEG, PNG, GIF.</small>
-                    </div>
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary" id="uploadProjectBtn">Publish Project</button>
-                        <button type="button" class="btn btn-secondary" id="saveDraftBtn">Save as Draft</button>
-                        <button type="button" class="btn btn-outline-secondary" id="cancelUploadBtn">Cancel</button>
-                    </div>
-                    <small class="d-block mt-3 text-danger">Fields marked with (<span class="text-danger">*</span>) are required for <strong>Publishing</strong>.</small>
-                </form>
-            </div>
+                    <div class="invalid-feedback">Project Image is required.</div>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary" id="uploadProjectBtn">Publish Project</button>
+                    <button type="button" class="btn btn-secondary" id="saveDraftBtn">Save as Draft</button>
+                    <button type="button" class="btn btn-outline-secondary" id="cancelUploadBtn">Cancel</button>
+                </div>
+                <small class="d-block mt-3 text-danger">Fields marked with (<span class="text-danger">*</span>) are required for publishing.</small>
+            </form>
         </div>
     </main>
-    <footer>
+    <footer class="text-center py-3">
         <p>© 2025 ShareCase. All rights reserved.</p>
     </footer>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="/js/scripts.js"></script>
- <script>
-// --- Local Variables ---
-const DEBOUNCE_DELAY_SEARCH = 300; // ms for search input
-let debounceTimeout;
+    <script type="module">
+        // Local Variables
+        const DEBOUNCE_DELAY_SEARCH = 300;
+        let debounceTimeout;
+        let selectedCollaboratorIds = [];
+        window.selectedCollaboratorIds = selectedCollaboratorIds;
 
-// --- Global elements and variables exposed to window for scripts.js functions ---
-const collaboratorSearchInput = document.getElementById('collaboratorSearchInput');
-const collaboratorSearchResults = document.getElementById('collaboratorSearchResults');
-const selectedCollaboratorsDisplay = document.getElementById('selectedCollaboratorsDisplay');
-const collaboratorIdsHiddenInput = document.getElementById('collaboratorIds');
-let selectedCollaboratorIds = [];
-window.selectedCollaboratorIds = selectedCollaboratorIds; // Expose to window object
-
-// --- Collaborator Search and Selection Logic ---
-function updateCollaboratorIdsHiddenInput() {
-    if (collaboratorIdsHiddenInput) {
-        collaboratorIdsHiddenInput.value = window.selectedCollaboratorIds.join(',');
-    }
-}
-
-function addCollaboratorChip(userId, userName, profilePic) {
-    if (!selectedCollaboratorIds.includes(userId)) {
-        selectedCollaboratorIds.push(userId);
-        const chip = document.createElement('div');
-        chip.classList.add('collaborator-chip', 'd-flex', 'align-items-center', 'bg-light', 'border', 'rounded', 'px-2', 'py-1');
-        chip.innerHTML = `
-            <img src="${profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'}" class="rounded-circle me-1" style="width: 24px; height: 24px; object-fit: cover;" alt="${userName}">
-            <span>${userName}</span>
-            <button type="button" class="btn-close btn-close-small ms-2" aria-label="Remove collaborator"></button>
-        `;
-        chip.querySelector('.btn-close').addEventListener('click', () => {
-            selectedCollaboratorIds = selectedCollaboratorIds.filter(id => id !== userId);
-            chip.remove();
-            updateCollaboratorIdsHiddenInput();
-        });
-        selectedCollaboratorsDisplay.appendChild(chip);
-        updateCollaboratorIdsHiddenInput();
-        collaboratorSearchInput.value = '';
-        collaboratorSearchResults.style.display = 'none';
-    }
-}
-
-if (collaboratorSearchInput && collaboratorSearchResults) {
-    collaboratorSearchInput.addEventListener('input', () => {
-        clearTimeout(debounceTimeout);
-        debounceTimeout = setTimeout(() => {
-            const query = collaboratorSearchInput.value.trim();
-            window.searchUsers(query, collaboratorSearchResults, addCollaboratorChip, selectedCollaboratorIds);
-        }, DEBOUNCE_DELAY_SEARCH);
-    });
-}
-
-// --- Dynamic Form Rendering ---
-const dynamicFieldsContainer = document.getElementById('dynamic-fields-container');
-const projectTypeSelect = document.getElementById('projectType');
-
-async function loadProjectSchemas() {
-    try {
-        const response = await fetch('/dynamic-filter-options');
-        if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        const data = await response.json();
-        console.log('Dynamic filter options response:', JSON.stringify(data, null, 2)); // Debug log
-        window.projectSchemas = data.projectSchemas || { Default: [] };
-
-        if (projectTypeSelect) {
-            window.populateDropdown(projectTypeSelect, data.types || [], 'Select Project Type');
-            projectTypeSelect.addEventListener('change', renderDynamicFields);
-        }
-
-        // Handle tags placeholder safely
+        // DOM Elements
+        const uploadForm = document.getElementById('uploadForm');
+        const projectTypeSelect = document.getElementById('projectType');
+        const dynamicFieldsContainer = document.getElementById('dynamic-fields-container');
+        const collaboratorSearchInput = document.getElementById('collaboratorSearchInput');
+        const collaboratorSearchResults = document.getElementById('collaboratorSearchResults');
+        const selectedCollaboratorsDisplay = document.getElementById('selectedCollaboratorsDisplay');
+        const collaboratorIdsHiddenInput = document.getElementById('collaboratorIds');
+        const imageInput = document.getElementById('image');
+        const imageDropzone = document.getElementById('imageDropzone');
+        const imagePreview = document.getElementById('imagePreview');
+        const imagePreviewImg = imagePreview.querySelector('img');
         const tagsInput = document.getElementById('tags');
-        if (tagsInput) {
-            tagsInput.placeholder = data.toolsThemes && Array.isArray(data.toolsThemes) && data.toolsThemes.length > 0
-                ? `e.g., ${data.toolsThemes.slice(0, 3).join(', ')}`
-                : 'e.g., Python, SolidWorks, Sustainability';
-        }
+        const tagsSuggestions = document.getElementById('tagsSuggestions');
 
-        window.populateDropdown(document.getElementById('year'), data.years || [], 'Select Year');
-        window.populateDropdown(document.getElementById('department'), data.departments || [], 'Select Department');
-        window.populateDropdown(document.getElementById('category'), data.categories || [], 'Select Category');
-    } catch (error) {
-        console.error('Error loading project schemas:', error);
-        Toastify({ text: 'Error loading project options. Please try again.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-        // Fallback: Populate dropdowns with defaults
-        if (projectTypeSelect) {
-            window.populateDropdown(projectTypeSelect, ['Engineering', 'Art', 'Other'], 'Select Project Type');
-            projectTypeSelect.addEventListener('change', renderDynamicFields);
-        }
-        window.populateDropdown(document.getElementById('year'), [], 'Select Year');
-        window.populateDropdown(document.getElementById('department'), [], 'Select Department');
-        window.populateDropdown(document.getElementById('category'), [], 'Select Category');
-    }
-}
-
-function renderDynamicFields() {
-    const selectedType = projectTypeSelect.value;
-    dynamicFieldsContainer.innerHTML = '';
-    if (!window.projectSchemas || !selectedType) return;
-    const schema = window.projectSchemas[selectedType] || window.projectSchemas['Default'] || [];
-    schema.forEach(field => {
-        let inputHtml = '';
-        const requiredIndicator = field.required ? '<span class="text-danger">*</span>' : '';
-        if (field.type === 'textarea') {
-            inputHtml = `<textarea class="form-control" id="${field.name}" name="${field.name}" rows="4" placeholder="${field.placeholder}" ${field.required ? 'required' : ''}></textarea>`;
-        } else if (field.type === 'text') {
-            inputHtml = `<input type="text" class="form-control" id="${field.name}" name="${field.name}" placeholder="${field.placeholder}" ${field.required ? 'required' : ''}>`;
-        } else if (field.type === 'file') {
-            inputHtml = `<input type="file" class="form-control" id="${field.name}" name="${field.name}" accept="${field.accept}" ${field.required ? 'required' : ''}>`;
-        }
-        const fieldDiv = document.createElement('div');
-        fieldDiv.classList.add('mb-3');
-        fieldDiv.innerHTML = `
-            <label for="${field.name}" class="form-label">${field.label} ${requiredIndicator}</label>
-            ${inputHtml}
-            ${field.note ? `<small class="form-text text-muted">${field.note}</small>` : ''}
-        `;
-        dynamicFieldsContainer.appendChild(fieldDiv);
-    });
-}
-
-// --- File Size Validation ---
-const imageInput = document.getElementById('image');
-function validateFileSize(input, maxSizeMB, fieldName) {
-    if (input.files && input.files[0]) {
-        const fileSizeMB = input.files[0].size / (1024 * 1024);
-        if (fileSizeMB > maxSizeMB) {
-            Toastify({ text: `${fieldName} exceeds ${maxSizeMB}MB limit.`, duration: 3000, style: { background: '#e74c3c' } }).showToast();
-            input.value = '';
-            return false;
-        }
-        return true;
-    }
-    return true;
-}
-
-if (imageInput) {
-    imageInput.addEventListener('change', () => {
-        validateFileSize(imageInput, 2, 'Project Image');
-    });
-}
-
-// --- Form Submission Logic ---
-document.addEventListener('DOMContentLoaded', () => {
-    const uploadForm = document.getElementById('uploadForm');
-    const uploadProjectBtn = document.getElementById('uploadProjectBtn');
-    const saveDraftBtn = document.getElementById('saveDraftBtn');
-    const cancelUploadBtn = document.getElementById('cancelUploadBtn');
-
-    if (uploadForm && uploadProjectBtn && saveDraftBtn) {
-        uploadProjectBtn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            if (!validateForm(true)) return;
-            await submitProject(true); // Publish
-        });
-
-        saveDraftBtn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            if (!document.getElementById('title').value.trim()) {
-                Toastify({ text: 'Project Title is required to save as draft.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                return;
+        // Load Filter Options and Schemas
+        async function loadProjectSchemas() {
+            try {
+                const response = await fetch('/dynamic-filter-options', { credentials: 'include' });
+                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                const data = await response.json();
+                console.log('Dynamic filter options:', data);
+                window.projectSchemas = data.projectSchemas || { Default: [] };
+                window.populateDropdown(projectTypeSelect, data.types || ['Engineering', 'Art', 'Other'], 'Select Project Type');
+                window.populateDropdown(document.getElementById('year'), data.years || ['2020', '2021', '2022', '2023', '2024', '2025'], 'Select Year');
+                window.populateDropdown(document.getElementById('department'), data.departments || ['Mechanical Engineering', 'Computer Science', 'Fine Arts'], 'Select Department');
+                window.populateDropdown(document.getElementById('category'), data.categories || ['Robotics', 'Software', 'Painting'], 'Select Category');
+                tagsInput.placeholder = data.tools && data.tools.length > 0 ? `e.g., ${data.tools.slice(0, 3).join(', ')}` : 'e.g., SolidWorks, Python, ENGR 101';
+                renderDynamicFields();
+            } catch (error) {
+                console.error('Error loading filter options:', error);
+                Toastify({ text: 'Error loading project options.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                window.projectSchemas = { Default: [] };
+                window.populateDropdown(projectTypeSelect, ['Engineering', 'Art', 'Other'], 'Select Project Type');
+                window.populateDropdown(document.getElementById('year'), ['2020', '2021', '2022', '2023', '2024', '2025'], 'Select Year');
+                window.populateDropdown(document.getElementById('department'), ['Mechanical Engineering', 'Computer Science', 'Fine Arts'], 'Select Department');
+                window.populateDropdown(document.getElementById('category'), ['Robotics', 'Software', 'Painting'], 'Select Category');
+                tagsInput.placeholder = 'e.g., SolidWorks, Python, ENGR 101';
+                renderDynamicFields();
             }
-            await submitProject(false); // Draft
-        });
+        }
 
-        function validateForm(isPublishing) {
-            if (!document.getElementById('title').value.trim()) {
-                Toastify({ text: 'Project Title is required.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                return false;
-            }
-            if (isPublishing) {
-                if (!projectTypeSelect.value) {
-                    Toastify({ text: 'Project Type is required to publish.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+        // Dynamic Fields
+        function renderDynamicFields() {
+            dynamicFieldsContainer.innerHTML = '';
+            const selectedType = projectTypeSelect.value || 'Default';
+            const schema = window.projectSchemas[selectedType] || window.projectSchemas.Default;
+            console.log('Rendering fields for type:', selectedType, schema);
+            schema.forEach(field => {
+                const fieldDiv = document.createElement('div');
+                fieldDiv.classList.add('mb-3');
+                const requiredAttr = field.required ? 'required aria-required="true"' : '';
+                let inputHtml = '';
+                if (field.type === 'file') {
+                    inputHtml = `
+                        <div class="dropzone p-3 border rounded text-center" id="${field.name}Dropzone" role="region" aria-label="Dropzone for ${field.label}">
+                            <p class="mb-0">Drag & drop ${field.label} or click to select (${field.accept}, max ${field.name === 'CADFile' ? '10MB' : '2MB'})</p>
+                            <input type="file" class="form-control d-none" id="${field.name}" name="${field.name}" accept="${field.accept}" ${requiredAttr}>
+                        </div>`;
+                    if (field.name === 'CADFile') {
+                        inputHtml += `
+                            <div id="${field.name}Preview" class="mt-2" style="display: none;">
+                                <model-viewer src="" alt="${field.label} preview" camera-controls auto-rotate style="width: 100%; height: 300px; background-color: #f8f9fa;"></model-viewer>
+                                <small class="form-text text-muted">Note: STEP files are not previewable in-browser. Convert to STL or OBJ for preview.</small>
+                            </div>`;
+                    }
+                } else if (field.type === 'textarea') {
+                    inputHtml = `<textarea class="form-control" id="${field.name}" name="${field.name}" rows="4" placeholder="${field.placeholder}" ${requiredAttr}></textarea>`;
+                } else {
+                    inputHtml = `<input type="${field.type}" class="form-control" id="${field.name}" name="${field.name}" placeholder="${field.placeholder}" ${requiredAttr}>`;
+                }
+                fieldDiv.innerHTML = `
+                    <label for="${field.name}" class="form-label">${field.label} ${field.required ? '<span class="text-danger">*</span>' : ''}</label>
+                    ${inputHtml}
+                    ${field.note ? `<small class="form-text text-muted">${field.note}</small>` : ''}
+                    <div class="invalid-feedback">${field.label} is required.</div>
+                `;
+                dynamicFieldsContainer.appendChild(fieldDiv);
+
+                if (field.type === 'file') {
+                    const dropzone = fieldDiv.querySelector(`#${field.name}Dropzone`);
+                    const fileInput = fieldDiv.querySelector(`#${field.name}`);
+                    setupDropzone(dropzone, fileInput);
+                    fileInput.addEventListener('change', () => {
+                        validateFileSize(fileInput, field.name === 'CADFile' ? 10 : 2, field.label);
+                        if (field.name === 'CADFile' && fileInput.files[0]) {
+                            previewCADFile(fileInput.files[0], `${field.name}Preview`);
+                        }
+                    });
+                }
+            });
+        }
+
+        // File Validation
+        function validateFileSize(input, maxSizeMB, fieldName) {
+            if (input.files && input.files[0]) {
+                const fileSizeMB = input.files[0].size / (1024 * 1024);
+                if (fileSizeMB > maxSizeMB) {
+                    Toastify({ text: `${fieldName} exceeds ${maxSizeMB}MB limit.`, duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                    input.value = '';
+                    if (fieldName === 'Project Image') {
+                        imagePreview.style.display = 'none';
+                    } else if (fieldName === 'CADFile') {
+                        const cadPreview = document.getElementById(`${fieldName}Preview`);
+                        if (cadPreview) cadPreview.style.display = 'none';
+                    }
                     return false;
                 }
-                if (!document.getElementById('description').value.trim()) {
-                    Toastify({ text: 'Description is required to publish.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                    return false;
-                }
-                if (!imageInput.files[0]) {
-                    Toastify({ text: 'Project Image is required to publish.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                    return false;
-                }
-                if (!validateFileSize(imageInput, 2, 'Project Image')) return false;
-                const selectedTags = document.getElementById('tags').value.split(',').filter(t => t.trim()).length;
-                const coreTags = [document.getElementById('year').value, document.getElementById('department').value, document.getElementById('category').value].filter(t => t).length;
-                if (selectedTags === 0 && coreTags === 0) {
-                    Toastify({ text: 'At least one tag (General or Core) is required to publish.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                    return false;
-                }
-                if (!validateDynamicFields()) {
-                    Toastify({ text: 'Please fill out all required fields for the selected Project Type.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                    return false;
-                }
+                return true;
             }
             return true;
         }
 
-        function validateDynamicFields() {
-            const currentSchema = window.projectSchemas[projectTypeSelect.value] || [];
-            let isValid = true;
-            currentSchema.forEach(field => {
-                if (field.required) {
-                    const input = document.getElementById(field.name);
-                    if (input) {
-                        if (input.type === 'file' && !input.files[0]) {
-                            isValid = false;
-                        } else if (input.type !== 'file' && !input.value.trim()) {
-                            isValid = false;
-                        }
-                        if (field.name === 'CADFile' && input.files[0] && !validateFileSize(input, 10, 'CAD File')) {
-                            isValid = false;
-                        }
-                    }
+        // Image Preview
+        function previewImage(file) {
+            if (file && ['image/jpeg', 'image/png', 'image/gif'].includes(file.type)) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    imagePreviewImg.src = e.target.result;
+                    imagePreview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                imagePreview.style.display = 'none';
+            }
+        }
+
+        // CAD Preview
+        function previewCADFile(file, previewId) {
+            const previewContainer = document.getElementById(previewId);
+            const modelViewer = previewContainer.querySelector('model-viewer');
+            if (file && (['model/obj', 'model/gltf-binary', 'model/gltf+json'].includes(file.type) || file.name.match(/\.(obj|stl|gltf|glb)$/i))) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const blob = new Blob([e.target.result], { type: file.type });
+                    modelViewer.src = URL.createObjectURL(blob);
+                    previewContainer.style.display = 'block';
+                };
+                reader.readAsArrayBuffer(file);
+            } else {
+                previewContainer.style.display = 'none';
+                if (file && file.name.match(/\.step$/i)) {
+                    Toastify({ text: 'STEP files cannot be previewed in-browser. Convert to STL or OBJ.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                }
+            }
+        }
+
+        // Drag-and-Drop
+        function setupDropzone(dropzone, fileInput) {
+            dropzone.addEventListener('click', () => fileInput.click());
+            dropzone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropzone.classList.add('bg-light');
+            });
+            dropzone.addEventListener('dragleave', () => {
+                dropzone.classList.remove('bg-light');
+            });
+            dropzone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropzone.classList.remove('bg-light');
+                if (e.dataTransfer.files.length) {
+                    fileInput.files = e.dataTransfer.files;
+                    fileInput.dispatchEvent(new Event('change'));
                 }
             });
+        }
+
+        // Collaborator Functions
+        function updateCollaboratorIdsHiddenInput() {
+            if (collaboratorIdsHiddenInput) {
+                collaboratorIdsHiddenInput.value = selectedCollaboratorIds.join(',');
+            }
+        }
+
+        function addCollaboratorChip(userId, userName, profilePic) {
+            if (!selectedCollaboratorIds.includes(userId)) {
+                selectedCollaboratorIds.push(userId);
+                const chip = document.createElement('div');
+                chip.classList.add('collaborator-chip', 'd-flex', 'align-items-center', 'bg-light', 'border', 'rounded', 'px-2', 'py-1');
+                chip.innerHTML = `
+                    <img src="${profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'}" class="rounded-circle me-1" style="width: 24px; height: 24px; object-fit: cover;" alt="${userName}">
+                    <span>${userName}</span>
+                    <button type="button" class="btn-close btn-close-small ms-2" aria-label="Remove collaborator"></button>
+                `;
+                chip.querySelector('.btn-close').addEventListener('click', () => {
+                    selectedCollaboratorIds = selectedCollaboratorIds.filter(id => id !== userId);
+                    chip.remove();
+                    updateCollaboratorIdsHiddenInput();
+                });
+                selectedCollaboratorsDisplay.appendChild(chip);
+                updateCollaboratorIdsHiddenInput();
+                collaboratorSearchInput.value = '';
+                collaboratorSearchResults.style.display = 'none';
+            }
+        }
+
+        // Tags Autocomplete
+        async function loadTagsSuggestions(query) {
+            if (!query) {
+                tagsSuggestions.style.display = 'none';
+                return;
+            }
+            try {
+                const response = await fetch('/dynamic-filter-options', { credentials: 'include' });
+                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                const data = await response.json();
+                const tools = data.tools || [];
+                const filteredTools = tools.filter(t => t.toLowerCase().includes(query.toLowerCase()));
+                tagsSuggestions.innerHTML = filteredTools.map(t => `
+                    <div class="list-group-item list-group-item-action" role="button" tabindex="0">${t}</div>
+                `).join('');
+                tagsSuggestions.style.display = filteredTools.length > 0 ? 'block' : 'none';
+                tagsSuggestions.querySelectorAll('.list-group-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const currentTags = tagsInput.value.split(',').map(t => t.trim()).filter(t => t);
+                        if (!currentTags.includes(item.textContent)) {
+                            currentTags.push(item.textContent);
+                            tagsInput.value = currentTags.join(', ');
+                        }
+                        tagsSuggestions.style.display = 'none';
+                    });
+                    item.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') item.click();
+                    });
+                });
+            } catch (error) {
+                console.error('Error loading tags suggestions:', error);
+                tagsSuggestions.style.display = 'none';
+            }
+        }
+
+        // Form Validation
+        function validateForm(isPublishing) {
+            let isValid = true;
+            const requiredFields = isPublishing ? ['title', 'projectType', 'description', 'image'] : ['title'];
+            requiredFields.forEach(id => {
+                const input = document.getElementById(id);
+                if (!input.value.trim() && (!input.type === 'file' || !input.files[0])) {
+                    input.classList.add('is-invalid');
+                    isValid = false;
+                } else {
+                    input.classList.remove('is-invalid');
+                }
+            });
+            if (isPublishing) {
+                const tags = tagsInput.value.split(',').filter(t => t.trim());
+                const coreTags = [document.getElementById('year').value, document.getElementById('department').value, document.getElementById('category').value].filter(t => t);
+                if (tags.length === 0 && coreTags.length === 0) {
+                    tagsInput.classList.add('is-invalid');
+                    Toastify({ text: 'At least one tag is required to publish.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                    isValid = false;
+                } else {
+                    tagsInput.classList.remove('is-invalid');
+                }
+                const schema = window.projectSchemas[projectTypeSelect.value] || window.projectSchemas.Default;
+                schema.forEach(field => {
+                    if (field.required) {
+                        const input = document.getElementById(field.name);
+                        if (input && (!input.value.trim() || (input.type === 'file' && !input.files[0]))) {
+                            input.classList.add('is-invalid');
+                            isValid = false;
+                        } else if (input) {
+                            input.classList.remove('is-invalid');
+                        }
+                    }
+                });
+            }
             return isValid;
         }
 
-        async function submitProject(isPublishedStatus) {
+        // Form Submission
+        async function submitProject(isPublished) {
+            if (!validateForm(isPublished)) return;
             const formData = new FormData();
             formData.append('title', document.getElementById('title').value.trim());
             formData.append('projectType', projectTypeSelect.value || 'Other');
@@ -363,26 +445,23 @@ document.addEventListener('DOMContentLoaded', () => {
             formData.append('year', document.getElementById('year').value);
             formData.append('department', document.getElementById('department').value);
             formData.append('category', document.getElementById('category').value);
-            const generalTags = document.getElementById('tags').value.split(',').map(t => t.trim()).filter(t => t);
+            const tags = tagsInput.value.split(',').map(t => t.trim()).filter(t => t);
             const coreTags = [document.getElementById('year').value, document.getElementById('department').value, document.getElementById('category').value].filter(t => t);
-            const uniqueTags = [...new Set([...generalTags, ...coreTags])];
-            formData.append('tags', uniqueTags.join(','));
+            formData.append('tags', [...new Set([...tags, ...coreTags])].join(','));
             formData.append('collaboratorIds', collaboratorIdsHiddenInput.value);
             formData.append('otherContributors', document.getElementById('otherContributors').value);
             formData.append('resources', document.getElementById('resources').value);
-            formData.append('isPublished', isPublishedStatus ? 'true' : 'false');
+            formData.append('isPublished', isPublished);
             if (imageInput.files[0]) {
                 formData.append('image', imageInput.files[0]);
             }
-            const currentSchema = window.projectSchemas[projectTypeSelect.value] || [];
-            currentSchema.forEach(field => {
+            const schema = window.projectSchemas[projectTypeSelect.value] || window.projectSchemas.Default;
+            schema.forEach(field => {
                 const input = document.getElementById(field.name);
-                if (input) {
-                    if (input.type === 'file' && input.files[0]) {
-                        formData.append(field.name, input.files[0]);
-                    } else {
-                        formData.append(field.name, input.value);
-                    }
+                if (input && input.type === 'file' && input.files[0]) {
+                    formData.append(field.name, input.files[0]);
+                } else if (input) {
+                    formData.append(field.name, input.value);
                 }
             });
 
@@ -392,42 +471,85 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: formData,
                     credentials: 'include'
                 });
+                const data = await response.json();
                 if (response.ok) {
-                    const data = await response.json();
                     Toastify({ text: data.message, duration: 3000, style: { background: '#28a745' } }).showToast();
                     uploadForm.reset();
                     selectedCollaboratorIds = [];
                     selectedCollaboratorsDisplay.innerHTML = '';
-                    updateCollaboratorIdsHiddenInput();
+                    imagePreview.style.display = 'none';
                     dynamicFieldsContainer.innerHTML = '';
                     setTimeout(() => window.location.href = data.redirect, 3000);
                 } else {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || errorData.details || 'Failed to process project');
+                    throw new Error(data.error || 'Failed to process project');
                 }
             } catch (error) {
-                console.error('Error processing project:', error);
-                Toastify({ text: error.message || 'Error processing project', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                console.error('Error submitting project:', error);
+                Toastify({ text: error.message, duration: 3000, style: { background: '#e74c3c' } }).showToast();
             }
         }
-    }
 
-    if (cancelUploadBtn) {
-        cancelUploadBtn.addEventListener('click', () => {
-            uploadForm.reset();
-            selectedCollaboratorIds = [];
-            selectedCollaboratorsDisplay.innerHTML = '';
-            updateCollaboratorIdsHiddenInput();
-            dynamicFieldsContainer.innerHTML = '';
-            Toastify({ text: 'Upload cancelled', duration: 2000, style: { background: '#6c757d' } }).showToast();
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            window.loadUserProfileInHeader();
+            loadProjectSchemas();
+            projectTypeSelect.addEventListener('change', () => {
+                console.log('Project type changed to:', projectTypeSelect.value);
+                renderDynamicFields();
+            });
+            collaboratorSearchInput.addEventListener('input', () => {
+                clearTimeout(debounceTimeout);
+                debounceTimeout = setTimeout(() => {
+                    const query = collaboratorSearchInput.value.trim();
+                    window.searchUsers(query, collaboratorSearchResults, addCollaboratorChip, selectedCollaboratorIds);
+                }, DEBOUNCE_DELAY_SEARCH);
+            });
+            collaboratorSearchInput.addEventListener('focus', () => {
+                if (collaboratorSearchResults.children.length > 0) {
+                    collaboratorSearchResults.style.display = 'block';
+                }
+            });
+            document.addEventListener('click', (e) => {
+                if (!collaboratorSearchResults.contains(e.target) && e.target !== collaboratorSearchInput) {
+                    collaboratorSearchResults.style.display = 'none';
+                }
+                if (!tagsSuggestions.contains(e.target) && e.target !== tagsInput) {
+                    tagsSuggestions.style.display = 'none';
+                }
+            });
+            imageInput.addEventListener('change', () => {
+                validateFileSize(imageInput, 2, 'Project Image');
+                previewImage(imageInput.files[0]);
+            });
+            tagsInput.addEventListener('input', () => {
+                clearTimeout(debounceTimeout);
+                debounceTimeout = setTimeout(() => {
+                    const query = tagsInput.value.split(',').pop().trim();
+                    loadTagsSuggestions(query);
+                }, DEBOUNCE_DELAY_SEARCH);
+            });
+            tagsInput.addEventListener('focus', () => {
+                const query = tagsInput.value.split(',').pop().trim();
+                loadTagsSuggestions(query);
+            });
+            setupDropzone(imageDropzone, imageInput);
+            uploadProjectBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                submitProject(true);
+            });
+            saveDraftBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                submitProject(false);
+            });
+            cancelUploadBtn.addEventListener('click', () => {
+                uploadForm.reset();
+                selectedCollaboratorIds = [];
+                selectedCollaboratorsDisplay.innerHTML = '';
+                imagePreview.style.display = 'none';
+                dynamicFieldsContainer.innerHTML = '';
+                Toastify({ text: 'Upload cancelled', duration: 2000, style: { background: '#6c757d' } }).showToast();
+            });
         });
-    }
-
-    window.addEventListener('load', () => {
-        window.loadUserProfileInHeader();
-        loadProjectSchemas();
-    });
-});
-</script>
+    </script>
 </body>
 </html>

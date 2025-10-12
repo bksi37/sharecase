@@ -1,82 +1,200 @@
 /* public/css/_forms.css */
 
+/* ==================================================================== */
+/* 1. Base Form Components & Utilities (Including New Overrides)          */
+/* ==================================================================== */
+
+/* Standard invalid state (for consistency with Bootstrap validation) */
+.form-control.is-invalid, .was-validated .form-control:invalid {
+    border-color: #dc3545;
+}
+
+/* Base form spacing */
+.form-group {
+    margin-bottom: 20px;
+}
+
+/* Taller, consistent text area styling */
+#commentText {
+    min-height: 90px;
+    max-height: 180px;
+    resize: vertical;
+    font-size: 16px;
+    border-color: #ced4da;
+    border-radius: 8px;
+    padding: 12px;
+}
+
+#commentText:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.25rem rgba(0, 123, 255, 0.25);
+}
+
+/* ==================================================================== */
+/* 2. Authentication and General Containers                               */
+/* ==================================================================== */
+
 /* Auth Container (for signup/login/create-profile) */
 .auth-container {
-    max-width: 600px; /* Consistent width for auth forms */
+    max-width: 600px;
     margin: 0 auto;
-    padding: 40px; /* Increased padding */
+    padding: 40px;
     background: #ffffff;
-    border-radius: 12px; /* More rounded */
-    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08); /* More prominent but still soft shadow */
-    border: 1px solid #f0f0f0; /* Subtle border */
+    border-radius: 12px;
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+    border: 1px solid #f0f0f0;
 }
 
 .auth-container h2 {
-    color: #444444; /* Darker heading */
+    color: #444444;
     text-align: center;
     margin-bottom: 30px;
-}
-
-/* Upload project styles */
-.upload-container {
-    max-width: 800px;
-    margin: 80px auto 50px; /* Adjusted top margin for fixed header */
-    padding: 40px; /* Increased padding */
-    background: #ffffff;
-    border-radius: 12px; /* More rounded */
-    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08); /* More prominent but still soft shadow */
-}
-
-.upload-container h2 {
-    color: #444444; /* Darker heading */
-    text-align: center;
-    margin-bottom: 30px;
-}
-
-.drop-zone {
-    border: 2px dashed #cccccc; /* Slightly darker dashed border */
-    padding: 30px; /* More padding */
-    text-align: center;
-    cursor: pointer;
-    border-radius: 10px; /* More rounded */
-    margin-bottom: 25px;
-    background: #fdfdfd; /* Very subtle off-white */
-    transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
-}
-
-.drop-zone.dragover {
-    background: #e9f0ff; /* Light blue on drag */
-    border-color: #007bff; /* Blue border on drag */
-}
-
-.image-preview img {
-    max-width: 100%;
-    height: auto;
-    border-radius: 10px; /* Consistent rounded corners */
-    border: 1px solid #e0e0e0; /* Subtle border */
 }
 
 /* Filter Form Styles (for modals or dedicated filter pages) */
 .filter-form {
     max-width: 600px;
-    margin: 30px auto; /* Adjusted margin */
-    background: #ffffff; /* White background for filters */
+    margin: 30px auto;
+    background: #ffffff;
     padding: 30px;
     border-radius: 10px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
-    display: none; /* Hidden by default, shown by JS */
+    display: none;
 }
 
 .filter-form.active {
     display: block;
 }
 
+/* Comment Input Box Styles */
+.comment-input-box {
+    background-color: #ffffff;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e0e0e0;
+}
+
+/* ==================================================================== */
+/* 3. Project Upload & Preview Styles                                     */
+/* ==================================================================== */
+
+/* Upload project container */
+.upload-container {
+    max-width: 800px;
+    margin: 80px auto 50px;
+    padding: 40px;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+}
+
+.upload-container h2 {
+    color: #444444;
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+/* Drop Zone Styles (Merge drop-zone and dropzone) */
+.drop-zone, .dropzone {
+    border: 2px dashed #cccccc; /* Base dashed border */
+    padding: 30px;
+    text-align: center;
+    cursor: pointer;
+    border-radius: 10px;
+    margin-bottom: 25px;
+    background: #fdfdfd; 
+    transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+}
+
+/* Drop Zone Specific overrides */
+.dropzone { /* Using the more generic name for the new base style */
+    background-color: #f8f9fa;
+    border: 2px dashed #6c757d;
+}
+
+.dropzone.bg-light { /* For when a light background is applied */
+    background-color: #e9ecef;
+}
+
+.drop-zone.dragover {
+    background: #e9f0ff;
+    border-color: #007bff;
+}
+
+/* Project Image Preview Styles */
+.image-preview img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 10px;
+    border: 1px solid #e0e0e0;
+}
+
+.project-image-preview {
+    width: auto;
+    height: auto;
+    object-fit: none;
+    display: block;
+    margin: 0 auto;
+}
+
+/* 3D Model Viewer Component */
+model-viewer {
+    width: 100%;
+    height: 400px; /* Define a size for the viewer */
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    margin: 15px 0;
+    display: block;
+}
+
+/* ==================================================================== */
+/* 4. Collaborator Search and Chips                                     */
+/* ==================================================================== */
+
+.collaborator-input-container {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 8px; /* Internal padding for better look with chips */
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+}
+
+.collaborator-search-input {
+    /* Important overrides to make it blend with the container */
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    flex-grow: 1;
+    min-width: 150px;
+}
+
+.collaborator-chip {
+    font-size: 0.9rem;
+}
+
+/* List group for autocomplete results */
+.list-group-item-action {
+    cursor: pointer;
+}
+
+.list-group-item-action:hover {
+    background-color: #f8f9fa;
+}
+
+/* ==================================================================== */
+/* 5. Settings and Profile Specific Styles                               */
+/* ==================================================================== */
+
 /* Settings Page Styles */
 .settings-form {
-    max-width: 700px; /* Slightly wider settings form */
-    margin: 80px auto 50px; /* Adjusted top margin */
+    max-width: 700px;
+    margin: 80px auto 50px;
     background: #ffffff;
-    padding: 40px; /* Increased padding */
+    padding: 40px;
     border-radius: 12px;
     box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
 }
@@ -87,22 +205,18 @@
     text-align: center;
 }
 
-.form-group {
-    margin-bottom: 20px; /* Spacing between form groups */
-}
-
 .password-section {
     display: none;
-    margin-top: 30px; /* Space above password section */
+    margin-top: 30px;
     padding-top: 20px;
     border-top: 1px solid #f0f0f0;
 }
 
 .danger-zone {
     border: 1px solid #dc3545;
-    padding: 25px; /* More padding */
+    padding: 25px;
     border-radius: 8px;
-    background-color: #fffafa; /* Very light red background */
+    background-color: #fffafa;
     margin-top: 40px;
 }
 
@@ -118,45 +232,11 @@
 }
 
 .activity-log li {
-    padding: 12px 0; /* Slightly more padding */
-    border-bottom: 1px solid #eeeeee; /* Lighter border */
+    padding: 12px 0;
+    border-bottom: 1px solid #eeeeee;
     font-size: 15px;
     color: #555;
 }
 .activity-log li:last-child {
     border-bottom: none;
-}
-
-/* Comment Input Box Styles */
-.comment-input-box {
-    background-color: #ffffff;
-    border-radius: 12px;
-    padding: 25px; /* More padding */
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
-    border: 1px solid #e0e0e0;
-}
-
-#commentText {
-    min-height: 90px; /* Taller textarea */
-    max-height: 180px;
-    resize: vertical;
-    font-size: 16px;
-    border-color: #ced4da;
-    border-radius: 8px;
-    padding: 12px;
-}
-
-#commentText:focus {
-    border-color: #007bff;
-    box-shadow: 0 0 0 0.25rem rgba(0, 123, 255, 0.25);
-}
-
-
-/* Project Image Preview Styles */
-.project-image-preview {
-    width: auto;
-    height: auto;
-    object-fit: none; /* Preserve aspect ratio, no cropping */
-    display: block;
-    margin: 0 auto; /* Center the image */
 }
