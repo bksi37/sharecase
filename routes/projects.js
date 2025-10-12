@@ -17,14 +17,14 @@ const router = express.Router();
 // ---------------------------------------------------------------------
 router.post('/add-project', isAuthenticated, isProfileComplete, upload.fields([
     { name: 'image', maxCount: 1 },
-    { name: 'artworkImage', maxCount: 1 },
-    { name: 'CADFile', maxCount: 1 }
+    { name: 'CADFile', maxCount: 1 },
+    { name: 'artworkImage', maxCount: 1 }
 ]), async (req, res) => {
     try {
         const {
             title, projectType, description, problemStatement, tags, year, department, category,
             collaboratorIds, otherContributors, resources,
-            technicalDescription, toolsSoftwareUsed, functionalGoals,
+            technicalDescription, toolsSoftware, functionalGoals,
             mediumTechnique, artistStatement, exhibitionHistory,
             isPublished
         } = req.body;
@@ -43,7 +43,15 @@ router.post('/add-project', isAuthenticated, isProfileComplete, upload.fields([
             if (!req.files['image']) {
                 return res.status(400).json({ error: 'Project Image is required to publish.' });
             }
-            if (!tags || tags.split(',').filter(t => t.trim()).length === 0) {
+            if (projectType === 'Engineering' && !req.files['CADFile']) {
+                return res.status(400).json({ error: 'CAD File is required for Engineering projects.' });
+            }
+            if (projectType === 'Art' && !req.files['artworkImage']) {
+                return res.status(400).json({ error: 'Artwork Image is required for Art projects.' });
+            }
+            const tagArray = tags ? tags.split(',').map(t => t.trim()).filter(t => t) : [];
+            const coreTags = [year, department, category].filter(t => t);
+            if (tagArray.length === 0 && coreTags.length === 0) {
                 return res.status(400).json({ error: 'At least one tag is required to publish.' });
             }
         }
@@ -59,8 +67,8 @@ router.post('/add-project', isAuthenticated, isProfileComplete, upload.fields([
         const parsedResources = resources
             ? resources.split(',').map(r => r.trim()).filter(r => r)
             : [];
-        const parsedToolsSoftware = toolsSoftwareUsed
-            ? toolsSoftwareUsed.split(',').map(t => t.trim()).filter(t => t)
+        const parsedToolsSoftware = toolsSoftware
+            ? toolsSoftware.split(',').map(t => t.trim()).filter(t => t)
             : [];
 
         // Image uploads
@@ -68,27 +76,30 @@ router.post('/add-project', isAuthenticated, isProfileComplete, upload.fields([
         if (req.files['image']) {
             const result = await cloudinary.uploader.upload(req.files['image'][0].path, {
                 folder: 'sharecase/projects',
-                use_filename: true
+                use_filename: true,
+                allowed_formats: ['jpg', 'png', 'gif']
             });
             imageUrl = result.secure_url;
-        }
-
-        let artworkImageUrl = '';
-        if (req.files['artworkImage'] && projectType === 'Art') {
-            const result = await cloudinary.uploader.upload(req.files['artworkImage'][0].path, {
-                folder: 'sharecase/artwork',
-                use_filename: true
-            });
-            artworkImageUrl = result.secure_url;
         }
 
         let cadFileUrl = '';
         if (req.files['CADFile'] && projectType === 'Engineering') {
             const result = await cloudinary.uploader.upload(req.files['CADFile'][0].path, {
                 folder: 'sharecase/cad',
-                use_filename: true
+                use_filename: true,
+                allowed_formats: ['stl', 'obj', 'gltf', 'glb', 'step']
             });
             cadFileUrl = result.secure_url;
+        }
+
+        let artworkImageUrl = '';
+        if (req.files['artworkImage'] && projectType === 'Art') {
+            const result = await cloudinary.uploader.upload(req.files['artworkImage'][0].path, {
+                folder: 'sharecase/artwork',
+                use_filename: true,
+                allowed_formats: ['jpg', 'png', 'gif']
+            });
+            artworkImageUrl = result.secure_url;
         }
 
         // Points calculation
@@ -107,7 +118,7 @@ router.post('/add-project', isAuthenticated, isProfileComplete, upload.fields([
             department,
             category,
             problemStatement: problemStatement || '',
-            tags: parsedTags,
+            tags: [...new Set([...parsedTags, year, department, category].filter(t => t))],
             collaborators: parsedCollaboratorIds,
             otherContributors: parsedOtherContributors,
             resources: parsedResources,
@@ -136,7 +147,7 @@ router.post('/add-project', isAuthenticated, isProfileComplete, upload.fields([
                 req.session.userId,
                 {
                     $inc: { totalPoints: projectPoints },
-                    $push: { activityLog: { action: `Published project: ${project.title} (+${projectPoints} points)` } }
+                    $push: { activityLog: { action: `Published project: ${project.title} (+${projectPoints} points)`, timestamp: new Date() } }
                 }
             );
         }
@@ -149,7 +160,7 @@ router.post('/add-project', isAuthenticated, isProfileComplete, upload.fields([
             );
         }
 
-        const message = isPublished === 'true' ? 'Project uploaded successfully!' : 'Project saved as draft!';
+        const message = isPublished === 'true' ? 'Project published successfully!' : 'Project saved as draft!';
         const redirectPath = isPublished === 'true' ? `/project/${project._id}` : '/profile.html?tab=drafts';
         res.status(200).json({ success: true, message, projectId: project._id, redirect: redirectPath });
     } catch (error) {
@@ -161,7 +172,6 @@ router.post('/add-project', isAuthenticated, isProfileComplete, upload.fields([
         res.status(500).json({ error: 'Server error', details: error.message });
     }
 });
-
 
 
 // ---------------------------------------------------------------------
@@ -281,17 +291,33 @@ router.get('/search', async (req, res) => {
 // ---------------------------------------------------------------------
 router.get('/dynamic-filter-options', async (req, res) => {
     try {
-        // 🛑 FIX: Removed authentication middleware to allow public access
         res.json({
+            success: true,
             courses: tagsConfig.courses,
-            categories: tagsConfig.courses, // Inconsistency: using courses as categories, keeping for now.
+            categories: tagsConfig.courses, // Maintaining your original inconsistency
             years: tagsConfig.years,
             types: tagsConfig.types,
-            departments: tagsConfig.departments
+            departments: tagsConfig.departments,
+            tools: tagsConfig.tools,
+            projectSchemas: {
+                Default: [],
+                Engineering: [
+                    { name: 'CADFile', label: 'CAD File', type: 'file', accept: '.stl,.obj,.gltf,.glb,.step', required: true, note: 'Upload STL, OBJ, GLTF, GLB, or STEP (max 10MB). STEP files are not previewable.' },
+                    { name: 'technicalDescription', label: 'Technical Description', type: 'textarea', placeholder: 'Describe the technical aspects of your project.', required: true },
+                    { name: 'toolsSoftware', label: 'Tools/Software Used', type: 'text', placeholder: 'e.g., SolidWorks, AutoCAD', required: true },
+                    { name: 'functionalGoals', label: 'Functional Goals', type: 'textarea', placeholder: 'What are the functional objectives?', required: false }
+                ],
+                Art: [
+                    { name: 'artworkImage', label: 'Artwork Image', type: 'file', accept: 'image/jpeg,image/png,image/gif', required: true, note: 'Upload JPEG, PNG, or GIF (max 2MB)' },
+                    { name: 'mediumTechnique', label: 'Medium/Technique', type: 'text', placeholder: 'e.g., Oil on Canvas', required: true },
+                    { name: 'artistStatement', label: 'Artist Statement', type: 'textarea', placeholder: 'Describe the concept behind your artwork.', required: true },
+                    { name: 'exhibitionHistory', label: 'Exhibition History', type: 'text', placeholder: 'e.g., Exhibited at Art Fair 2023', required: false }
+                ]
+            }
         });
     } catch (error) {
         console.error('Error fetching dynamic filter options:', error);
-        res.status(500).json({ error: 'Server error' });
+        res.status(500).json({ success: false, error: 'Server error' });
     }
 });
 
