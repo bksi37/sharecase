@@ -1,15 +1,15 @@
+// middleware/upload.js
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
+require('dotenv').config();
 
-// Configure Cloudinary
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-// Multer configuration for multiple fields
 const uploadFields = multer({
     storage: new CloudinaryStorage({
         cloudinary: cloudinary,
@@ -17,81 +17,80 @@ const uploadFields = multer({
             if (!file) {
                 return {};
             }
+            let options = {};
+            const userIdIdentifier = req.user ? req.user._id : req.session.userId || Date.now();
+            // Using a simple check to safely split the original filename
+            const fileNamePart = file.originalname.includes('.') ? file.originalname.split('.')[0] : file.originalname;
+            const basePublicId = `${file.fieldname}-${userIdIdentifier}-${fileNamePart}`;
 
-            let options = {
-                format: 'auto'
-            };
-
+            // Default resource_type for image fields for clarity
+            if (['image', 'artworkImage', 'profilePic'].includes(file.fieldname)) {
+                options.resource_type = 'image';
+            }
+            
             switch (file.fieldname) {
                 case 'image':
                     options.folder = 'sharecase/projects';
-                    options.public_id = `project-${req.session.userId || Date.now()}-${file.originalname.split('.')[0]}`;
-                    console.log(`Uploading project image to: ${options.folder}, no transformation`);
+                    options.public_id = basePublicId;
+                    // options.format = 'auto' REMOVED: Cloudinary will now use the original format (PNG, JPEG, etc.)
                     break;
-
                 case 'artworkImage':
                     options.folder = 'sharecase/artwork';
-                    options.public_id = `artwork-${req.session.userId || Date.now()}-${file.originalname.split('.')[0]}`;
-                    console.log(`Uploading artwork image to: ${options.folder}, no transformation`);
+                    options.public_id = basePublicId;
+                    // options.format = 'auto' REMOVED
                     break;
-
                 case 'CADFile':
                     options.folder = 'sharecase/cad';
-                    options.public_id = `cad-${req.session.userId || Date.now()}-${file.originalname.split('.')[0]}`;
-                    options.resource_type = 'raw'; // For CAD files
-                    console.log(`Uploading CAD file to: ${options.folder}, no transformation`);
+                    options.public_id = basePublicId;
+                    options.resource_type = 'raw';
                     break;
-
+                case 'profilePic':
+                    options.folder = 'sharecase/profiles';
+                    // This public_id uses the user ID to ensure a unique, overwritable profile image
+                    options.public_id = `profile-${userIdIdentifier}`; 
+                    // options.format = 'auto' REMOVED
+                    options.transformation = [{ width: 500, height: 500, crop: 'fill' }];
+                    break;
                 default:
-                    if (file.fieldname === 'profilePic') {
-                        options.folder = 'sharecase/profiles';
-                        options.public_id = `profile-${req.session.userId || Date.now()}`;
-                        options.transformation = [{ width: 500, height: 500, crop: 'fill' }];
-                        console.log(`Uploading profile pic to: ${options.folder}, with 500x500 crop`);
-                    } else {
-                        return { resource_type: 'auto', folder: 'sharecase/unknown' };
-                    }
-                    break;
+                    options.resource_type = 'auto';
+                    options.folder = 'sharecase/unknown';
             }
-
             return options;
         }
     }),
-    limits: {
-        files: 3
-    },
+    limits: { fileSize: 10 * 1024 * 1024 }, // Global limit is 10MB
     fileFilter: (req, file, cb) => {
-        if (!file) {
-            return cb(null, true);
-        }
+        console.log(`Multer Received Field: ${file.fieldname} | Type: ${file.mimetype} | Size: ${file.size || 'unknown'} | Original Name: ${file.originalname}`);
+        const allowedImageFields = ['image', 'artworkImage', 'profilePic'];
+        const allowedCADFields = ['CADFile'];
+        
+        if (allowedImageFields.includes(file.fieldname)) {
+            const allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+            const maxSize = 2 * 1024 * 1024; // 2MB image limit
+            
+            if (!allowedImageTypes.includes(file.mimetype)) {
+                return cb(new Error(`Invalid file type for ${file.fieldname}. Allowed: JPEG, PNG, GIF, WEBP.`), false);
+            }
+            if (file.size && file.size > maxSize) {
+                return cb(new Error(`File ${file.fieldname} too large. Max 2MB.`), false);
+            }
+            cb(null, true);
 
-        const allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-        if (file.fieldname === 'image' || file.fieldname === 'artworkImage') {
-            if (allowedImageTypes.includes(file.mimetype)) {
-                if (file.size > 2 * 1024 * 1024) {
-                    return cb(new multer.MulterError('LIMIT_FILE_SIZE', 'Image file too large (max 2MB)'), false);
-                }
-                cb(null, true);
-            } else {
-                cb(new multer.MulterError('LIMIT_UNEXPECTED_FILE', 'Invalid image type'), false);
+        } else if (allowedCADFields.includes(file.fieldname)) {
+            const allowedCADExtensions = /\.(obj|gltf|glb|stl|step|iges)$/i;
+            const maxSize = 10 * 1024 * 1024; // 10MB CAD limit
+            
+            if (!file.originalname.match(allowedCADExtensions)) {
+                return cb(new Error(`Invalid CAD file type for ${file.fieldname}. Allowed: OBJ, GLTF, GLB, STL, STEP, IGES.`), false);
             }
-        } else if (file.fieldname === 'CADFile') {
-            if (file.originalname.match(/\.(obj|gltf|stl|step|iges)$/i)) {
-                if (file.size > 10 * 1024 * 1024) {
-                    return cb(new multer.MulterError('LIMIT_FILE_SIZE', 'CAD file too large (max 10MB)'), false);
-                }
-                cb(null, true);
-            } else {
-                cb(new multer.MulterError('LIMIT_UNEXPECTED_FILE', 'Invalid CAD file type'), false);
+            if (file.size && file.size > maxSize) {
+                return cb(new Error(`CAD file ${file.fieldname} too large. Max 10MB.`), false);
             }
-        } else if (file.fieldname === 'profilePic') {
-            if (allowedImageTypes.includes(file.mimetype)) {
-                cb(null, true);
-            } else {
-                cb(new multer.MulterError('LIMIT_UNEXPECTED_FILE', 'Invalid profile image type'), false);
-            }
+            cb(null, true);
+
         } else {
-            cb(new multer.MulterError('LIMIT_UNEXPECTED_FILE', 'Unknown file field'), false);
+            console.error('Multer Rejecting Unexpected Field:', file.fieldname);
+            cb(new Error(`The field '${file.fieldname}' is not permitted.`), false);
         }
     }
 });

@@ -8,7 +8,7 @@ module.exports = {
     tools: ['Python', 'SolidWorks', 'MATLAB', 'Oil Painting', 'Sustainability', 'AI'],
     projectSchemas: {
         Engineering: [
-            { name: 'CADFile', type: 'file', label: 'CAD File', accept: '.stl,.obj,.gltf', required: true, note: 'Max 10MB. Supported formats: STL, OBJ, GLTF. STEP files are uploaded but not previewable.' },
+            { name: 'CADFile', type: 'file', label: 'CAD File', accept: '.stl,.obj,.gltf', required: false, note: 'Max 10MB. Supported formats: STL, OBJ, GLTF. STEP files are uploaded but not previewable.' },
             { name: 'technicalDescription', type: 'textarea', label: 'Technical Description', placeholder: 'Describe the technical aspects of your project...', required: true },
             { name: 'toolsSoftware', type: 'text', label: 'Tools/Software Used', placeholder: 'e.g., SolidWorks, MATLAB', required: true },
             { name: 'functionalGoals', type: 'textarea', label: 'Functional Goals', placeholder: 'What were the functional objectives?', required: false }

@@ -18,6 +18,8 @@ window.renderCollaboratorSearchResults = renderCollaboratorSearchResults;
 window.populateDropdown = populateDropdown;
 window.loadDynamicFilterOptions = loadDynamicFilterOptions;
 window.performGlobalSearch = performGlobalSearch;
+window.toggleLike = toggleLike; // New global export
+window.deleteComment = deleteComment; // New global export
 window.DEBOUNCE_DELAY = DEBOUNCE_DELAY;
 window.searchTimeout = searchTimeout;
 
@@ -277,9 +279,29 @@ async function toggleFollow(targetUserId, followButton, callback) {
 }
 
 function renderProjectCard(project) {
+    // 🛑 FIX: Prioritize 'id' (from search/projects API response) but fall back to '_id'
+    const projectId = project.id || project._id;
+    
+    // Defensive check against missing/invalid ID
+    if (!projectId || projectId === 'undefined' || typeof projectId !== 'string' || projectId.length < 5) {
+        console.warn('Invalid project ID detected during render:', project);
+        return `
+            <div class="col">
+                <div class="card h-100">
+                    <img src="${project.image ? project.image.replace('/upload/', '/upload/w_500,h_500,c_fill/') : 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'}" class="card-img-top project-image" alt="${project.title || 'Project'}" style="object-fit: cover; height: 200px;" onerror="this.src='https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'">
+                    <div class="card-body">
+                        <h5 class="card-title">${project.title || 'Untitled'}</h5>
+                        <p class="card-text">${project.description ? project.description.substring(0, 100) + '...' : 'No description'}</p>
+                        <p class="text-danger mt-2">Error: Project link invalid or missing ID.</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
     const clickAction = currentLoggedInUserId
-        ? `window.location.href='/project.html?id=${project._id}'`
-        : `window.location.href='/login.html?redirectedFrom=/project.html?id=${project._id}'`;
+        ? `window.location.href='/project.html?id=${projectId}'`
+        : `window.location.href='/login.html?redirectedFrom=/project.html?id=${projectId}'`;
 
     const thumbnailURL = project.image
         ? project.image.replace('/upload/', '/upload/w_500,h_500,c_fill/')
@@ -306,7 +328,6 @@ function renderProjectCard(project) {
     `;
 }
 
-// scripts.js (Inside renderUserSuggestion)
 function renderUserSuggestion(user) {
     return `
         <div class="autocomplete-item" onclick="window.location.href='/profile/${user._id}'"> 
@@ -341,7 +362,7 @@ async function loadDynamicFilterOptions() {
     }
 
     try {
-        const response = await fetch('/dynamic-filter-options', { credentials: 'include' });
+        const response = await fetch('/projects/dynamic-filter-options', { credentials: 'include' });
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const tagsData = await response.json();
 
@@ -509,6 +530,7 @@ async function loadAllProjects() {
         }).showToast();
     }
 }
+
 async function searchUsers(query, resultsContainer, addChipCallback, selectedIds) {
     if (!query || !resultsContainer) {
         console.log('No query or resultsContainer for searchUsers:', { query, resultsContainer });
@@ -535,6 +557,7 @@ async function searchUsers(query, resultsContainer, addChipCallback, selectedIds
         }).showToast();
     }
 }
+
 function renderCollaboratorSearchResults(users, resultsContainer, addChipCallback, selectedIds) {
     resultsContainer.innerHTML = '';
     if (!users.length) {
@@ -572,4 +595,83 @@ function renderCollaboratorSearchResults(users, resultsContainer, addChipCallbac
     });
 
     resultsContainer.style.display = resultsContainer.children.length > 0 ? 'block' : 'none';
+}
+
+/**
+ * Toggles the like status for a project and updates the UI (via callback).
+ * @param {string} targetProjectId
+ * @param {function} callback Function to reload project details on success (e.g., loadProject)
+ */
+async function toggleLike(targetProjectId, callback) {
+    if (!currentLoggedInUserId) {
+        Toastify({
+            text: 'Please log in to like a project.',
+            duration: 3000,
+            style: { background: '#e74c3c' },
+        }).showToast();
+        // Redirect to login if not logged in
+        window.location.href = `/login.html?redirectedFrom=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+        return;
+    }
+
+    try {
+        const response = await fetch(`/projects/project/${targetProjectId}/like`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            credentials: 'include'
+        });
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            Toastify({
+                text: data.hasLiked ? 'Project liked! 🎉' : 'Project unliked.',
+                duration: 3000,
+                style: { background: data.hasLiked ? '#ff5858' : '#6c757d' },
+            }).showToast();
+            
+            if (callback) callback(); 
+        } else {
+            Toastify({
+                text: data.error || 'Failed to toggle like status.',
+                duration: 3000,
+                style: { background: '#e74c3c' },
+            }).showToast();
+        }
+    } catch (error) {
+        console.error('Error toggling like:', error);
+        Toastify({
+            text: 'Error toggling like status.',
+            duration: 3000,
+            style: { background: '#e74c3c' },
+        }).showToast();
+    }
+}
+
+/**
+ * Deletes a comment.
+ * @param {string} projectId
+ * @param {string} commentId
+ */
+async function deleteComment(projectId, commentId) {
+    if (!currentLoggedInUserId) return;
+    if (!confirm("Are you sure you want to delete this comment?")) return;
+    
+    try {
+        const response = await fetch(`/projects/project/${projectId}/comment/${commentId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            Toastify({ text: 'Comment deleted successfully!', duration: 3000, style: { background: '#28a745' } }).showToast();
+            return true;
+        } else {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to delete comment');
+        }
+    } catch (error) {
+        console.error('Error deleting comment:', error);
+        Toastify({ text: error.message || 'Error deleting comment', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+        return false;
+    }
 }

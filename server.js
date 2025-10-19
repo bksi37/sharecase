@@ -9,20 +9,19 @@ const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
 
-// Middleware and Config are imported early, but Models are not used until routes are required.
+// Middleware and Config
 const { isAuthenticated, isProfileComplete, authorizeAdmin } = require('./middleware/auth');
 const tags = require('./config/tags');
-// We require the models here to satisfy the routes, but we rely on the .then() block
-// to ensure no queries run before the connection is established.
+// Models (loaded for routes but used after connection)
 const Project = require('./models/Project');
 const User = require('./models/User');
 
 const app = express();
 
 app.set('trust proxy', 1);
-
 mongoose.set('strictQuery', true);
 
+// Session store
 const sessionStore = MongoStore.create({
     mongoUrl: process.env.MONGO_URL,
     collectionName: 'sessions',
@@ -30,15 +29,14 @@ const sessionStore = MongoStore.create({
     autoRemove: 'native'
 });
 
+// Middleware
 app.use(cors({
     origin: ['https://sharecase.live', 'http://localhost:3000'],
     credentials: true,
 }));
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-
 app.use(session({
     secret: process.env.SESSION_SECRET,
     resave: false,
@@ -53,40 +51,39 @@ app.use(session({
     }
 }));
 
+// Cloudinary config
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// Request logging
 app.use((req, res, next) => {
-    // FIX: Removed logging the session ID here as it's cleaner in the global error handler.
     console.log(`Request: ${req.method} ${req.url}`);
     next();
 });
 
-// *******************************************************************
-// FIX IMPLEMENTED HERE: Defer routes and server start until MongoDB connects
-// *******************************************************************
-
+// MongoDB connection and routes
 mongoose.connect(process.env.MONGO_URL, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => {
         console.log('MongoDB connected successfully');
 
-        // --- 1. ROUTE IMPORTS AND USAGE (MUST BE HERE) ---
+        // Route imports
         const authRoutes = require('./routes/auth');
         const profileRoutes = require('./routes/profile');
         const projectRoutes = require('./routes/projects');
         const adminRoutes = require('./routes/admin');
         const portfolioRoutes = require('./routes/portfolio');
-        
+
+        // Mount routes
         app.use('/', authRoutes);
         app.use('/profile', profileRoutes);
-        app.use('/', projectRoutes);
+        app.use('/projects', projectRoutes); // Fixed: Mount project routes at /projects
         app.use('/admin', adminRoutes);
         app.use('/portfolio', portfolioRoutes);
 
-        // --- 2. DATA-DEPENDENT ROUTES (Move here for safety) ---
+        // Data-dependent routes
         app.get('/profile/my-projects', isAuthenticated, isProfileComplete, async (req, res) => {
             try {
                 const projects = await Project.find({ userId: req.session.userId }).lean();
@@ -97,7 +94,7 @@ mongoose.connect(process.env.MONGO_URL, { useNewUrlParser: true, useUnifiedTopol
             }
         });
 
-        // --- 3. HTML FILE ROUTES (Can stay, but grouped here) ---
+        // HTML file routes
         app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'views', 'landing.html')));
         app.get('/signup.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'signup.html')));
         app.get('/login.html', (req, res) => res.sendFile(path.join(__dirname, 'views', 'login.html')));
@@ -119,7 +116,6 @@ mongoose.connect(process.env.MONGO_URL, { useNewUrlParser: true, useUnifiedTopol
             res.sendFile(path.join(__dirname, 'views', 'select-portfolio-type.html'));
         });
         app.get('/store-placeholder.html', (req, res) => {
-            // NOTE: Ensure 'views/store-placeholder.html' exists to avoid the ENOENT error.
             res.sendFile(path.join(__dirname, 'views', 'store-placeholder.html'));
         });
         app.get('/profile/:userId', (req, res) => {
@@ -134,10 +130,10 @@ mongoose.connect(process.env.MONGO_URL, { useNewUrlParser: true, useUnifiedTopol
             }
         });
 
-        // --- 4. STATIC ASSETS AND ERROR HANDLERS (Must be last) ---
+        // Static assets
         app.use(express.static(path.join(__dirname, 'public')));
-        // Removed: app.use(express.static(path.join(__dirname, 'views'))); // Redundant if files are served above
 
+        // 404 handler
         app.use((req, res, next) => {
             if (req.path === '/favicon.ico') {
                 return res.status(204).end();
@@ -149,23 +145,23 @@ mongoose.connect(process.env.MONGO_URL, { useNewUrlParser: true, useUnifiedTopol
             res.status(404).sendFile(path.join(__dirname, 'views', 'landing.html'));
         });
 
+        // server.js (Excerpt)
         app.use((err, req, res, next) => {
-            console.error('Global Server Error:', err.stack);
+            console.error('Global Server Error:', err, err.stack);
             const isAjaxRequest = req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'));
+            const errorMessage = err.message || 'Internal server error';
             if (isAjaxRequest) {
-                res.status(500).json({ error: 'Internal server error', message: err.message });
+                res.status(500).json({ error: 'Server error', details: errorMessage });
             } else {
-                res.status(500).send('<h1>500 - Internal Server Error</h1><p>Something went wrong!</p>');
+                res.status(500).send(`<h1>500 - Internal Server Error</h1><p>${errorMessage}</p>`);
             }
         });
 
+        // Start server
         const PORT = process.env.PORT || 3000;
         app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
     })
     .catch(err => {
         console.error('MongoDB connection error:', err);
         process.exit(1);
     });
-
-// Note: Everything after this point is unreachable until the database connection is resolved.
