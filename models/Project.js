@@ -7,7 +7,7 @@ const projectSchema = new mongoose.Schema({
     userProfilePic: { type: String }, // Added based on route usage, assume it's part of the User model
     title: { type: String, required: true },
     projectType: { type: String, default: 'Other' },
-    description: { type: String, required: true },
+    description: { type: String, required: function() {return this.isPublished === true; } },
     problemStatement: { type: String },
     image: { type: String },
     

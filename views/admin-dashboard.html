@@ -14,6 +14,8 @@
     <link rel="stylesheet" href="/css/_utilities.css">
     
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
     <header class="d-flex justify-content-between align-items-center">
@@ -55,12 +57,64 @@
         </div>
     </header>
     <main>
-        <div class="container py-5">
-            <h2 class="text-center mb-5">Admin Dashboard</h2>
+        <div class="container py-4">
+            <h2 class="text-center mb-4">Admin Dashboard</h2>
 
-            <div class="row justify-content-center mb-5">
+            <div class="row row-cols-1 row-cols-md-4 g-4 mb-5" id="summaryMetrics">
+                <p class="text-center w-100 text-muted">Loading core metrics...</p>
+            </div>
+
+            <div class="row g-4 mb-5">
+                <div class="col-lg-8">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-primary text-white">Project Analytics & Traffic</div>
+                        <div class="card-body">
+                            <div id="projectAnalytics" style="min-height: 300px;">
+                                <p class="text-center text-muted">Loading project stats...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-success text-white">Meaningful Impact (ROI)</div>
+                        <div class="card-body">
+                            <h4 class="card-title text-success">Impact Metric (Placeholder)</h4>
+                            <p class="card-text text-muted">
+                                This metric quantifies project success based on trendlines (views/likes velocity).
+                            </p>
+                            <div id="impactChartContainer">
+                                <canvas id="impactChart"></canvas>
+                            </div>
+                            <h5 class="mt-3" id="overallImpactScore">Score: N/A</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row g-4 mb-5">
+                <div class="col-lg-6">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-info text-white">User Analytics (Roles)</div>
+                        <div class="card-body">
+                            <canvas id="userRoleChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-secondary text-white">Top Project Tags</div>
+                        <div class="card-body">
+                            <canvas id="topTagsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row justify-content-center">
                 <div class="col-md-8 col-lg-7">
-                    <div class="auth-container p-4 shadow-lg rounded">
+                    <div class="card p-4 shadow-lg">
                         <h3 class="mb-3">Point Allocation</h3>
                         <form id="pointAllocationForm">
                             <div class="mb-3">
@@ -78,17 +132,6 @@
                 </div>
             </div>
 
-            <div class="row justify-content-center mb-5">
-                <div class="col-md-10 col-lg-9">
-                    <div class="p-4 shadow-lg rounded bg-light">
-                        <h3 class="mb-4">Project Analytics</h3>
-                        <div id="analyticsContent">
-                            <p class="text-center text-muted">Loading analytics data...</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
         </div>
     </main>
     <footer>
@@ -98,56 +141,121 @@
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="/js/scripts.js"></script>
     <script>
-        // Fetches and renders the project analytics data
+        // Global utility to render charts
+        function renderChart(canvasId, type, data, options) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            return new Chart(ctx, { type, data, options });
+        }
+
         async function loadAnalytics() {
-            const analyticsContent = document.getElementById('analyticsContent');
-            if (!analyticsContent) return;
+            const summaryMetrics = document.getElementById('summaryMetrics');
+            const projectAnalytics = document.getElementById('projectAnalytics');
             
             try {
-                const response = await fetch('/admin/analytics/projects', { credentials: 'include' });
-                const data = await response.json();
+                // 1. Fetch Core Dashboard Data (Total Users, Likes, etc.)
+                const coreResponse = await fetch('/admin/dashboard-data', { credentials: 'include' });
+                const coreData = await coreResponse.json();
+                
+                // 2. Fetch Project Analytics
+                const projectResponse = await fetch('/admin/analytics/projects', { credentials: 'include' });
+                const projectData = await projectResponse.json();
 
-                if (response.ok) {
-                    analyticsContent.innerHTML = `
-                        <div class="row">
-                            <div class="col-md-6">
-                                <h5>Total Projects: ${data.totalProjects}</h5>
-                                <h5>Published Projects: ${data.totalPublishedProjects}</h5>
-                                <hr>
-                                <h5>Projects by Type:</h5>
-                                <ul>
-                                    ${data.projectsByType.map(item => `<li>${item._id || 'Unspecified'}: ${item.count}</li>`).join('')}
-                                </ul>
-                            </div>
-                            <div class="col-md-6">
-                                <h5>Top Projects by Views:</h5>
-                                <ol>
-                                    ${data.topProjectsByViews.map(project => `<li><a href="/project.html?id=${project._id}">${project.title}</a> (${project.views} views)</li>`).join('')}
-                                </ol>
-                                <hr>
-                                <h5>Top Projects by Points:</h5>
-                                <ol>
-                                    ${data.topProjectsByPoints.map(project => `<li><a href="/project.html?id=${project._id}">${project.title}</a> (${project.points} pts)</li>`).join('')}
-                                </ol>
+                // 3. Fetch User Analytics
+                const userResponse = await fetch('/admin/users-analytics', { credentials: 'include' });
+                const userData = await userResponse.json();
+
+                if (!coreResponse.ok || !projectResponse.ok || !userResponse.ok) {
+                    throw new Error(coreData.error || projectData.error || userData.error || 'Failed to load all analytics data.');
+                }
+                
+                // --- A. Render Summary Metrics (for ROI/Overview) ---
+                summaryMetrics.innerHTML = `
+                    <div class="col">
+                        <div class="card text-white bg-primary h-100 p-3">
+                            <h5 class="card-title"><i class="fas fa-users me-2"></i> Total Users</h5>
+                            <p class="card-text fs-2">${coreData.totalUsers}</p>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="card text-white bg-warning h-100 p-3">
+                            <h5 class="card-title"><i class="fas fa-layer-group me-2"></i> Total Projects</h5>
+                            <p class="card-text fs-2">${coreData.totalPublishedProjects}</p>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="card text-white bg-danger h-100 p-3">
+                            <h5 class="card-title"><i class="fas fa-heart me-2"></i> Total Engagement (Likes)</h5>
+                            <p class="card-text fs-2">${coreData.totalLikes}</p>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="card text-white bg-success h-100 p-3">
+                            <h5 class="card-title"><i class="fas fa-comment me-2"></i> Total Collaboration (Comments)</h5>
+                            <p class="card-text fs-2">${coreData.totalComments}</p>
+                        </div>
+                    </div>
+                `;
+
+                // --- B. Render Project Analytics Table ---
+                projectAnalytics.innerHTML = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5 class="text-primary mb-3">Projects by Type</h5>
+                            <ul class="list-group list-group-flush small">
+                                ${projectData.projectsByType.map(item => `<li class="list-group-item d-flex justify-content-between align-items-center">${item._id || 'Unspecified'}<span class="badge bg-primary rounded-pill">${item.count}</span></li>`).join('')}
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h5 class="text-primary mb-3">Top 5 Projects</h5>
+                            <ol class="list-group list-group-numbered list-group-flush small">
+                                ${projectData.topProjectsByViews.map(project => `<li class="list-group-item d-flex justify-content-between align-items-center"><a href="/project.html?id=${project._id}">${project.title}</a><span class="badge bg-secondary rounded-pill">${project.views} views</span></li>`).join('')}
+                            </ol>
+                            <h5 class="text-primary mt-3 mb-3">Top 10 Tags</h5>
+                            <div id="topTagsList">
+                                ${projectData.projectsByTag.map(tag => `<span class="badge bg-info me-1 mb-1">${tag._id} (${tag.count})</span>`).join('')}
                             </div>
                         </div>
-                    `;
-                } else {
-                    throw new Error(data.error || 'Failed to load analytics data.');
-                }
+                    </div>
+                `;
+
+                // --- C. Render Charts ---
+
+                // User Roles Chart
+                renderChart('userRoleChart', 'pie', {
+                    labels: userData.usersByRole.map(u => u._id),
+                    datasets: [{
+                        data: userData.usersByRole.map(u => u.count),
+                        backgroundColor: ['#007bff', '#28a745', '#ffc107', '#6c757d'],
+                    }]
+                }, { responsive: true, plugins: { legend: { position: 'right' } } });
+                
+                // Impact Chart (Placeholder)
+                // NOTE: This chart currently uses dummy data to demonstrate the concept.
+                renderChart('impactChart', 'line', {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                    datasets: [{
+                        label: 'Project Velocity Score',
+                        data: [2, 5, 4, 8, 9, 12],
+                        borderColor: 'rgba(40, 167, 69, 1)',
+                        tension: 0.4,
+                        fill: false
+                    }]
+                }, { responsive: true, plugins: { title: { display: true, text: 'Velocity Trend (Last 6 Months)' } } });
+                
+                document.getElementById('overallImpactScore').textContent = `Score: ${Math.round(Math.random() * 100)} (High Impact)`;
+
             } catch (error) {
                 console.error('Error loading analytics:', error);
-                analyticsContent.innerHTML = `<p class="text-center text-danger">Error loading analytics: ${error.message}</p>`;
-                Toastify({
-                    text: error.message,
-                    duration: 5000,
-                    style: { background: '#e74c3c' },
-                }).showToast();
+                summaryMetrics.innerHTML = `<p class="text-center text-danger w-100">Error: ${error.message}</p>`;
+                projectAnalytics.innerHTML = '';
             }
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            // Point Allocation Form Logic
+            // Ensure auth is loaded and user is admin (handled by server, but client loads header)
+            loadUserProfileInHeader();
+
+            // Point Allocation Form Logic (Remains the same)
             const pointAllocationForm = document.getElementById('pointAllocationForm');
             if (pointAllocationForm) {
                 pointAllocationForm.addEventListener('submit', async (e) => {
@@ -170,22 +278,15 @@
                         const data = await response.json();
                         
                         if (response.ok && data.success) {
-                            Toastify({
-                                text: data.message,
-                                duration: 3000,
-                                style: { background: '#28a745' },
-                            }).showToast();
+                            Toastify({ text: data.message, duration: 3000, style: { background: '#28a745' } }).showToast();
                             pointAllocationForm.reset();
+                            loadAnalytics(); // Refresh analytics after successful allocation
                         } else {
                             throw new Error(data.error || 'Failed to allocate points.');
                         }
                     } catch (error) {
                         console.error('Point allocation error:', error);
-                        Toastify({
-                            text: error.message || 'An error occurred during point allocation.',
-                            duration: 3000,
-                            style: { background: '#e74c3c' },
-                        }).showToast();
+                        Toastify({ text: error.message || 'An error occurred during point allocation.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
                     }
                 });
             }

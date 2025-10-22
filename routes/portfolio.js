@@ -1,3 +1,4 @@
+// routes/portfolio.js (Phase 1 Update)
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
@@ -26,7 +27,8 @@ const fetchImageAsBuffer = (url) => {
 };
 
 // Helper function to generate PDF and stream to client
-async function generatePortfolio(user, projects, format, res) {
+async function generatePortfolio(user, projects, settings, res) {
+    const { format, primaryColor, accentColor, contentToggles } = settings;
     console.log('Starting PDF generation for user:', user.name, 'format:', format);
     const doc = new PDFDocument({ size: 'A4', margin: 40 });
 
@@ -37,12 +39,6 @@ async function generatePortfolio(user, projects, format, res) {
     // Pipe PDF directly to response
     doc.pipe(res);
 
-    const styles = {
-        classic: { primaryColor: '#212529', accentColor: '#000000', font: 'Roboto' },
-        modern: { primaryColor: '#1a1a1a', accentColor: '#007bff', font: 'Roboto' }
-    };
-    const style = styles[format] || styles.classic;
-
     try {
         console.log('Registering fonts');
         doc.registerFont('Roboto', 'public/fonts/Roboto-Regular.ttf');
@@ -52,97 +48,155 @@ async function generatePortfolio(user, projects, format, res) {
         doc.font('Helvetica');
     }
 
-    // Header
+    // --- Header Section ---
     console.log('Adding header');
-    doc.fillColor(style.primaryColor).font('Roboto-Bold').fontSize(28).text(user.name || 'Anonymous', { align: 'center' });
+    
+    // Use selected primary color for main name
+    doc.fillColor(primaryColor).font('Roboto-Bold').fontSize(28).text(user.name || 'Anonymous', { align: 'center' });
     doc.moveDown(0.2);
-    doc.fillColor(style.accentColor).font('Roboto').fontSize(12).text(user.email || '', { align: 'center' });
+    
+    // Use selected accent color for email/links
+    doc.fillColor(accentColor).font('Roboto').fontSize(12).text(user.email || '', { align: 'center' });
+    
     if (user.linkedin) {
         let linkedinUrl = user.linkedin;
         if (!linkedinUrl.startsWith('http://') && !linkedinUrl.startsWith('https://')) {
             linkedinUrl = `https://${linkedinUrl}`;
         }
         doc.moveDown(0.2);
-        doc.fillColor(style.accentColor).font('Roboto').fontSize(12).text(`LinkedIn: ${linkedinUrl}`, { align: 'center', link: linkedinUrl });
+        doc.fillColor(accentColor).font('Roboto').fontSize(12).text(`LinkedIn: ${linkedinUrl}`, { align: 'center', link: linkedinUrl });
     }
+    
     doc.moveDown(1);
-    doc.lineWidth(2).strokeColor(style.primaryColor).moveTo(40, doc.y).lineTo(552, doc.y).stroke();
+    doc.lineWidth(2).strokeColor(primaryColor).moveTo(40, doc.y).lineTo(552, doc.y).stroke();
     doc.moveDown(1);
 
-    // Projects Section
+    // --- Projects Section ---
     console.log('Adding projects section');
-    doc.fillColor(style.primaryColor).font('Roboto-Bold').fontSize(22).text('My Projects', { align: 'left' });
+    doc.fillColor(primaryColor).font('Roboto-Bold').fontSize(22).text('My Projects', { align: 'left' });
     doc.moveDown(0.5);
 
     if (projects.length === 0) {
-        console.log('No projects to display');
-        doc.font('Roboto').fontSize(12).text('No projects available to display.', { align: 'center' });
+        doc.font('Roboto').fontSize(12).text('No published projects available to display.', { align: 'center' });
     } else {
         for (const [index, p] of projects.entries()) {
             console.log(`Adding project ${index + 1}: ${p.title}`);
             if (index > 0) doc.addPage();
-            doc.fillColor(style.primaryColor).font('Roboto-Bold').fontSize(18).text(p.title || 'Untitled Project', { align: 'left' });
+            
+            doc.fillColor(primaryColor).font('Roboto-Bold').fontSize(18).text(p.title || 'Untitled Project', { align: 'left' });
             doc.moveDown(0.5);
-            if (p.image && !p.image.includes('default-project.jpg')) {
+            
+            // Image/Media Handling
+            const mediaUrl = (p.projectType === 'Art' && p.projectDetails?.artworkImage)
+                ? p.projectDetails.artworkImage
+                : p.image;
+            
+            if (mediaUrl && !mediaUrl.includes('default-project.jpg')) {
                 try {
-                    const imageBuffer = await fetchImageAsBuffer(p.image); // Fixed with await
+                    const imageBuffer = await fetchImageAsBuffer(mediaUrl); 
                     doc.image(imageBuffer, { width: 350, align: 'center', valign: 'center' });
                     doc.moveDown(0.5);
                 } catch (error) {
-                    console.error('Image download error during PDF generation:', error);
                     doc.fontSize(10).fillColor('#e74c3c').text('Image not available or failed to download', { align: 'left' });
                     doc.moveDown(0.5);
                 }
             }
-            doc.fillColor(style.accentColor).font('Roboto-Bold').fontSize(12).text('Problem Statement:', { align: 'left' });
-            doc.font('Roboto').fontSize(10).text(p.problemStatement || 'Not provided', { align: 'left', indent: 10 });
+            
+            // General Details
+            doc.fillColor(primaryColor).font('Roboto-Bold').fontSize(12).text('Project Type:', { align: 'left' });
+            doc.font('Roboto').fontSize(10).text(p.projectType || 'Other', { align: 'left', indent: 10 });
             doc.moveDown(0.5);
+
+            // Conditional Content: Problem Statement
+            if (contentToggles.includeProblemStatement) {
+                doc.fillColor(accentColor).font('Roboto-Bold').fontSize(12).text('Problem Statement:', { align: 'left' });
+                doc.font('Roboto').fontSize(10).text(p.problemStatement || 'Not provided', { align: 'left', indent: 10 });
+                doc.moveDown(0.5);
+            }
+            
             doc.font('Roboto-Bold').fontSize(12).text('Description:', { align: 'left' });
             doc.font('Roboto').fontSize(10).text(p.description || 'Not provided', { align: 'left', indent: 10 });
             doc.moveDown(0.5);
-            doc.font('Roboto-Bold').fontSize(12).text('Tags:', { align: 'left' });
-            doc.font('Roboto').fontSize(10).text(p.tags && p.tags.length ? p.tags.join(', ') : 'None', { align: 'left', indent: 10 });
-            doc.moveDown(0.5);
-            const collaboratorNames = p.collaborators && p.collaborators.length > 0
-                ? p.collaborators.map(collab => collab.name).filter(Boolean).join(', ')
-                : 'None';
-            doc.font('Roboto-Bold').fontSize(12).text('Collaborators:', { align: 'left' });
-            doc.font('Roboto').fontSize(10).text(collaboratorNames, { align: 'left', indent: 10 });
-            doc.moveDown(1);
+            
+            // --- Specific Details Section (based on projectType) ---
+            if (p.projectType === 'Engineering') {
+                doc.font('Roboto-Bold').fontSize(14).text('Technical Details:', { align: 'left' });
+                doc.moveDown(0.2);
+                doc.font('Roboto-Bold').fontSize(10).text('Technical Description:', { align: 'left', indent: 10 });
+                doc.font('Roboto').fontSize(10).text(p.projectDetails?.technicalDescription || 'N/A', { align: 'left', indent: 20 });
+                doc.font('Roboto-Bold').fontSize(10).text('Tools/Software:', { align: 'left', indent: 10 });
+                doc.font('Roboto').fontSize(10).text(p.projectDetails?.toolsSoftware?.join(', ') || 'N/A', { align: 'left', indent: 20 });
+                doc.font('Roboto-Bold').fontSize(10).text('Functional Goals:', { align: 'left', indent: 10 });
+                doc.font('Roboto').fontSize(10).text(p.projectDetails?.functionalGoals || 'N/A', { align: 'left', indent: 20 });
+                doc.moveDown(0.5);
+            } else if (p.projectType === 'Art') {
+                 doc.font('Roboto-Bold').fontSize(14).text('Art Details:', { align: 'left' });
+                 doc.moveDown(0.2);
+                 doc.font('Roboto-Bold').fontSize(10).text('Medium/Technique:', { align: 'left', indent: 10 });
+                 doc.font('Roboto').fontSize(10).text(p.projectDetails?.mediumTechnique || 'N/A', { align: 'left', indent: 20 });
+                 doc.font('Roboto-Bold').fontSize(10).text('Artist Statement:', { align: 'left', indent: 10 });
+                 doc.font('Roboto').fontSize(10).text(p.projectDetails?.artistStatement || 'N/A', { align: 'left', indent: 20 });
+                 doc.font('Roboto-Bold').fontSize(10).text('Exhibition History:', { align: 'left', indent: 10 });
+                 doc.font('Roboto').fontSize(10).text(p.projectDetails?.exhibitionHistory || 'N/A', { align: 'left', indent: 20 });
+                 doc.moveDown(0.5);
+            }
+            
+            // Conditional Content: Collaborators
+            if (contentToggles.includeCollaborators) {
+                const collaboratorNames = p.collaborators && p.collaborators.length > 0
+                    ? p.collaborators.map(collab => collab.name).filter(Boolean).join(', ')
+                    : 'None';
+                doc.font('Roboto-Bold').fontSize(12).text('Collaborators:', { align: 'left' });
+                doc.font('Roboto').fontSize(10).text(collaboratorNames, { align: 'left', indent: 10 });
+                doc.moveDown(0.5);
+            }
+
+            // Conditional Content: Other Contributors
+            if (contentToggles.includeOtherContributors) {
+                const otherContributorNames = p.otherContributors || 'None';
+                doc.font('Roboto-Bold').fontSize(12).text('Other Contributors:', { align: 'left' });
+                doc.font('Roboto').fontSize(10).text(otherContributorNames, { align: 'left', indent: 10 });
+                doc.moveDown(0.5);
+            }
+            
+            // Conditional Content: Tags
+            if (contentToggles.includeTags) {
+                doc.font('Roboto-Bold').fontSize(12).text('Tags:', { align: 'left' });
+                doc.font('Roboto').fontSize(10).text(p.tags && p.tags.length ? p.tags.join(', ') : 'None', { align: 'left', indent: 10 });
+                doc.moveDown(1);
+            }
         }
     }
 
-    console.log('Adding footer');
+    // --- Footer ---
     doc.fontSize(10).fillColor('#666666').text('Generated by ShareCase © 2025', 40, doc.page.height - 60, { align: 'center' });
-    console.log('Finalizing PDF');
     doc.end();
 }
 
 router.post('/generate', isAuthenticated, async (req, res) => {
     try {
-        console.log('POST /portfolio/generate called with:', req.body);
-        const { format } = req.body;
+        const { format, primaryColor, accentColor, contentToggles } = req.body;
         const userId = req.session.userId;
-        console.log('User ID from session:', userId);
+        
         if (!userId) {
             return res.status(401).json({ success: false, error: 'Unauthorized. Please log in.' });
         }
-        if (!format || !['classic'].includes(format)) {
+        if (!format || !['classic'].includes(format)) { 
             return res.status(400).json({ success: false, error: 'Invalid or unsupported portfolio format.' });
         }
-        console.log('Fetching user with ID:', userId);
+        
         const user = await User.findById(userId).select('name email linkedin profilePic');
         if (!user) {
             return res.status(404).json({ success: false, error: 'User not found.' });
         }
-        console.log('User found:', user.name);
-        console.log('Fetching projects for user:', userId);
+        
         const projects = await Project.find({ userId: userId, isPublished: true })
             .populate('collaborators', 'name')
             .lean();
-        console.log('Projects found:', projects.length);
-        console.log('Generating PDF for format:', format);
-        await generatePortfolio(user, projects, format, res);
+
+        // Pass all customization settings to the generator function
+        await generatePortfolio(user, projects, { format, primaryColor, accentColor, contentToggles }, res);
+        
     } catch (error) {
         console.error('Portfolio generation API error:', error);
         res.status(500).json({ success: false, error: error.message || 'Internal server error.' });

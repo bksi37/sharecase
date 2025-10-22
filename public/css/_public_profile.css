@@ -1,9 +1,48 @@
-/* --- Public Profile Page Styles: Dedicated for public_profile.html --- */
+/* css/_public_profile.css */
+
+/* --- CORE LAYOUT: WIDEN CONTENT AREA --- */
+
+.profile-layout {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 40px;
+    align-items: start;
+}
+
+.profile-content {
+    width: 100%;
+}
+
+/* Ensure Bootstrap's row behavior for project grid */
+.project-grid {
+    padding: 0;
+    margin: 0;
+}
+
+/* Media Query for smaller screens */
+@media (max-width: 992px) {
+    .profile-layout {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    .profile-sidebar {
+        max-width: none;
+        text-align: center;
+    }
+    .profile-details {
+        text-align: center;
+    }
+    .profile-stats {
+        justify-content: center;
+    }
+}
+
+/* --- PUBLIC PROFILE HEADER --- */
 
 .public-profile-header {
     display: flex;
     align-items: center;
-    padding: 10px; /* FURTHER REDUCED from 15px for tighter spacing */
+    padding: 10px;
     border-radius: 0 0 15px 15px;
     background-color: #f5f5f5;
     margin: 0 auto;
@@ -12,7 +51,7 @@
 }
 
 .profile-avatar {
-    margin-right: 10px; /* FURTHER REDUCED from 15px */
+    margin-right: 10px;
     position: relative;
 }
 
@@ -38,19 +77,19 @@
 .profile-details h1 {
     font-size: 1.8rem;
     font-weight: 700;
-    margin: 2px 0; /* FURTHER REDUCED from 5px 0 */
+    margin: 2px 0;
     color: #222;
 }
 
 .profile-meta {
-    margin: 0; /* NEW: Ensure no extra margins around meta container */
+    margin: 0;
 }
 
 .profile-meta span {
     display: block;
     font-size: 0.9rem;
     color: #555;
-    margin-bottom: 0.1rem; /* FURTHER REDUCED from 0.15rem */
+    margin-bottom: 0.1rem;
 }
 
 .profile-meta span:empty {
@@ -59,8 +98,8 @@
 
 .profile-stats {
     display: flex;
-    gap: 8px; /* FURTHER REDUCED from 10px */
-    margin-top: 5px; /* FURTHER REDUCED from 8px */
+    gap: 8px;
+    margin-top: 5px;
 }
 
 .profile-stats span {
@@ -79,12 +118,12 @@
 }
 
 .social-links {
-    margin-top: 5px; /* FURTHER REDUCED from 10px */
+    margin-top: 5px;
     text-align: center;
 }
 
 .social-links:empty {
-    display: none; /* NEW: Hide if no social links to prevent empty space */
+    display: none;
 }
 
 .social-links a {
@@ -100,7 +139,7 @@
     transform: translateY(-2px) scale(1.1);
 }
 
-#followButton { /* CHANGED from #followBtn to match HTML */
+#followButton {
     padding: 0.5rem 1.5rem;
     font-size: 0.95rem;
     border-width: 2px;
@@ -108,7 +147,7 @@
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    margin-top: 5px; /* REDUCED from 10px */
+    margin-top: 5px;
 }
 
 #followButton.btn-primary {
@@ -136,7 +175,7 @@
 .profile-main-content {
     max-width: 1400px;
     margin: 0 auto;
-    padding: 15px 0; /* REDUCED from 20px */
+    padding: 15px 0;
 }
 
 .profile-separator {
@@ -149,7 +188,7 @@
     font-size: 1.5rem;
     color: #333;
     font-weight: 600;
-    margin-bottom: 0.5rem; /* REDUCED from 1rem */
+    margin-bottom: 0.5rem;
     position: relative;
 }
 
@@ -167,41 +206,31 @@
 .section-divider {
     border: 0;
     border-top: 1px solid #e0e0e0;
-    margin-bottom: 0.5rem; /* REDUCED from 1rem */
-}
-
-.project-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 6px; /* FURTHER REDUCED from 8px */
-    margin-top: 0.25rem; /* FURTHER REDUCED from 0.5rem */
+    margin-bottom: 0.5rem;
 }
 
 .container-fluid.py-4 {
-    padding-top: 1.5rem !important; /* FURTHER REDUCED from 2rem */
+    padding-top: 1.5rem !important;
     padding-bottom: 1.5rem !important;
 }
 
-.profile-layout {
+/* Ensure no override of Bootstrap grid */
+.profile-sidebar {
     margin: 0;
     padding: 0;
 }
 
-.profile-sidebar {
-    margin: 0; /* NEW: Prevent potential margins from _utilities.css */
-    padding: 0;
-}
-
+/* Responsive adjustments */
 @media (max-width: 768px) {
     .public-profile-header {
         flex-direction: column;
         text-align: center;
-        padding: 8px; /* FURTHER REDUCED from 10px */
+        padding: 8px;
     }
 
     .profile-avatar {
         margin-right: 0;
-        margin-bottom: 15px; /* REDUCED from 20px */
+        margin-bottom: 15px;
     }
 
     .avatar-img {
@@ -214,42 +243,43 @@
     }
 
     .profile-meta {
-        margin: 0; /* NEW: Ensure no extra margins */
+        margin: 0;
     }
 
     .profile-meta span {
         font-size: 0.8rem;
-        margin-bottom: 0.1rem; /* REDUCED from 0.15rem */
+        margin-bottom: 0.1rem;
     }
 
     .profile-stats {
         flex-direction: column;
-        gap: 6px; /* REDUCED from 8px */
-        margin-top: 4px; /* REDUCED from 5px */
+        gap: 6px;
+        margin-top: 4px;
     }
 
     .social-links {
-        margin-top: 4px; /* REDUCED from 5px */
-    }
-
-    .project-grid {
-        grid-template-columns: 1fr;
+        margin-top: 4px;
     }
 
     #followButton {
         width: 100%;
         justify-content: center;
-        margin-top: 5px; /* REDUCED from 10px */
+        margin-top: 5px;
     }
 }
 
-/*dropdown styles */
+/* Dropdown styles for followers dropdown */
 .dropdown-menu {
     max-height: 300px;
     overflow-y: auto;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     padding: 0;
+    display: none;
+}
+
+.dropdown-menu.show {
+    display: block !important;
 }
 
 .dropdown-item {

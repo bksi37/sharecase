@@ -88,7 +88,7 @@ const authorizeAdmin = (req, res, next) => {
     if (wantsJson) {
         return res.status(403).json({ success: false, message: 'Access denied. Admin privileges required.' });
     } else {
-        return res.redirect('/index.html');
+        return res.redirect('/admin-dashboard.html');
     }
 };
 

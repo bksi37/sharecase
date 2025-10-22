@@ -66,7 +66,7 @@ router.post('/add-project', isAuthenticated, isProfileComplete, upload.fields([
 
         const parsedOtherContributors = otherContributors
             ? otherContributors.split(',').map(c => c.trim()).filter(c => c)
-            : []; // Array for consistency
+            : ""; // Array for consistency
         const parsedResources = resources
             ? resources.split(',').map(r => r.trim()).filter(r => r)
             : [];

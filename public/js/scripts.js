@@ -309,8 +309,9 @@ function renderProjectCard(project) {
 
     return `
         <div class="col">
-            <div class="card h-100" style="cursor: pointer;" onclick="${clickAction}">
-                <img src="${thumbnailURL}" class="card-img-top project-image" alt="${project.title || 'Project'}" style="object-fit: cover; height: 200px;" onerror="this.src='https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'">
+                 <div class="card h-100" style="cursor: pointer;" onclick="${clickAction}">
+                    <img src="${thumbnailURL}" class="card-img-top project-image w-100" alt="${project.title || 'Project'}" 
+                    onerror="this.src='https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'">
                 <div class="card-body">
                     <h5 class="card-title">${project.title || 'Untitled'}</h5>
                     <p class="card-text">${project.description ? project.description.substring(0, 100) + '...' : 'No description'}</p>

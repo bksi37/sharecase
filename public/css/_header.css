@@ -1,5 +1,4 @@
-/* public/css/_header.css */
-
+/* css/_header.css (Updated) */
 header {
     position: fixed;
     top: 0;
@@ -15,121 +14,27 @@ header {
     justify-content: space-between;
 }
 
-.logo {
-    /* No font styling needed here, as the content is now an image */
-    line-height: 1;
-    letter-spacing: 0.5px;
-}
-
-/* New rule for the logo image */
 .logo img {
-    height: 100px; /* Adjust this value as needed */
-    width: auto; /* Ensures the aspect ratio is maintained */
-    vertical-align: middle; /* Aligns the image nicely with other elements */
+    height: 100px;
+    width: auto;
+    vertical-align: middle;
 }
 
-
-.search-bar {
-    flex-grow: 1;
-    max-width: 500px;
-    margin: 0 20px;
-    position: relative;
-}
-
-.search-bar input {
-    height: 38px;
-    font-size: 15px;
-    border: 1px solid #dcdcdc;
-    border-radius: 6px;
-    background: #ffffff;
-    padding-right: 45px;
-}
-
-.search-bar .btn {
-    background: transparent;
-    border: none;
-    color: #757575;
-    padding: 0 10px;
-    transition: color 0.2s ease-in-out;
-}
-
-.search-bar .btn:hover {
-    color: #007bff;
-}
-
-.user-menu {
-    display: flex;
-    align-items: center;
-}
-
-.user-menu .profile-container {
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    position: relative;
-    padding: 5px;
-    border-radius: 20px;
-    transition: background-color 0.2s ease-in-out;
-}
-
-.user-menu .profile-container:hover,
-.user-menu .profile-container.active {
-    background-color: #f5f5f5;
-}
-
-.user-menu img {
-    width: 35px;
-    height: 35px;
-    border-radius: 50%;
-    object-fit: cover;
-    margin-right: 8px;
-    border: 2px solid #e0e0e0;
-}
-
-.user-menu #headerProfileName {
-    font-weight: 500;
-    color: #333;
-    margin-right: 5px;
-}
-
-.user-menu .dropdown-menu {
-    display: none;
-    position: absolute;
-    top: calc(100% + 5px);
-    right: 0;
-    background: #ffffff;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    border-radius: 6px;
-    padding: 10px 0;
-    z-index: 1000;
-    min-width: 180px;
-}
-
-.user-menu .dropdown-menu a {
-    display: block;
-    padding: 10px 20px;
-    color: #555555;
-    text-decoration: none;
-    font-size: 15px;
-    transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
-}
-
-.user-menu .dropdown-menu a:hover {
-    background: #e9f0ff;
-    color: #007bff;
-}
-
-.user-menu .profile-container.active .dropdown-menu {
-    display: flex;
-    flex-direction: column;
-}
-
-/* Autocomplete Container */
 .search-bar-container {
     flex-grow: 1;
     max-width: 600px;
     margin: 0 20px;
     position: relative;
+}
+
+.search-bar-container .input-group .form-control {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.search-bar-container .input-group .btn {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
 }
 
 .autocomplete-suggestions {
@@ -173,25 +78,67 @@ header {
     border: 1px solid #007bff;
 }
 
-.autocomplete-item span {
-    font-size: 1em;
-    color: #333;
+.user-menu {
+    display: flex;
+    align-items: center;
+}
+
+.user-menu .profile-container {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    position: relative;
+    padding: 5px;
+    border-radius: 20px;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.user-menu .profile-container:hover,
+.user-menu .profile-container.active {
+    background-color: #f5f5f5;
+}
+
+.user-menu img {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-right: 8px;
+    border: 2px solid #e0e0e0;
+}
+
+.user-menu #headerProfileName {
     font-weight: 500;
+    color: #333;
+    margin-right: 5px;
 }
 
-.autocomplete-item .user-detail {
-    font-size: 0.85em;
-    color: #666;
-    margin-left: 8px;
-    font-weight: 400;
+.user-menu .dropdown-menu {
+    position: absolute;
+    top: calc(100% + 5px);
+    right: 0;
+    background: #ffffff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-radius: 6px;
+    padding: 10px 0;
+    z-index: 1000;
+    min-width: 180px;
 }
 
-header .search-bar-container .input-group .form-control {
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
+.user-menu .dropdown-menu.show {
+    display: block; /* Ensure Bootstrap's .show class works */
 }
 
-header .search-bar-container .input-group .btn {
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
+.user-menu .dropdown-menu a {
+    display: block;
+    padding: 10px 20px;
+    color: #555555;
+    text-decoration: none;
+    font-size: 15px;
+    transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+}
+
+.user-menu .dropdown-menu a:hover {
+    background: #e9f0ff;
+    color: #007bff;
 }

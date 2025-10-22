@@ -12,7 +12,6 @@
     <link rel="stylesheet" href="/css/_header.css">
     <link rel="stylesheet" href="/css/_forms.css">
     <link rel="stylesheet" href="/css/_utilities.css">
-
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
 </head>
 <body>
@@ -54,7 +53,7 @@
             </div>
         </div>
     </header>
-    <main>
+    <main class="container py-4">
         <div class="settings-form">
             <h2>Settings</h2>
 
@@ -70,8 +69,8 @@
                 </div>
                 <div class="mb-3">
                     <label for="profileUniversityEmail" class="form-label">University Email</label>
-                    <input type="email" class="form-control" id="profileUniversityEmail" name="universityEmail" placeholder="e.g., yourname@university.edu" autocomplete="email">
-                    <div id="universityEmailInfo" class="form-text text-muted UBmuted">
+                    <input type="email" class="form-control" id="profileUniversityEmail" name="schoolEmail" placeholder="e.g., yourname@university.edu" autocomplete="email">
+                    <div id="universityEmailInfo" class="form-text text-muted">
                         Adding a valid .edu email will grant you student privileges.
                     </div>
                 </div>
@@ -81,7 +80,7 @@
                 </div>
                 <div class="mb-3">
                     <label for="profileDepartment" class="form-label">Department</label>
-                    <input type="text" class="form-control" id="profileDepartment" name="department" placeholder="e.g., Computer Science" autocomplete="off">
+                    <input type="text" class="form-control" id="profileDepartment" name="department" placeholder="e.g., Engineering" autocomplete="off">
                 </div>
                 <div class="mb-3">
                     <label for="profileLinkedin" class="form-label">LinkedIn Profile URL</label>
@@ -185,355 +184,277 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="/js/scripts.js"></script>
-    <script>
-        // Store currentLoggedInUserId globally
-        let currentLoggedInUserId; 
+ <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+<script src="/js/scripts.js"></script>
+<script>
+    // NOTE: currentLoggedInUserId is already declared and initialized in scripts.js (window.currentLoggedInUserId)
 
-        async function loadSettings() {
-            try {
-                console.log("loadSettings: Attempting to fetch /current-user...");
-                const response = await fetch('/current-user', {
-                    credentials: 'include',
-                    headers: { 'Cache-Control': 'no-cache' }
-                });
-                console.log("loadSettings: Response status:", response.status);
-                const data = await response.json();
-                console.log("loadSettings: Full response data:", JSON.stringify(data, null, 2));
+    async function loadSettings() {
+        try {
+            console.log("loadSettings: Attempting to fetch user data and populate form...");
+            
+            // Use window.loadUserProfileInHeader to fetch the user data
+            const data = await window.loadUserProfileInHeader();
+            
+            if (!data || !data.isLoggedIn || !data.user) {
+                throw new Error('User session not found.');
+            }
+            
+            const user = data.user;
+            // Set global ID reference after successful load
+            window.currentLoggedInUserId = user._id;
 
-                if (response.status === 401 || response.status === 404 || !data.isLoggedIn) {
-                    console.warn("loadSettings: Unauthorized or user not found");
-                    Toastify({
-                        text: 'Session expired or user not found. Please log in again.',
-                        duration: 3000,
-                        style: { background: '#e74c3c' },
-                    }).showToast();
-                    setTimeout(() => window.location.href = '/login.html', 3000);
+            const profileUniversityEmail = document.getElementById('profileUniversityEmail');
+            const profileMajor = document.getElementById('profileMajor');
+            const profileDepartment = document.getElementById('profileDepartment');
+            const profileLinkedin = document.getElementById('profileLinkedin');
+            const profileGithub = document.getElementById('profileGithub');
+            const profilePersonalWebsite = document.getElementById('profilePersonalWebsite');
+            const twoFactorAuth = document.getElementById('twoFactorAuth');
+            const notifications = document.getElementById('notifications');
+            const theme = document.getElementById('theme');
+            const profilePrivacy = document.getElementById('profilePrivacy');
+            
+            // --- Populate Profile Information ---
+            document.getElementById('profileName').value = user.name || '';
+            document.getElementById('profileEmail').value = user.email || '';
+            
+            // The backend returns 'schoolEmail', but the form variable is 'universityEmail'.
+            // The value is stored in user.schoolEmail, but the form field is profileUniversityEmail.
+            if (profileUniversityEmail) profileUniversityEmail.value = user.schoolEmail || ''; 
+            
+            if (profileMajor) profileMajor.value = user.major || '';
+            if (profileDepartment) profileDepartment.value = user.department || '';
+            
+            // Social Links (using new combined socialLinks object from auth.js /current-user)
+            if (profileLinkedin) profileLinkedin.value = user.socialLinks?.linkedin || '';
+            if (profileGithub) profileGithub.value = user.socialLinks?.github || '';
+            if (profilePersonalWebsite) profilePersonalWebsite.value = user.socialLinks?.website || '';
+            
+            // --- Populate Preferences and Security ---
+            if (twoFactorAuth) twoFactorAuth.checked = user.twoFactorAuth || false;
+            if (notifications) notifications.value = user.notifications || 'all';
+            if (theme) theme.value = user.theme || 'light';
+            if (profilePrivacy) profilePrivacy.value = user.privacy || 'public';
+
+            console.log("loadSettings: Form fields populated successfully");
+        } catch (error) {
+            console.error('loadSettings: Error loading settings:', error);
+            Toastify({ text: 'Error loading profile settings. Please log in.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+            setTimeout(() => window.location.href = '/login.html', 3000);
+        }
+    }
+
+    async function loadActivityLog() {
+        try {
+            const response = await fetch('/profile/activity-log', { credentials: 'include' });
+            const data = await response.json();
+            const activityLogList = document.getElementById('activityLog');
+
+            if (activityLogList) {
+                if (data && data.length > 0) {
+                    activityLogList.innerHTML = data.map(log => `
+                        <li>
+                            <span>${log.action}</span>
+                            <small>${new Date(log.timestamp).toLocaleString()}</small>
+                        </li>
+                    `).join('');
+                } else {
+                    activityLogList.innerHTML = '<li class="text-muted small">No activity recorded.</li>';
+                }
+            }
+        } catch (error) {
+            console.error('loadActivityLog: Error loading activity log:', error);
+            Toastify({ text: 'Error loading activity log.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Run initial load after a small delay to ensure scripts.js is fully loaded
+        setTimeout(() => {
+            window.loadUserProfileInHeader(); // Ensures header loads and cachedUserData is updated
+            loadSettings();
+            loadActivityLog();
+            document.getElementById('passwordSection').style.display = 'none';
+        }, 100);
+
+        // --- Form Handlers ---
+
+        const profileSettingsForm = document.getElementById('profileSettingsForm');
+        if (profileSettingsForm) {
+            profileSettingsForm.addEventListener('reset', loadSettings);
+            profileSettingsForm.addEventListener('submit', async e => {
+                e.preventDefault();
+                
+                const formData = new FormData();
+                // Pass the field names expected by your profile.js router:
+                formData.append('name', document.getElementById('profileName')?.value || '');
+                formData.append('universityEmail', document.getElementById('profileUniversityEmail')?.value || ''); // Matches req.body.universityEmail in profile.js
+                formData.append('major', document.getElementById('profileMajor')?.value || '');
+                formData.append('department', document.getElementById('profileDepartment')?.value || '');
+                formData.append('linkedin', document.getElementById('profileLinkedin')?.value || '');
+                formData.append('github', document.getElementById('profileGithub')?.value || '');
+                formData.append('personalWebsite', document.getElementById('profilePersonalWebsite')?.value || '');
+                
+                if (document.getElementById('profilePic')?.files[0]) {
+                    formData.append('profilePic', document.getElementById('profilePic').files[0]);
+                }
+                
+                try {
+                    const response = await fetch('/profile/update-profile', {
+                        method: 'POST',
+                        body: formData,
+                        credentials: 'include'
+                    });
+                    const result = await response.json();
+                    
+                    if (response.ok && result.success) {
+                        Toastify({ text: 'Profile updated successfully!', duration: 3000, style: { background: '#28a745' } }).showToast();
+                        await Promise.all([loadSettings(), loadActivityLog()]);
+                        window.loadUserProfileInHeader(); // Refresh header data
+                    } else {
+                        Toastify({ text: result.error || 'Failed to update profile', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                    }
+                } catch (error) {
+                    console.error('profileSettingsForm: Error updating profile:', error);
+                    Toastify({ text: 'Error updating profile', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                }
+            });
+        }
+
+        // Security Settings Form Submission (Change Password)
+        const securitySettingsForm = document.getElementById('securitySettingsForm');
+        if (securitySettingsForm) {
+            securitySettingsForm.addEventListener('submit', async e => {
+                e.preventDefault();
+                const currentPassword = document.getElementById('currentPassword').value;
+                const newPassword = document.getElementById('newPassword').value;
+                const confirmNewPassword = document.getElementById('confirmNewPassword').value;
+
+                if (!currentPassword || !newPassword || !confirmNewPassword) {
+                    Toastify({ text: 'All password fields are required', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                    return;
+                }
+                if (newPassword !== confirmNewPassword) {
+                    Toastify({ text: 'New passwords do not match', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                    return;
+                }
+                if (!/^(?=.*\d)(?=.*[!@#$%^&*]).{8,}$/.test(newPassword)) {
+                    Toastify({ text: 'New password must be 8+ characters with a number and special character', duration: 3000, style: { background: '#e74c3c' } }).showToast();
                     return;
                 }
 
-                if (data.isLoggedIn && data.user) {
-                    const user = data.user;
-                    window.currentLoggedInUserId = user._id; // Set global ID for form submission use
-
-                    const profileName = document.getElementById('profileName');
-                    const profileEmail = document.getElementById('profileEmail');
-                    const profileUniversityEmail = document.getElementById('profileUniversityEmail');
-                    const profileMajor = document.getElementById('profileMajor');
-                    const profileDepartment = document.getElementById('profileDepartment');
-                    const profileLinkedin = document.getElementById('profileLinkedin');
-                    const profileGithub = document.getElementById('profileGithub');
-                    const profilePersonalWebsite = document.getElementById('profilePersonalWebsite');
-                    const twoFactorAuth = document.getElementById('twoFactorAuth');
-                    const notifications = document.getElementById('notifications');
-                    const theme = document.getElementById('theme');
-                    const profilePrivacy = document.getElementById('profilePrivacy');
-
-                    if (!profileName || !profileEmail) {
-                        console.error("loadSettings: Missing critical DOM elements (profileName or profileEmail)");
-                        Toastify({ text: 'Error: Profile form elements not found.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                        return;
-                    }
-
-                    // Populate fields
-                    profileName.value = user.name || '';
-                    profileEmail.value = user.email || '';
-                    if (profileUniversityEmail) profileUniversityEmail.value = user.universityEmail || '';
-                    if (profileMajor) profileMajor.value = user.major || '';
-                    if (profileDepartment) profileDepartment.value = user.department || '';
-                    
-                    // 🛑 FIX: Cleaned up social link population.
-                    if (profileLinkedin) profileLinkedin.value = user.socialLinks?.linkedin || '';
-                    if (profileGithub) profileGithub.value = user.socialLinks?.github || '';
-                    if (profilePersonalWebsite) profilePersonalWebsite.value = user.socialLinks?.website || '';
-                    
-                    if (twoFactorAuth) twoFactorAuth.checked = user.twoFactorAuth || false;
-                    if (notifications) notifications.value = user.notifications || 'all';
-                    if (theme) theme.value = user.theme || 'light';
-                    if (profilePrivacy) profilePrivacy.value = user.privacy || 'public';
-
-                    console.log("loadSettings: Form fields populated successfully");
-                }
-            } catch (error) {
-                console.error('loadSettings: Error loading settings:', error);
-                Toastify({
-                    text: 'Error loading profile settings. Please try again.',
-                    duration: 3000,
-                    style: { background: '#e74c3c' },
-                }).showToast();
-                setTimeout(() => window.location.href = '/login.html', 3000);
-            }
-        }
-
-        async function loadActivityLog() {
-            try {
-                console.log("loadActivityLog: Attempting to fetch /profile/activity-log...");
-                const response = await fetch('/profile/activity-log', { credentials: 'include' });
-                console.log("loadActivityLog: Response status:", response.status);
-                const data = await response.json();
-                console.log("loadActivityLog: Received data:", JSON.stringify(data, null, 2));
-
-                const activityLogList = document.getElementById('activityLog');
-                if (activityLogList) {
-                    if (data && data.length > 0) {
-                        activityLogList.innerHTML = data.map(log => `
-                            <li>
-                                <span>${log.action}</span>
-                                <small>${new Date(log.timestamp).toLocaleString()}</small>
-                            </li>
-                        `).join('');
-                    } else {
-                        activityLogList.innerHTML = '<li class="text-muted small">No activity recorded.</li>';
-                    }
-                } else {
-                    console.warn("loadActivityLog: Element with ID 'activityLog' not found.");
-                }
-            } catch (error) {
-                console.error('loadActivityLog: Error loading activity log:', error);
-                Toastify({
-                    text: 'Error loading activity log.',
-                    duration: 3000,
-                    style: { background: '#e74c3c' },
-                }).showToast();
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log("DOMContentLoaded: Starting initialization...");
-            window.loadUserProfileInHeader();
-            setTimeout(() => {
-                console.log("DOMContentLoaded: Executing delayed functions...");
-                loadSettings();
-                loadActivityLog();
-                const passwordSection = document.getElementById('passwordSection');
-                if (passwordSection) {
-                    passwordSection.style.display = 'none';
-                }
-            }, 100);
-
-            const profileSettingsForm = document.getElementById('profileSettingsForm');
-            if (profileSettingsForm) {
-                // 🛑 FIX: Removed action attribute from HTML, keeping fetch logic in JS
-                profileSettingsForm.addEventListener('reset', () => {
-                    console.warn("profileSettingsForm: Form reset detected, reloading settings...");
-                    loadSettings();
-                });
-                profileSettingsForm.addEventListener('submit', async e => {
-                    e.preventDefault();
-                    console.log("profileSettingsForm: Submitting form...");
-                    
-                    const formData = new FormData();
-                    formData.append('userId', window.currentLoggedInUserId || '');
-                    formData.append('name', document.getElementById('profileName')?.value || '');
-                    formData.append('universityEmail', document.getElementById('profileUniversityEmail')?.value || '');
-                    formData.append('major', document.getElementById('profileMajor')?.value || '');
-                    formData.append('department', document.getElementById('profileDepartment')?.value || '');
-                    formData.append('linkedin', document.getElementById('profileLinkedin')?.value || '');
-                    formData.append('github', document.getElementById('profileGithub')?.value || '');
-                    formData.append('personalWebsite', document.getElementById('profilePersonalWebsite')?.value || '');
-                    
-                    // 🛑 FIX: Removed the problematic 'else' block for file handling
-                    if (document.getElementById('profilePic')?.files[0]) {
-                        formData.append('profilePic', document.getElementById('profilePic').files[0]);
-                    }
-
-                    for (let [key, value] of formData.entries()) {
-                        console.log(`profileSettingsForm: FormData ${key}: ${value}`);
-                    }
-                    
-                    try {
-                        const response = await fetch('/profile/update-profile', {
-                            method: 'POST',
-                            body: formData,
-                            credentials: 'include'
-                        });
-                        console.log("profileSettingsForm: Response status:", response.status);
-                        const result = await response.json();
-                        console.log("profileSettingsForm: Response data:", JSON.stringify(result, null, 2));
-                        if (response.ok && result.success) {
-                            Toastify({ text: 'Profile updated successfully!', duration: 3000, style: { background: '#28a745' } }).showToast();
-                            console.log("profileSettingsForm: Reloading settings and activity log...");
-                            await Promise.all([loadSettings(), loadActivityLog()]);
-                            console.log("profileSettingsForm: Settings and activity log reloaded");
-                            window.loadUserProfileInHeader();
-                        } else {
-                            Toastify({
-                                text: result.error || 'Failed to update profile',
-                                duration: 3000,
-                                style: { background: '#e74c3c' },
-                            }).showToast();
-                        }
-                    } catch (error) {
-                        console.error('profileSettingsForm: Error updating profile:', error);
-                        Toastify({ text: 'Error updating profile', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                    }
-                });
-            } else {
-                console.error("profileSettingsForm: Form element not found");
-            }
-
-            const securitySettingsForm = document.getElementById('securitySettingsForm');
-            if (securitySettingsForm) {
-                securitySettingsForm.addEventListener('submit', async e => {
-                    e.preventDefault();
-                    console.log("securitySettingsForm: Submitting form...");
-                    const currentPassword = document.getElementById('currentPassword').value;
-                    const newPassword = document.getElementById('newPassword').value;
-                    const confirmNewPassword = document.getElementById('confirmNewPassword').value;
-
-                    if (!currentPassword || !newPassword || !confirmNewPassword) {
-                        Toastify({ text: 'All password fields are required', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                        return;
-                    }
-                    if (newPassword !== confirmNewPassword) {
-                        Toastify({ text: 'New passwords do not match', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                        return;
-                    }
-                    if (!/^(?=.*\d)(?=.*[!@#$%^&*]).{8,}$/.test(newPassword)) {
-                        Toastify({ text: 'New password must be 8+ characters with a number and special character', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                        return;
-                    }
-
-                    try {
-                        const response = await fetch('/profile/change-password', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                            body: JSON.stringify({ currentPassword, newPassword }),
-                            credentials: 'include'
-                        });
-                        console.log("securitySettingsForm: Response status:", response.status);
-                        const result = await response.json();
-                        console.log("securitySettingsForm: Response data:", JSON.stringify(result, null, 2));
-                        if (response.ok && result.success) {
-                            Toastify({ text: 'Password changed successfully!', duration: 3000, style: { background: '#28a745' } }).showToast();
-                            document.getElementById('passwordSection').style.display = 'none';
-                            document.getElementById('currentPassword').value = '';
-                            document.getElementById('newPassword').value = '';
-                            document.getElementById('confirmNewPassword').value = '';
-                        } else {
-                            Toastify({ text: result.error || 'Failed to change password', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                        }
-                    } catch (error) {
-                        console.error('securitySettingsForm: Error changing password:', error);
-                        Toastify({ text: 'Error changing password', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                    }
-                });
-            } else {
-                console.error("securitySettingsForm: Form element not found");
-            }
-
-            const preferencesSettingsForm = document.getElementById('preferencesSettingsForm');
-            if (preferencesSettingsForm) {
-                preferencesSettingsForm.addEventListener('submit', async e => {
-                    e.preventDefault();
-                    console.log("preferencesSettingsForm: Submitting form...");
-                    const notifications = document.getElementById('notifications').value;
-                    const theme = document.getElementById('theme').value;
-                    const privacyElement = document.getElementById('profilePrivacy');
-                    const privacyValue = privacyElement ? privacyElement.value : 'public';
-                    const twoFactorAuthElement = document.getElementById('twoFactorAuth');
-                    // Get the 2FA state from the other form
-                    const twoFactorAuthChecked = document.getElementById('securitySettingsForm') ? twoFactorAuthElement.checked : false; 
-
-                    try {
-                        const response = await fetch('/profile/update-preferences', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                            body: JSON.stringify({ notifications, theme, privacy: privacyValue, twoFactorAuth: twoFactorAuthChecked }),
-                            credentials: 'include'
-                        });
-                        console.log("preferencesSettingsForm: Response status:", response.status);
-                        const result = await response.json();
-                        console.log("preferencesSettingsForm: Response data:", JSON.stringify(result, null, 2));
-                        if (response.ok && result.success) {
-                            Toastify({ text: 'Preferences updated successfully!', duration: 3000, style: { background: '#28a745' } }).showToast();
-                            loadSettings();
-                        } else {
-                            Toastify({ text: result.error || 'Failed to update preferences', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                        }
-                    } catch (error) {
-                        console.error('preferencesSettingsForm: Error updating preferences:', error);
-                        Toastify({ text: 'Error updating preferences', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                    }
-                });
-            } else {
-                console.error("preferencesSettingsForm: Form element not found");
-            }
-
-            document.getElementById('changePasswordBtn').addEventListener('click', () => {
-                const passwordSection = document.getElementById('passwordSection');
-                if (passwordSection) {
-                    passwordSection.style.display = 'block';
-                }
-            });
-
-            document.getElementById('cancelPasswordBtn').addEventListener('click', () => {
-                const passwordSection = document.getElementById('passwordSection');
-                if (passwordSection) {
-                    passwordSection.style.display = 'none';
-                    document.getElementById('currentPassword').value = '';
-                    document.getElementById('newPassword').value = '';
-                    document.getElementById('confirmNewPassword').value = '';
-                }
-            });
-
-            document.getElementById('cancelProfileBtn').addEventListener('click', () => {
-                console.log("cancelProfileBtn: Reloading settings...");
-                loadSettings();
-            });
-
-            document.getElementById('cancelPreferencesBtn').addEventListener('click', () => {
-                loadSettings();
-            });
-
-            document.getElementById('deleteAccountBtn').addEventListener('click', async () => {
-                if (!confirm('Are you sure you want to delete your account? This cannot be undone.')) return;
                 try {
-                    const response = await fetch('/profile/delete-account', {
-                        method: 'DELETE',
+                    const response = await fetch('/profile/change-password', {
+                        method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                        body: JSON.stringify({ currentPassword, newPassword }),
                         credentials: 'include'
                     });
-                    console.log("deleteAccountBtn: Response status:", response.status);
                     const result = await response.json();
-                    console.log("deleteAccountBtn: Response data:", JSON.stringify(result, null, 2));
                     if (response.ok && result.success) {
-                        Toastify({ text: 'Account deleted successfully!', duration: 3000, style: { background: '#28a745' } }).showToast();
-                        setTimeout(() => window.location.href = '/login.html', 3000);
+                        Toastify({ text: 'Password changed successfully!', duration: 3000, style: { background: '#28a745' } }).showToast();
+                        document.getElementById('passwordSection').style.display = 'none';
+                        document.getElementById('currentPassword').value = '';
+                        document.getElementById('newPassword').value = '';
+                        document.getElementById('confirmNewPassword').value = '';
                     } else {
-                        Toastify({ text: result.error || 'Failed to delete account', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                        Toastify({ text: result.error || 'Failed to change password', duration: 3000, style: { background: '#e74c3c' } }).showToast();
                     }
                 } catch (error) {
-                    console.error('deleteAccountBtn: Error deleting account:', error);
-                    Toastify({ text: 'Error deleting account', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                    console.error('securitySettingsForm: Error changing password:', error);
+                    Toastify({ text: 'Error changing password', duration: 3000, style: { background: '#e74c3c' } }).showToast();
                 }
             });
+        }
+        
+        // Preferences Settings Form Submission (Notifications, Theme, Privacy, 2FA)
+        const preferencesSettingsForm = document.getElementById('preferencesSettingsForm');
+        if (preferencesSettingsForm) {
+            preferencesSettingsForm.addEventListener('submit', async e => {
+                e.preventDefault();
+                
+                const notifications = document.getElementById('notifications').value;
+                const theme = document.getElementById('theme').value;
+                const privacyValue = document.getElementById('profilePrivacy').value;
+                const twoFactorAuthChecked = document.getElementById('twoFactorAuth').checked; // Get 2FA state from security form
 
-            const searchInput = document.getElementById('searchInput');
-            const autocompleteSuggestions = document.getElementById('autocompleteSuggestions');
-
-            if (searchInput) {
-                searchInput.addEventListener('input', () => {
-                    clearTimeout(searchTimeout);
-                    searchTimeout = setTimeout(performGlobalSearch, DEBOUNCE_DELAY);
-                });
-
-                searchInput.addEventListener('focus', () => {
-                    const query = searchInput.value.trim();
-                    if (query && autocompleteSuggestions && autocompleteSuggestions.children.length > 0) {
-                        autocompleteSuggestions.style.display = 'block';
+                try {
+                    const response = await fetch('/profile/update-preferences', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                        body: JSON.stringify({ notifications, theme, privacy: privacyValue, twoFactorAuth: twoFactorAuthChecked }),
+                        credentials: 'include'
+                    });
+                    const result = await response.json();
+                    if (response.ok && result.success) {
+                        Toastify({ text: 'Preferences updated successfully!', duration: 3000, style: { background: '#28a745' } }).showToast();
+                        loadSettings();
+                    } else {
+                        Toastify({ text: result.error || 'Failed to update preferences', duration: 3000, style: { background: '#e74c3c' } }).showToast();
                     }
-                });
-            }
-
-            document.addEventListener('click', (event) => {
-                if (autocompleteSuggestions && !autocompleteSuggestions.contains(event.target) && event.target !== searchInput) {
-                    autocompleteSuggestions.style.display = 'none';
+                } catch (error) {
+                    console.error('preferencesSettingsForm: Error updating preferences:', error);
+                    Toastify({ text: 'Error updating preferences', duration: 3000, style: { background: '#e74c3c' } }).showToast();
                 }
             });
+        }
 
-            const filterBtn = document.getElementById('filterBtn');
-            // Assuming filter modal is intentionally excluded/inactive on this page
+        // --- UI/Cancel/Danger Handlers ---
+        document.getElementById('changePasswordBtn').addEventListener('click', () => {
+            document.getElementById('passwordSection').style.display = 'block';
         });
-    </script>
+        document.getElementById('cancelPasswordBtn').addEventListener('click', () => {
+            document.getElementById('passwordSection').style.display = 'none';
+            document.getElementById('currentPassword').value = '';
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmNewPassword').value = '';
+        });
+        document.getElementById('cancelProfileBtn').addEventListener('click', loadSettings);
+        document.getElementById('cancelPreferencesBtn').addEventListener('click', loadSettings);
+        document.getElementById('deleteAccountBtn').addEventListener('click', async () => {
+            if (!confirm('Are you absolutely sure you want to delete your account? This action cannot be undone and all projects will be permanently removed.')) return;
+            try {
+                const response = await fetch('/profile/delete-account', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    credentials: 'include'
+                });
+                const result = await response.json();
+                if (response.ok && result.success) {
+                    Toastify({ text: 'Account deleted successfully! Goodbye.', duration: 3000, style: { background: '#28a745' } }).showToast();
+                    setTimeout(() => window.location.href = '/login.html', 3000);
+                } else {
+                    Toastify({ text: result.error || 'Failed to delete account', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                }
+            } catch (error) {
+                console.error('deleteAccountBtn: Error deleting account:', error);
+                Toastify({ text: 'Error deleting account', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+            }
+        });
+
+        // --- Search Handlers ---
+        const searchInput = document.getElementById('searchInput');
+        const autocompleteSuggestions = document.getElementById('autocompleteSuggestions');
+        
+        if (searchInput && window.performGlobalSearch && window.DEBOUNCE_DELAY) {
+            searchInput.addEventListener('input', () => {
+                clearTimeout(window.searchTimeout);
+                window.searchTimeout = setTimeout(window.performGlobalSearch, window.DEBOUNCE_DELAY);
+            });
+            searchInput.addEventListener('focus', () => {
+                if (searchInput.value.trim() && autocompleteSuggestions.children.length > 0) {
+                    autocompleteSuggestions.style.display = 'block';
+                }
+            });
+        }
+        document.addEventListener('click', (event) => {
+            if (autocompleteSuggestions && !autocompleteSuggestions.contains(event.target) && event.target !== searchInput) {
+                autocompleteSuggestions.style.display = 'none';
+            }
+        });
+    });
+</script>
 </body>
 </html>

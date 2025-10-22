@@ -17,6 +17,39 @@
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <script type="module" src="https://unpkg.com/@google/model-viewer@4.0.0/dist/model-viewer.min.js"></script>
+
+    <style>
+        .project-meta .list-unstyled {
+            padding-left: 0; 
+            margin-bottom: 1.5rem; 
+            /* Added max-width to keep metadata readable if placed full-width */
+            max-width: 500px; 
+        }
+
+        .project-meta .list-unstyled li {
+            margin-bottom: 0.5rem; 
+            line-height: 1.5;
+        }
+
+        .project-meta .list-unstyled li:last-child {
+            display: flex;
+            align-items: center;
+            margin-top: 1rem; 
+        }
+        
+        /* Ensure media container takes full width of the card's content area */
+        #dynamicMediaContainer {
+            width: 100%;
+            margin-bottom: 2rem !important; /* Extra spacing after the large media element */
+        }
+
+        /* Styling for model-viewer for better full-width appearance */
+        model-viewer {
+            width: 100%;
+            height: 500px; /* Give it a decent height */
+            margin-bottom: 20px;
+        }
+    </style>
 </head>
 <body>
     <header class="d-flex justify-content-between align-items-center">
@@ -83,39 +116,43 @@
                             <button id="deleteProjectBtn" class="btn btn-outline-danger btn-sm"><i class="fas fa-trash-alt me-1"></i> Delete</button>
                         </div>
                     </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div id="dynamicMediaContainer" class="mb-3">
-                                <div class="text-muted">Loading media...</div>
-                            </div>
+
+                    <div id="dynamicMediaContainer" class="mb-3">
+                        <div class="text-muted">Loading media...</div>
+                    </div>
+
+                    <div class="project-details-section">
+                        <div class="project-meta">
+                            <ul class="list-unstyled">
+                                <li><strong>By:</strong> <span id="projectAuthor"></span></li>
+                                <li><strong>Type:</strong> <span id="projectType"></span></li>
+                                <li><strong>Year:</strong> <span id="projectYear"></span></li>
+                                <li><strong>Department:</strong> <span id="projectDepartment"></span></li>
+                                <li><strong>Category:</strong> <span id="projectCategory"></span></li>
+                                <li>
+                                    <button id="likeButton" class="btn btn-outline-danger btn-sm"><i class="fas fa-heart"></i> Like</button>
+                                    <span class="ms-3 text-muted small">
+                                        <i class="fas fa-heart text-danger"></i> <span id="projectLikes"></span> 
+                                        <i class="fas fa-eye ms-2"></i> <span id="projectViews"></span>
+                                    </span>
+                                </li>
+                            </ul>
                         </div>
-                        <div class="col-md-6">
-                            <div class="project-meta mb-3">
-                                <p><strong>By:</strong> <span id="projectAuthor"></span></p>
-                                <p><strong>Type:</strong> <span id="projectType"></span></p>
-                                <p><strong>Year:</strong> <span id="projectYear"></span></p>
-                                <p><strong>Department:</strong> <span id="projectDepartment"></span></p>
-                                <p><strong>Category:</strong> <span id="projectCategory"></span></p>
-                                <p><strong>Views:</strong> <span id="projectViews"></span></p>
-                                <p><strong>Likes:</strong> <span id="projectLikes"></span></p>
-                                <button id="likeButton" class="btn btn-outline-danger btn-sm"><i class="fas fa-heart"></i> Like</button>
-                            </div>
-                            <div class="project-tags mb-3">
-                                <strong>Tags:</strong>
-                                <div id="projectTags"></div>
-                            </div>
-                            <div class="collaborators mb-3">
-                                <strong>Collaborators:</strong>
-                                <div id="collaboratorList"></div>
-                            </div>
-                            <div class="other-contributors mb-3">
-                                <strong>Other Contributors:</strong>
-                                <div id="otherContributors"></div>
-                            </div>
-                            <div class="resources mb-3">
-                                <strong>Resources:</strong>
-                                <div id="projectResources"></div>
-                            </div>
+                        <div class="project-tags mb-3">
+                            <strong>Tags:</strong>
+                            <div id="projectTags"></div>
+                        </div>
+                        <div class="collaborators mb-3">
+                            <strong>Collaborators:</strong>
+                            <div id="collaboratorList"></div>
+                        </div>
+                        <div class="other-contributors mb-3">
+                            <strong>Other Contributors:</strong>
+                            <div id="otherContributors"></div>
+                        </div>
+                        <div class="resources mb-4">
+                            <strong>Resources:</strong>
+                            <div id="projectResources"></div>
                         </div>
                     </div>
                     <div class="project-description mb-3">
@@ -144,7 +181,6 @@
         </div>
     </main>
 
-    <!-- Filter Modal -->
     <div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">

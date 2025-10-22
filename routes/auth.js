@@ -443,14 +443,12 @@ router.get('/users/search', isAuthenticated, async (req, res) => {
     }
 });
 
-// Notifications (Placeholder)
 router.get('/notifications', isAuthenticated, async (req, res) => {
     try {
-        // Placeholder notifications
-        const notifications = [
-            { message: 'New like on your project "Sharecase"', timestamp: new Date() },
-            { message: 'User John followed you', timestamp: new Date() }
-        ];
+        const notifications = await Notification.find({ userId: req.session.userId })
+            .sort({ timestamp: -1 })
+            .limit(10)
+            .lean();
         res.json(notifications);
     } catch (error) {
         console.error('Error fetching notifications:', error);

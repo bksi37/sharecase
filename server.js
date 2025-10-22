@@ -79,7 +79,27 @@ mongoose.connect(process.env.MONGO_URL, { useNewUrlParser: true, useUnifiedTopol
         // Mount routes
         app.use('/', authRoutes);
         app.use('/profile', profileRoutes);
-        app.use('/projects', projectRoutes); // Fixed: Mount project routes at /projects
+        
+        // --- FIX: Add a specific mount for /search to ensure the client-side call works ---
+        // This is done by checking if the projects router has a dedicated handler for /search.
+        // It should also handle any other routes in projectRoutes that need to be at root (e.g., if /projects route is defined as router.get('/', ...))
+        // Since projectRoutes contains '/search', we extract it to the root path.
+        // Option A: Mount projectsRoutes twice (less clean)
+        // app.use('/', projectRoutes); // If many project routes are root
+        // Option B: Better approach for your current setup:
+        app.use('/projects', projectRoutes); // Keeps the main project API routes namespaced
+        
+        // Manually mount the /search endpoint to the root path:
+        // Note: This relies on the global search being the only thing hitting /search.
+        app.get('/search', projectRoutes.stack.find(layer => layer.route && layer.route.path === '/search')?.route.stack[0].handle || ((req, res) => res.status(404).json({ error: 'Search route handler missing.' })));
+        
+        // Note: For simplicity and based on common practice, I recommend confirming if the correct mount for projectRoutes is `/` instead of `/projects`.
+        // If all routes in projects.js should be under /projects, then the client call in scripts.js must change to `/projects/search?...`.
+        // Assuming you want the client-side JS to remain:
+        // app.use('/', projectRoutes); // <-- Uncomment this line and REMOVE the line below to mount projectRoutes at root (common for a single-page app API)
+        
+        // I will keep the original mounting for /projects, but also add the /search route at the root for compatibility:
+        
         app.use('/admin', adminRoutes);
         app.use('/portfolio', portfolioRoutes);
 
@@ -140,12 +160,13 @@ mongoose.connect(process.env.MONGO_URL, { useNewUrlParser: true, useUnifiedTopol
             }
             const isAjaxRequest = req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'));
             if (isAjaxRequest) {
+                // Return JSON for all missing API endpoints to prevent client-side JSON parsing errors
                 return res.status(404).json({ error: 'API endpoint not found', message: `No API route for ${req.method} ${req.url}` });
             }
             res.status(404).sendFile(path.join(__dirname, 'views', 'landing.html'));
         });
 
-        // server.js (Excerpt)
+        // Error handler
         app.use((err, req, res, next) => {
             console.error('Global Server Error:', err, err.stack);
             const isAjaxRequest = req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'));
