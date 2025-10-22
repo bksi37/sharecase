@@ -92,26 +92,54 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// public/js/scripts.js (REVISED fetchNotifications)
+
 async function fetchNotifications() {
+    // NOTE: This assumes the header elements have been loaded by loadUserProfileInHeader()
     const notificationList = document.getElementById('notificationList');
     const notificationCount = document.getElementById('notificationCount');
-    if (!notificationList || !notificationCount) return;
+
+    // If fetch failed previously, the error might contain "Error loading notifications".
+    // Clear the list while fetching to show a clean loading state, then restore.
+    if (notificationList) {
+        notificationList.innerHTML = '<div class="dropdown-item-text text-muted">Fetching...</div>';
+    } else {
+        return; 
+    }
 
     try {
         const response = await fetch('/notifications', { credentials: 'include' });
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        
+        // Handle 401 Unauthorized explicitly before trying to parse JSON
+        if (response.status === 401) {
+            throw new Error('Unauthorized: Please log in.');
+        }
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const notifications = await response.json();
+        
+        // --- UI Update Logic ---
         notificationList.innerHTML = notifications.length > 0
             ? notifications.map(n => `<div class="dropdown-item-text">${n.message}</div>`).join('')
             : '<div class="dropdown-item-text">No new notifications</div>';
-        notificationCount.textContent = notifications.length;
-        notificationCount.style.display = notifications.length > 0 ? 'inline' : 'none';
+            
+        if (notificationCount) {
+            notificationCount.textContent = notifications.filter(n => !n.read).length; // Show count of UNREAD notifications
+            notificationCount.style.display = notifications.filter(n => !n.read).length > 0 ? 'inline' : 'none';
+        }
+        
+        // Optional: Mark notifications as read after successful fetch/display
+        // await markNotificationsAsRead(); 
+
     } catch (error) {
         console.error('Error fetching notifications:', error);
-        notificationList.innerHTML = '<div class="dropdown-item-text">Error loading notifications</div>';
+        notificationList.innerHTML = '<div class="dropdown-item-text text-danger">Error loading notifications</div>';
+        if (notificationCount) notificationCount.style.display = 'none';
         Toastify({
-            text: 'Error loading notifications.',
-            duration: 3000,
+            text: error.message || 'Error loading notifications.',
+            duration: 5000,
             style: { background: '#e74c3c' },
         }).showToast();
     }

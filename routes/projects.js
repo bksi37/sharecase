@@ -285,7 +285,7 @@ router.get('/dynamic-filter-options', async (req, res) => {
             projectSchemas: {
                 Default: [],
                 Engineering: [
-                    { name: 'CADFile', label: 'CAD File', type: 'file', accept: '.stl,.obj,.gltf,.glb,.step', required: true, note: 'Upload STL, OBJ, GLTF, GLB, or STEP (max 10MB). STEP files are not previewable.' },
+                    { name: 'CADFile', label: 'CAD File', type: 'file', accept: '.stl,.obj,.gltf,.glb,.step', required: false, note: 'Upload STL, OBJ, GLTF, GLB, or STEP (max 10MB). STEP files are not previewable.' },
                     { name: 'technicalDescription', label: 'Technical Description', type: 'textarea', placeholder: 'Describe the technical aspects of your project.', required: true },
                     { name: 'toolsSoftware', label: 'Tools/Software Used', type: 'text', placeholder: 'e.g., SolidWorks, AutoCAD', required: true },
                     { name: 'functionalGoals', label: 'Functional Goals', type: 'textarea', placeholder: 'What are the functional objectives?', required: false }

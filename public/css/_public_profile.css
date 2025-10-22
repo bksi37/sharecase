@@ -1,43 +1,41 @@
-/* css/_public_profile.css */
+/* --- Public Profile Page Styles: Dedicated for public_profile.html --- */
 
-/* --- CORE LAYOUT: WIDEN CONTENT AREA --- */
-
+/* CORE LAYOUT: CSS GRID to create the two-column structure (Sidebar | Content) */
 .profile-layout {
     display: grid;
-    grid-template-columns: 200px 1fr;
+    /* FIX: Define columns: Sidebar (250px) and Content (1fr, max remaining width) */
+    grid-template-columns: 250px 1fr;
     gap: 40px;
     align-items: start;
+    
+    /* Ensure the layout utilizes the space from the outer .container */
+    margin: 0 auto;
+    padding: 0; /* Let inner containers handle padding */
+}
+
+/* Secondary containers must match the main grid definitions */
+.profile-sidebar {
+    margin: 0;
+    padding: 0;
 }
 
 .profile-content {
+    /* Takes the 1fr space, allowing project cards to expand */
     width: 100%;
 }
 
-/* Ensure Bootstrap's row behavior for project grid */
+/* PROJECT GRID FIX: Remove custom CSS Grid definition. 
+   We let the HTML (row row-cols-md-3) handle the column layout. 
+   We just need to ensure the container is a flex context. */
 .project-grid {
+    /* If your HTML uses <div class="row ...">, this should not interfere */
+    display: block; 
     padding: 0;
     margin: 0;
 }
 
-/* Media Query for smaller screens */
-@media (max-width: 992px) {
-    .profile-layout {
-        grid-template-columns: 1fr;
-        gap: 20px;
-    }
-    .profile-sidebar {
-        max-width: none;
-        text-align: center;
-    }
-    .profile-details {
-        text-align: center;
-    }
-    .profile-stats {
-        justify-content: center;
-    }
-}
 
-/* --- PUBLIC PROFILE HEADER --- */
+/* --- Public Profile Header Styles (Retained) --- */
 
 .public-profile-header {
     display: flex;
@@ -209,18 +207,20 @@
     margin-bottom: 0.5rem;
 }
 
+/* Ensure the outer container styling is consistent */
 .container-fluid.py-4 {
     padding-top: 1.5rem !important;
     padding-bottom: 1.5rem !important;
 }
 
-/* Ensure no override of Bootstrap grid */
-.profile-sidebar {
-    margin: 0;
-    padding: 0;
-}
 
 /* Responsive adjustments */
+@media (max-width: 992px) {
+    .profile-layout {
+        grid-template-columns: 1fr; /* Stacked layout below large screens */
+        gap: 20px;
+    }
+}
 @media (max-width: 768px) {
     .public-profile-header {
         flex-direction: column;
@@ -261,6 +261,10 @@
         margin-top: 4px;
     }
 
+    .project-grid {
+        grid-template-columns: 1fr;
+    }
+
     #followButton {
         width: 100%;
         justify-content: center;
@@ -268,18 +272,13 @@
     }
 }
 
-/* Dropdown styles for followers dropdown */
+/*dropdown styles */
 .dropdown-menu {
     max-height: 300px;
     overflow-y: auto;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     padding: 0;
-    display: none;
-}
-
-.dropdown-menu.show {
-    display: block !important;
 }
 
 .dropdown-item {
@@ -320,4 +319,22 @@
 .btn-outline-secondary:hover {
     background-color: #e9ecef;
     transform: translateY(-2px);
+}
+
+/* Add this to the end of your /css/_public_profile.css file */
+
+/* 1. Target the specific row containing the project cards */
+.profile-content #public-projects {
+    /* Ensure the container is recognized as a row for horizontal flow */
+    display: flex !important;
+    /* Allow columns to wrap horizontally onto the next line */
+    flex-wrap: wrap !important;
+}
+
+/* 2. OPTIONAL: Target the inner column to ensure it uses space correctly */
+/* This is often necessary if the .col class isn't fully inheriting */
+.profile-content #public-projects > .col {
+    /* Reset any potentially conflicting width definitions */
+    width: 33.3333% !important; 
+    max-width: 33.3333% !important;
 }

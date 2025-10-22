@@ -1,4 +1,3 @@
-<!-- index.html (Updated) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -14,6 +13,31 @@
     <link rel="stylesheet" href="/css/_project_cards.css">
     <link rel="stylesheet" href="/css/_utilities.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    
+    <style>
+        .notification-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+        }
+        .notification-item.unread {
+            background-color: #e6f7ff; /* Light blue background for unread */
+            font-weight: 500;
+        }
+        .notification-item .message {
+            flex-grow: 1;
+            padding-right: 10px;
+        }
+        .notification-item button {
+            opacity: 0.5;
+            transition: opacity 0.2s;
+        }
+        .notification-item:hover button {
+            opacity: 1;
+        }
+    </style>
 </head>
 <body>
     <header class="d-flex justify-content-between align-items-center">
@@ -130,34 +154,75 @@
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="/js/scripts.js"></script>
     <script>
-    async function fetchNotifications() {
+    // FIX: This function should ideally be in scripts.js, but we'll define the new structure here 
+    // to include the delete button logic before putting it in scripts.js.
+    async function deleteNotification(notificationId) {
+        if (!confirm('Remove this notification?')) return;
+        
         try {
-            const response = await fetch('/notifications', { credentials: 'include' });
-            if (!response.ok) {
-                if (response.status === 401) {
-                    throw new Error('Please log in to view notifications');
-                }
-                throw new Error('Failed to fetch notifications');
-            }
-            const notifications = await response.json();
-            const notificationList = document.getElementById('notificationList');
-            const notificationCount = document.getElementById('notificationCount');
-            if (notifications.length > 0) {
-                notificationList.innerHTML = notifications.map(n => `
-                    <div class="dropdown-item-text">${n.message}</div>
-                `).join('');
-                notificationCount.textContent = notifications.length;
-                notificationCount.style.display = 'inline';
+            const response = await fetch(`/notifications/${notificationId}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+            
+            if (response.ok) {
+                Toastify({ text: 'Notification removed.', duration: 2000, style: { background: '#ff5858' } }).showToast();
+                fetchNotifications(); // Reload list
             } else {
-                notificationList.innerHTML = '<div class="dropdown-item-text">No new notifications</div>';
-                notificationCount.style.display = 'none';
+                const data = await response.json();
+                throw new Error(data.error || 'Failed to remove notification.');
             }
         } catch (error) {
+            console.error('Error deleting notification:', error);
+            Toastify({ text: error.message, duration: 3000, style: { background: '#e74c3c' } }).showToast();
+        }
+    }
+
+    async function fetchNotifications() {
+        const notificationList = document.getElementById('notificationList');
+        const notificationCount = document.getElementById('notificationCount');
+        if (!notificationList || !notificationCount) return;
+
+        // Display fetching state
+        notificationList.innerHTML = '<div class="dropdown-item-text text-muted">Fetching...</div>';
+        notificationCount.style.display = 'none';
+
+        try {
+            const response = await fetch('/notifications', { credentials: 'include' });
+            
+            if (response.status === 401) {
+                notificationList.innerHTML = '<div class="dropdown-item-text">Please log in to view notifications.</div>';
+                return;
+            }
+            if (!response.ok) {
+                throw new Error(`Failed to fetch notifications: Status ${response.status}`);
+            }
+            
+            const notifications = await response.json();
+            
+            // Assuming notifications contain _id, message, and read status
+            const unreadCount = notifications.filter(n => !n.read).length;
+            
+            notificationList.innerHTML = notifications.length > 0
+                ? notifications.map(n => `
+                    <div class="notification-item ${n.read ? '' : 'unread'}" data-id="${n._id}" title="${n.read ? 'Read' : 'Unread'}">
+                        <span class="message">${n.message}</span>
+                        <button class="btn btn-link btn-sm text-danger p-0" onclick="deleteNotification('${n._id}')" aria-label="Remove notification">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `).join('')
+                : '<div class="dropdown-item-text">No new notifications</div>';
+                
+            notificationCount.textContent = unreadCount;
+            notificationCount.style.display = unreadCount > 0 ? 'inline' : 'none';
+
+        } catch (error) {
             console.error('Error fetching notifications:', error);
-            document.getElementById('notificationList').innerHTML = `<div class="dropdown-item-text">${error.message}</div>`;
+            document.getElementById('notificationList').innerHTML = `<div class="dropdown-item-text text-danger">Error loading: ${error.message}</div>`;
             document.getElementById('notificationCount').style.display = 'none';
             Toastify({
-                text: error.message,
+                text: 'Error loading notifications.',
                 duration: 5000,
                 style: { background: '#e74c3c' }
             }).showToast();
@@ -165,22 +230,20 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+        // Load header user profile immediately
+        window.loadUserProfileInHeader();
+
         // Initialize notification dropdown
         const notificationButton = document.getElementById('notificationButton');
         const notificationDropdown = document.getElementById('notificationDropdown');
+        
         if (notificationButton && notificationDropdown) {
+            // Use the Bootstrap event to trigger the fetch once the dropdown opens
             notificationButton.addEventListener('shown.bs.dropdown', () => {
-                fetchNotifications(); // Fetch on dropdown show
+                fetchNotifications(); 
             });
-            // Fallback: Manually toggle dropdown if Bootstrap fails
-            notificationButton.addEventListener('click', () => {
-                if (!notificationDropdown.classList.contains('show')) {
-                    notificationDropdown.classList.add('show');
-                    fetchNotifications();
-                } else {
-                    notificationDropdown.classList.remove('show');
-                }
-            });
+            // FIX: Export deleteNotification function globally so it can be called from the onclick attribute
+            window.deleteNotification = deleteNotification;
         } else {
             console.error('Notification button or dropdown not found.');
         }
@@ -194,20 +257,16 @@
 
         const searchInput = document.getElementById('searchInput');
         const autocompleteSuggestions = document.getElementById('autocompleteSuggestions');
+        
+        // Search event listeners
         if (searchInput && autocompleteSuggestions) {
+            // Search Debounce Logic
             searchInput.addEventListener('input', () => {
-                if (document.readyState !== 'complete') {
-                    console.log('DOM not ready for search. Waiting for load.');
-                    window.addEventListener('load', () => {
-                        clearTimeout(window.searchTimeout);
-                        window.searchTimeout = setTimeout(window.performGlobalSearch, window.DEBOUNCE_DELAY || 300);
-                    }, { once: true });
-                    return;
-                }
                 clearTimeout(window.searchTimeout);
                 window.searchTimeout = setTimeout(window.performGlobalSearch, window.DEBOUNCE_DELAY || 300);
             });
-
+            
+            // Autocomplete visibility logic
             searchInput.addEventListener('focus', () => {
                 const query = searchInput.value.trim();
                 if (query && autocompleteSuggestions.children.length > 0) {
@@ -216,6 +275,7 @@
             });
         }
 
+        // Apply Filters Button Logic
         const applyFiltersBtn = document.getElementById('applyFilters');
         if (applyFiltersBtn) {
             applyFiltersBtn.addEventListener('click', () => {
@@ -229,33 +289,21 @@
             });
         }
 
+        // Click-outside-dropdown logic
         document.addEventListener('click', (event) => {
             if (autocompleteSuggestions && !autocompleteSuggestions.contains(event.target) && event.target !== searchInput) {
                 autocompleteSuggestions.style.display = 'none';
             }
-            // Close notification dropdown when clicking outside
-            if (notificationDropdown && !notificationDropdown.contains(event.target) && event.target !== notificationButton) {
-                notificationDropdown.classList.remove('show');
-            }
+            // Close notification dropdown when clicking outside (relying on Bootstrap JS for this primarily)
         });
 
+        // Initial project load on window load event
         window.addEventListener('load', () => {
-            console.log('index.html: window.load event triggered.');
             const urlParams = new URLSearchParams(window.location.search);
+            const hasQueryParams = Array.from(urlParams.keys()).some(key => key !== 'q');
             const initialQuery = urlParams.get('q');
-            const initialCourse = urlParams.get('course');
-            const initialYear = urlParams.get('year');
-            const initialType = urlParams.get('type');
-            const initialDepartment = urlParams.get('department');
-            const initialCategory = urlParams.get('category');
-
-            if (initialCourse && document.getElementById('courseFilter')) document.getElementById('courseFilter').value = initialCourse;
-            if (initialYear && document.getElementById('yearFilter')) document.getElementById('yearFilter').value = initialYear;
-            if (initialType && document.getElementById('typeFilter')) document.getElementById('typeFilter').value = initialType;
-            if (initialDepartment && document.getElementById('departmentFilter')) document.getElementById('departmentFilter').value = initialDepartment;
-            if (initialCategory && document.getElementById('categoryFilter')) document.getElementById('categoryFilter').value = initialCategory;
-
-            if (initialQuery || initialCourse || initialYear || initialType || initialDepartment || initialCategory) {
+            
+            if (initialQuery || hasQueryParams) {
                 if (searchInput) searchInput.value = initialQuery || '';
                 if (typeof window.performGlobalSearch === 'function') {
                     window.performGlobalSearch();

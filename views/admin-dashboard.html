@@ -133,6 +133,24 @@
             </div>
 
         </div>
+        <div class="row justify-content-center mb-5">
+    <div class="col-md-8 col-lg-7">
+        <div class="card p-4 shadow-lg rounded">
+            <h3 class="mb-3">Send Custom Notification</h3>
+            <form id="notificationForm">
+                <div class="mb-3">
+                    <label for="targetUserId" class="form-label">Recipient User ID</label>
+                    <input type="text" class="form-control" id="targetUserId" name="targetUserId" required placeholder="Enter user's ID">
+                </div>
+                <div class="mb-3">
+                    <label for="notificationMessage" class="form-label">Message</label>
+                    <textarea class="form-control" id="notificationMessage" name="message" required placeholder="e.g., Your project received a featured badge!"></textarea>
+                </div>
+                <button type="submit" class="btn btn-warning w-100 mt-3">Send Notification</button>
+            </form>
+        </div>
+    </div>
+</div>
     </main>
     <footer>
         <p>© 2025 ShareCase. All rights reserved.</p>
@@ -250,7 +268,40 @@
                 projectAnalytics.innerHTML = '';
             }
         }
+// admin-dashboard.html (Inside the main <script> block)
 
+// --- Add this form handler logic ---
+
+const notificationForm = document.getElementById('notificationForm');
+if (notificationForm) {
+    notificationForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const userId = document.getElementById('targetUserId').value;
+        const message = document.getElementById('notificationMessage').value;
+
+        try {
+            const response = await fetch('/admin/send-notification', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, message }),
+                credentials: 'include'
+            });
+
+            const data = await response.json();
+            
+            if (response.ok && data.success) {
+                Toastify({ text: data.message, duration: 3000, style: { background: '#28a745' } }).showToast();
+                notificationForm.reset();
+            } else {
+                throw new Error(data.error || 'Failed to send notification.');
+            }
+        } catch (error) {
+            console.error('Notification send error:', error);
+            Toastify({ text: error.message || 'Error sending notification.', duration: 5000, style: { background: '#e74c3c' } }).showToast();
+        }
+    });
+}
         document.addEventListener('DOMContentLoaded', () => {
             // Ensure auth is loaded and user is admin (handled by server, but client loads header)
             loadUserProfileInHeader();

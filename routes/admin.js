@@ -4,7 +4,7 @@ const router = express.Router();
 const User = require('../models/User');
 const Project = require('../models/Project');
 const { isAuthenticated, authorizeAdmin, authorizeFaculty } = require('../middleware/auth');
-
+const Notification = require('../models/Notification'); // Assuming Notification.js is in /models
 // Route for project analytics (Used for charts/lists)
 router.get('/analytics/projects', isAuthenticated, authorizeAdmin, async (req, res) => {
     try {
@@ -138,6 +138,38 @@ router.post('/allocate-points', isAuthenticated, authorizeAdmin, async (req, res
     } catch (error) {
         console.error('Error allocating points:', error);
         res.status(500).json({ success: false, error: 'Server error during point allocation.' });
+    }
+});
+
+// routes/admin.js (Add this new route near the bottom)
+
+// Route for manually sending notifications (Admin Tool)
+router.post('/send-notification', isAuthenticated, authorizeAdmin, async (req, res) => {
+    try {
+        const { userId, message } = req.body;
+        if (!userId || !message) {
+            return res.status(400).json({ success: false, error: 'User ID and message are required.' });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'Target user not found.' });
+        }
+
+        // Assuming Notification model is correctly imported and available
+        const newNotification = new Notification({
+            userId: userId,
+            message: message,
+            type: 'mention', // Default type for manual notification
+            read: false,
+        });
+
+        await newNotification.save();
+
+        res.json({ success: true, message: `Notification sent successfully to ${user.name}.` });
+    } catch (error) {
+        console.error('Error sending notification:', error);
+        res.status(500).json({ success: false, error: 'Server error during notification send.' });
     }
 });
 

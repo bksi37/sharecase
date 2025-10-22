@@ -9,6 +9,7 @@ const { Resend } = require('resend');
 const resend = new Resend(process.env.RESEND_API_KEY);
 const { isAuthenticated, isProfileComplete } = require('../middleware/auth');
 const uploadFields = require('../middleware/upload');
+const Notification = require('../models/Notification');
 
 // Signup
 router.post('/signup', async (req, res) => {
@@ -36,7 +37,15 @@ router.post('/signup', async (req, res) => {
         });
 
         await user.save();
-
+// --- ADD WELCOME NOTIFICATION LOGIC HERE ---
+        const welcomeNotification = new Notification({
+            userId: user._id,
+            message: `Welcome to ShareCase, ${user.name}! We're glad to have you.`,
+            type: 'mention', // Use a standard type like 'mention' or create a new 'welcome' enum type
+            read: false,
+        });
+        await welcomeNotification.save();
+        // ------------------------------------------
         const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${emailVerificationToken}`;
 
         await resend.emails.send({
@@ -443,16 +452,42 @@ router.get('/users/search', isAuthenticated, async (req, res) => {
     }
 });
 
+// routes/auth.js
 router.get('/notifications', isAuthenticated, async (req, res) => {
     try {
         const notifications = await Notification.find({ userId: req.session.userId })
             .sort({ timestamp: -1 })
             .limit(10)
             .lean();
-        res.json(notifications);
+        
+        // Ensure we explicitly return the array, even if empty!
+        return res.json(notifications); // This should return [] if none are found.
     } catch (error) {
-        console.error('Error fetching notifications:', error);
-        res.status(500).json({ error: 'Server error fetching notifications' });
+        // ... error handling
+    }
+});
+
+// DELETE route to remove a single notification
+router.delete('/notifications/:id', isAuthenticated, async (req, res) => {
+    try {
+        const notificationId = req.params.id;
+        
+        // Find the notification and ensure it belongs to the logged-in user
+        const result = await Notification.findOneAndDelete({
+            _id: notificationId,
+            userId: req.session.userId
+        });
+
+        if (!result) {
+            return res.status(404).json({ success: false, error: 'Notification not found or access denied.' });
+        }
+
+        // Optional: Update the user's notification list/count if necessary
+
+        res.json({ success: true, message: 'Notification removed.' });
+    } catch (error) {
+        console.error('Error deleting notification:', error);
+        res.status(500).json({ success: false, error: 'Server error during deletion.' });
     }
 });
 

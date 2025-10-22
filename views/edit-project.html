@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="/css/_forms.css">
     <link rel="stylesheet" href="/css/_utilities.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <script type="module" src="https://unpkg.com/@google/model-viewer@4.0.0/dist/model-viewer.min.js"></script>
 </head>
 <body>
     <header class="d-flex justify-content-between align-items-center">
@@ -20,19 +21,25 @@
                 <img src="https://res.cloudinary.com/dphfedhek/image/upload/sharecase-logo.png" alt="ShareCase Logo" style="height: 90px;">
             </a>
         </div>
-        <div class="search-bar-container position-relative">
-            <div class="input-group">
-                <input type="text" class="form-control" id="searchInput" placeholder="Search projects, users...">
-                <button class="btn btn-outline-secondary" id="filterBtn" data-bs-toggle="modal" data-bs-target="#filterModal" type="button">
-                    <i class="fas fa-filter"></i>
+        <div class="user-menu d-flex align-items-center">
+            <div class="dropdown">
+                <button class="btn btn-outline-dark me-2" id="notificationButton" aria-label="Notifications" title="Notifications" data-bs-toggle="dropdown">
+                    <i class="fas fa-bell"></i>
+                    <span class="badge bg-danger" id="notificationCount" style="display: none;">0</span>
                 </button>
+                <div class="dropdown-menu dropdown-menu-end" id="notificationDropdown" style="min-width: 300px;">
+                    <div class="dropdown-header">Notifications</div>
+                    <div id="notificationList">
+                        <div class="dropdown-item-text">No new notifications</div>
+                    </div>
+                </div>
             </div>
-            <div id="autocompleteSuggestions" class="autocomplete-suggestions"></div>
-        </div>
-        <div class="user-menu">
+            <a href="/store-placeholder.html" class="btn btn-outline-dark me-3" id="storeButton" aria-label="Store" title="Store">
+                <i class="fas fa-store"></i>
+            </a>
             <div class="profile-container" id="userMenuToggle" style="display: none;">
-                <img id="headerProfilePic" src="https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg" alt="Profile Picture">
-                <span id="headerProfileName">Guest</span>
+                <img id="headerProfilePic" src="https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg" alt="Profile Picture" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover;">
+                <span id="headerProfileName" class="ms-2">Guest</span>
                 <div class="dropdown-menu" id="userDropdown">
                     <a href="/profile.html" class="dropdown-item">Profile</a>
                     <a href="/settings.html" class="dropdown-item">Settings</a>
@@ -52,322 +59,237 @@
             </div>
         </div>
     </header>
-    <main>
-        <div class="container">
-            <div class="upload-container card p-4 shadow-sm my-4">
-                <h2>Edit Project</h2>
-                <form id="editForm" enctype="multipart/form-data">
-                    <div class="mb-3">
-                        <label for="title" class="form-label">Project Title</label>
-                        <input type="text" class="form-control" id="title" name="title" required>
+
+    <main class="container my-5">
+        <div class="card p-4 shadow-sm">
+            <h2 class="mb-4" id="editFormTitle">Edit Project</h2>
+            <form id="editForm" enctype="multipart/form-data" aria-labelledby="editFormTitle">
+                <input type="hidden" id="projectId" name="projectId">
+                
+                <div class="mb-3">
+                    <label for="title" class="form-label">Project Title <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="title" name="title" required aria-required="true" placeholder="e.g., 3D Printed Drone">
+                    <div class="invalid-feedback">Project Title is required.</div>
+                </div>
+                
+                <div class="row mb-3 g-3">
+                    <div class="col-md-6">
+                        <label for="projectType" class="form-label">Project Type <span class="text-danger">*</span></label>
+                        <select class="form-select" id="projectType" name="projectType" required aria-required="true">
+                            <option value="">Select Project Type</option>
+                        </select>
+                        <div class="invalid-feedback">Project Type is required to publish.</div>
                     </div>
-                    <div class="mb-3">
-                        <label for="projectType" class="form-label">Project Type</label>
-                        <select class="form-select" id="projectType" name="projectType" required>
+                    <div class="col-md-6">
+                        <label for="category" class="form-label">Category</label>
+                        <select class="form-select" id="category" name="category">
+                            <option value="">Select Category</option>
                         </select>
                     </div>
-                    <div class="mb-3">
-                        <label for="description" class="form-label">Description</label>
-                        <textarea class="form-control" id="description" name="description" rows="4"></textarea>
+                    <div class="col-md-6">
+                        <label for="department" class="form-label">Department</label>
+                        <select class="form-select" id="department" name="department">
+                            <option value="">Select Department</option>
+                        </select>
                     </div>
-                    <div class="mb-3">
-                        <label for="problemStatement" class="form-label">Problem Statement</label>
-                        <textarea class="form-control" id="problemStatement" name="problemStatement" rows="4"></textarea>
+                    <div class="col-md-6">
+                        <label for="year" class="form-label">Year/Graduation</label>
+                        <select class="form-select" id="year" name="year">
+                            <option value="">Select Year</option>
+                        </select>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Additional Tags</label>
-                        <div class="row">
-                            <div class="col-md-6 mb-2">
-                                <label for="course" class="form-label">Course</label>
-                                <select class="form-select" id="course" name="course"></select>
-                            </div>
-                            <div class="col-md-6 mb-2">
-                                <label for="year" class="form-label">Year</label>
-                                <select class="form-select" id="year" name="year"></select>
-                            </div>
-                            <div class="col-md-6 mb-2">
-                                <label for="department" class="form-label">Department</label>
-                                <select class="form-select" id="department" name="department"></select>
-                            </div>
-                            <div class="col-md-6 mb-2">
-                                <label for="category" class="form-label">Category</label>
-                                <select class="form-select" id="category" name="category"></select>
-                            </div>
-                            <div class="col-md-12">
-                                <small class="form-text text-muted">Select relevant descriptive tags for your project (e.g., Course, Year).</small>
-                            </div>
-                        </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="description" class="form-label">Description <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="description" name="description" rows="4" required aria-required="true" placeholder="A short, catchy summary (1-2 sentences)"></textarea>
+                    <div class="invalid-feedback">Description is required to publish.</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="problemStatement" class="form-label">Problem Statement</label>
+                    <textarea class="form-control" id="problemStatement" name="problemStatement" rows="4" placeholder="What problem does your project solve?"></textarea>
+                </div>
+                
+                <div id="dynamic-fields-container" class="mb-3 p-3 border rounded bg-light">
+                    <p class="text-muted mb-0">Specific fields (e.g., CAD File, Technical Description) will appear here after selecting a Project Type.</p>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="image" class="form-label">Project Image <span class="text-danger">*</span></label>
+                    <div class="dropzone p-3 border rounded text-center" id="imageDropzone" role="region" aria-label="Dropzone for project image">
+                        <p class="mb-0" id="imageDropzoneText">Drag & drop a new image or click to select (JPEG, PNG, GIF, max 2MB)</p>
+                        <input type="file" class="form-control d-none" id="image" name="image" accept="image/jpeg,image/png,image/gif" aria-required="true">
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Collaborators (Registered Users)</label>
-                        <div class="form-control" style="min-height: 50px; padding: .375rem .75rem; display: flex; flex-wrap: wrap; align-items: center; gap: 5px;">
-                            <div id="selectedCollaboratorsDisplay" style="display: flex; flex-wrap: wrap; gap: 5px;"></div>
-                            <input type="text" id="collaboratorSearchInput" class="form-control flex-grow-1" placeholder="Search by name or email..." style="border: none; outline: none; box-shadow: none; padding: 0; min-width: 150px;">
-                        </div>
-                        <div id="collaboratorSearchResults" class="list-group position-absolute z-index-1000 w-100 mt-1 shadow" style="max-height: 200px; overflow-y: auto; display: none; background-color: white;"></div>
-                        <input type="hidden" id="collaboratorIds" name="collaboratorIds">
+                    <div id="imagePreviewContainer" class="mt-2">
+                        <p class="mb-1 text-muted small">Current Image:</p>
+                        <img id="imagePreview" src="" alt="Image preview" class="rounded" style="max-width: 200px; max-height: 200px; object-fit: cover;">
+                        <button type="button" class="btn btn-sm btn-outline-danger ms-2" id="removeImageBtn" style="display: none;">Remove Current Image</button>
                     </div>
-                    <div class="mb-3">
-                        <label for="otherCollaborators" class="form-label">Other Collaborators (Unregistered, comma-separated)</label>
-                        <input type="text" class="form-control" id="otherCollaborators" name="otherCollaborators" placeholder="Guest Speaker, External Advisor">
-                        <small class="form-text text-muted">For individuals not registered on ShareCase.</small>
+                    <div class="invalid-feedback">Project Image is required to publish.</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="tags" class="form-label">Tags <span class="text-danger">*</span></label>
+                    <select class="form-select" id="tags" name="tags" multiple required aria-required="true">
+                        <option value="" disabled>Select tags</option>
+                    </select>
+                    <small class="form-text text-muted">Select relevant tags (e.g., SolidWorks, Python). Hold Ctrl/Cmd to select multiple.</small>
+                    <div class="invalid-feedback">At least one tag is required to publish.</div>
+                </div>
+                
+                <div class="mb-3 position-relative">
+                    <label class="form-label">Collaborators (Registered Users)</label>
+                    <div class="form-control collaborator-input-container p-2" style="min-height: 50px;">
+                        <div id="selectedCollaboratorsDisplay" class="d-flex flex-wrap gap-2 mb-2"></div>
+                        <input type="text" id="collaboratorSearchInput" class="collaborator-search-input w-100 border-0" placeholder="Search by name or email..." aria-label="Search for collaborators">
                     </div>
-                    <div class="mb-3">
-                        <label for="resources" class="form-label">Resources (Optional, comma-separated URLs)</label>
-                        <input type="text" class="form-control" id="resources" name="resources" placeholder="e.g., http://example.com/doc.pdf, https://github.com/user/repo">
-                        <small class="form-text text-muted">Provide links to project files, external documentation, or source code.</small>
-                    </div>
-                    <div class="mb-3">
-                        <label for="image" class="form-label">Project Image</label>
-                        <input type="file" class="form-control" id="image" name="image" accept="image/*" style="display: none;">
-                        <div id="dropZone" class="drop-zone">
-                            <p>Drag & drop a new image here or click to select</p>
-                        </div>
-                    </div>
-                    <div class="image-preview mb-3">
-                        <img id="imagePreview" src="" alt="Image Preview" style="display: none; max-width: 100%; max-height: 200px;">
-                    </div>
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary" id="saveChangesBtn">Save Changes</button>
-                        <button type="button" class="btn btn-primary" id="publishBtn">Publish</button>
-                        <button type="button" class="btn btn-secondary" id="cancelEditBtn">Cancel</button>
-                    </div>
-                </form>
-            </div>
+                    <div id="collaboratorSearchResults" class="list-group position-absolute w-100 mt-1 shadow" style="max-height: 200px; overflow-y: auto; display: none; z-index: 1000;"></div>
+                    <input type="hidden" id="collaboratorIds" name="collaboratorIds">
+                </div>
+                
+                <div class="mb-3">
+                    <label for="otherContributors" class="form-label">Other Contributors</label>
+                    <input type="text" class="form-control" id="otherContributors" name="otherContributors" placeholder="e.g., Professor X, Guest Speaker">
+                    <small class="form-text text-muted">For non-registered contributors (faculty, mentors).</small>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="resources" class="form-label">Resources (comma-separated URLs)</label>
+                    <input type="text" class="form-control" id="resources" name="resources" placeholder="e.g., https://github.com/user/repo">
+                    <small class="form-text text-muted">Links to documentation, source code, or other files.</small>
+                </div>
+                
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary" id="saveChangesBtn">Save Changes</button>
+                    <button type="button" class="btn btn-primary" id="publishBtn">Publish</button>
+                    <button type="button" class="btn btn-outline-secondary" id="cancelEditBtn">Cancel</button>
+                </div>
+                <small class="d-block mt-3 text-danger">Fields marked with (<span class="text-danger">*</span>) are required for publishing.</small>
+            </form>
         </div>
     </main>
-    <footer>
+
+    <footer class="text-center py-3">
         <p>© 2025 ShareCase. All rights reserved.</p>
     </footer>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
-    <script src="/js/scripts.js"></script>
-    <script>
-        // Debounce variables
-        let debounceTimeout;
+   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+<script src="/js/scripts.js"></script>
+<script type="module">
+        // Global Variables
         const DEBOUNCE_DELAY_SEARCH = 300;
+        let debounceTimeout;
+        let selectedCollaboratorIds = [];
+        window.selectedCollaboratorIds = selectedCollaboratorIds;
+        // Project Schemas will be loaded from endpoint or fallback
+        window.projectSchemas = { Default: [] }; 
+        let currentProjectData = {}; // Stores project data after load
 
-        // Global variables for collaborator management
+        // DOM Elements
+        const editForm = document.getElementById('editForm');
+        const projectTypeSelect = document.getElementById('projectType');
+        const dynamicFieldsContainer = document.getElementById('dynamic-fields-container');
         const collaboratorSearchInput = document.getElementById('collaboratorSearchInput');
         const collaboratorSearchResults = document.getElementById('collaboratorSearchResults');
         const selectedCollaboratorsDisplay = document.getElementById('selectedCollaboratorsDisplay');
         const collaboratorIdsHiddenInput = document.getElementById('collaboratorIds');
-        let selectedCollaboratorIds = [];
-        window.selectedCollaboratorIds = selectedCollaboratorIds; // Expose to scripts.js
-        let originalProjectStatus = 'false'; // To store initial publish status
-
-        // --- Image Upload Logic ---
-        const dropZone = document.getElementById('dropZone');
         const imageInput = document.getElementById('image');
+        const imageDropzone = document.getElementById('imageDropzone');
+        const imagePreviewContainer = document.getElementById('imagePreviewContainer');
         const imagePreview = document.getElementById('imagePreview');
+        const removeImageBtn = document.getElementById('removeImageBtn');
+        const tagsSelect = document.getElementById('tags'); 
+        const yearSelect = document.getElementById('year');
+        const departmentSelect = document.getElementById('department');
+        const categorySelect = document.getElementById('category');
 
-        if (dropZone && imageInput && imagePreview) {
-            dropZone.addEventListener('click', () => imageInput.click());
-            dropZone.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                dropZone.classList.add('dragover');
-            });
-            dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-            dropZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                dropZone.classList.remove('dragover');
-                const files = e.dataTransfer.files;
-                if (files.length) {
-                    imageInput.files = files;
-                    previewImage(files[0]);
+        // --- Utility Functions (Omitted for brevity, assume correct) ---
+        
+        function validateFileSize(input, maxSizeMB, fieldName) {
+            if (input.files && input.files[0]) {
+                const fileSizeMB = input.files[0].size / (1024 * 1024);
+                if (fileSizeMB > maxSizeMB) {
+                    Toastify({ text: `${fieldName} exceeds ${maxSizeMB}MB limit.`, duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                    input.value = '';
+                    const previewElement = document.getElementById(`${input.id}Preview`) || imagePreviewContainer;
+                    if (previewElement) previewElement.style.display = 'none';
+                    return false;
                 }
-            });
-            imageInput.addEventListener('change', () => {
-                if (imageInput.files.length) previewImage(imageInput.files[0]);
-            });
+                return true;
+            }
+            return true;
+        }
 
-            function previewImage(file) {
+        function previewImage(file, previewImgElement, previewContainerElement, hideRemoveBtn = false) {
+            if (file && ['image/jpeg', 'image/png', 'image/gif'].includes(file.type)) {
                 const reader = new FileReader();
-                reader.onload = () => {
-                    imagePreview.src = reader.result;
-                    imagePreview.style.display = 'block';
+                reader.onload = (e) => {
+                    previewImgElement.src = e.target.result;
+                    previewImgElement.style.display = 'block';
+                    previewContainerElement.style.display = 'block';
+                    removeImageBtn.style.display = 'block';
                 };
                 reader.readAsDataURL(file);
-            }
-        } else {
-            console.warn('Image upload elements not found.');
-        }
-
-        // --- Collaborator Search and Selection Logic ---
-        function updateCollaboratorIdsHiddenInput() {
-            if (collaboratorIdsHiddenInput) {
-                collaboratorIdsHiddenInput.value = window.selectedCollaboratorIds.join(',');
-            }
-        }
-
-        function addCollaboratorChip(userId, userName, profilePic, isInitialLoad = false) {
-                // Validate userId (must be a 24-character hexadecimal string)
-                const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(userId);
-                if (!isValidObjectId) {
-                    if (!isInitialLoad) {
-                        Toastify({ text: `Invalid user ID for ${userName}. Cannot add collaborator.`, duration: 3000, style: { background: "#e74c3c" } }).showToast();
-                    }
-                    return;
-                }
-
-                if (window.selectedCollaboratorIds.includes(userId)) {
-                    if (!isInitialLoad) {
-                        Toastify({ text: `${userName} is already added.`, duration: 2000, style: { background: "#ffc107" } }).showToast();
-                    }
-                    return;
-                }
-                if (window.currentLoggedInUserId && userId === window.currentLoggedInUserId) {
-                    if (!isInitialLoad) {
-                        Toastify({ text: `You are the project owner, no need to add yourself as a collaborator.`, duration: 3000, style: { background: "#ffc107" } }).showToast();
-                    }
-                    return;
-                }
-
-                window.selectedCollaboratorIds.push(userId);
-                updateCollaboratorIdsHiddenInput();
-
-                if (selectedCollaboratorsDisplay) {
-                    const chip = document.createElement('span');
-                    chip.classList.add('badge', 'bg-primary', 'me-2', 'd-flex', 'align-items-center');
-                    chip.setAttribute('data-user-id', userId);
-                    chip.innerHTML = `
-                        <img src="${profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'}" class="rounded-circle me-1" style="width: 20px; height: 20px;" alt="${userName}">
-                        ${userName}
-                        <button type="button" class="btn-close btn-close-white ms-1" aria-label="Remove" data-remove-id="${userId}" style="font-size: 0.6em;"></button>
-                    `;
-                    selectedCollaboratorsDisplay.appendChild(chip);
-                    if (!isInitialLoad) {
-                        Toastify({ text: `${userName} added as collaborator`, duration: 2000, style: { background: "#28a745" } }).showToast();
-                    }
-                }
-            }
-
-        if (collaboratorSearchInput && collaboratorSearchResults && selectedCollaboratorsDisplay && collaboratorIdsHiddenInput) {
-            collaboratorSearchInput.addEventListener('input', () => {
-                const query = collaboratorSearchInput.value.trim();
-                if (query.length > 2) {
-                    clearTimeout(debounceTimeout);
-                    debounceTimeout = setTimeout(() => {
-                        window.searchUsers(query, collaboratorSearchResults, addCollaboratorChip, window.selectedCollaboratorIds);
-                    }, DEBOUNCE_DELAY_SEARCH);
-                } else {
-                    collaboratorSearchResults.style.display = 'none';
-                    collaboratorSearchResults.innerHTML = '';
-                }
-            });
-
-            collaboratorSearchResults.addEventListener('click', (event) => {
-                const selectedItem = event.target.closest('.list-group-item');
-                if (selectedItem) {
-                    const userId = selectedItem.dataset.userId;
-                    const userName = selectedItem.dataset.userName;
-                    const profilePic = selectedItem.dataset.profilePic;
-
-                    addCollaboratorChip(userId, userName, profilePic);
-
-                    collaboratorSearchInput.value = '';
-                    collaboratorSearchResults.style.display = 'none';
-                    collaboratorSearchResults.innerHTML = '';
-                }
-            });
-
-            selectedCollaboratorsDisplay.addEventListener('click', (event) => {
-                const removeBtn = event.target.closest('.btn-close');
-                if (removeBtn) {
-                    const userIdToRemove = removeBtn.dataset.removeId;
-                    const chipToRemove = removeBtn.closest('.badge');
-
-                    window.selectedCollaboratorIds = window.selectedCollaboratorIds.filter(id => id !== userIdToRemove);
-                    updateCollaboratorIdsHiddenInput();
-
-                    if (chipToRemove) {
-                        chipToRemove.remove();
-                        Toastify({ text: `Collaborator removed`, duration: 2000, style: { background: "#dc3545" } }).showToast();
-                    }
-                }
-            });
-
-            document.addEventListener('click', (event) => {
-                if (!collaboratorSearchInput.contains(event.target) && !collaboratorSearchResults.contains(event.target)) {
-                    collaboratorSearchResults.style.display = 'none';
-                }
-            });
-        } else {
-            console.warn('Collaborator search/selection elements not found.');
-        }
-
-        // --- Dynamic Tag Options and Project Loading ---
-        async function loadDynamicOptionsAndProject() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const projectId = urlParams.get('id');
-            if (!projectId) {
-                Toastify({ text: 'No project ID provided.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                setTimeout(() => window.location.href = '/profile.html', 3000);
-                return;
-            }
-
-            try {
-                // Load dynamic filter options
-                const response = await fetch('/dynamic-filter-options');
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                const filterData = await response.json();
-                console.log('Dynamic Filter Options for Edit:', filterData);
-
-                // Populate dropdowns
-                const projectTypeSelect = document.getElementById('projectType');
-                const courseSelect = document.getElementById('course');
-                const yearSelect = document.getElementById('year');
-                const departmentSelect = document.getElementById('department');
-                const categorySelect = document.getElementById('category');
-
-                if (projectTypeSelect) populateDropdown(projectTypeSelect, filterData.types || [], 'Select Project Type');
-                if (courseSelect) populateDropdown(courseSelect, filterData.courses || [], 'Select Course');
-                if (yearSelect) populateDropdown(yearSelect, filterData.years || [], 'Select Year');
-                if (departmentSelect) populateDropdown(departmentSelect, filterData.departments || [], 'Select Department');
-                if (categorySelect) populateDropdown(categorySelect, filterData.categories || [], 'Select Category');
-
-                // Load project data
-                const projectResponse = await fetch(`/project/${projectId}`);
-                if (!projectResponse.ok) throw new Error('Failed to load project details.');
-                const project = await projectResponse.json();
-
-                originalProjectStatus = project.isPublished ? 'true' : 'false';
-
-                // Populate form fields
-                document.getElementById('title').value = project.title || '';
-                document.getElementById('description').value = project.description || '';
-                document.getElementById('problemStatement').value = project.problemStatement || '';
-                document.getElementById('otherCollaborators').value = project.otherCollaborators.join(', ') || '';
-                document.getElementById('resources').value = project.resources.join(', ') || '';
-                if (project.image) {
-                    document.getElementById('imagePreview').src = project.image;
-                    document.getElementById('imagePreview').style.display = 'block';
-                }
-
-                // Populate dropdowns with project data
-                if (projectTypeSelect) projectTypeSelect.value = project.projectType || 'Other';
-                if (project.tags && project.tags.length > 0) {
-                    project.tags.forEach(tag => {
-                        if (filterData.courses.includes(tag)) courseSelect.value = tag;
-                        else if (filterData.years.includes(tag)) yearSelect.value = tag;
-                        else if (filterData.departments.includes(tag)) departmentSelect.value = tag;
-                        else if (filterData.categories.includes(tag)) categorySelect.value = tag;
-                    });
-                }
-
-                // Populate collaborators
-                if (project.collaborators && project.collaborators.length > 0) {
-                    project.collaborators.forEach(collab => {
-                        addCollaboratorChip(collab._id, collab.name, collab.profilePic, true);
-                    });
-                }
-            } catch (error) {
-                console.error('Error loading project or options:', error);
-                Toastify({ text: 'Error loading project or options: ' + error.message, duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                setTimeout(() => window.location.href = '/profile.html', 3000);
+            } else if (typeof file === 'string') { // For initial load with a URL
+                previewImgElement.src = file;
+                previewImgElement.style.display = 'block';
+                previewContainerElement.style.display = 'block';
+                removeImageBtn.style.display = hideRemoveBtn ? 'none' : 'block';
+            } else {
+                previewImgElement.style.display = 'none';
+                previewImgElement.src = '';
+                previewContainerElement.style.display = 'none';
+                removeImageBtn.style.display = 'none';
             }
         }
 
+        function previewCADFile(file) {
+            const previewContainer = document.getElementById('CADFilePreview');
+            if (!previewContainer) return;
+            const modelViewer = previewContainer.querySelector('model-viewer');
+            
+            if (file instanceof File && file.name.match(/\.(obj|stl|gltf|glb)$/i)) {
+                const fileURL = URL.createObjectURL(file);
+                modelViewer.src = fileURL;
+                previewContainer.style.display = 'block';
+
+                modelViewer.addEventListener('load', () => {
+                    setTimeout(() => URL.revokeObjectURL(fileURL), 5000);
+                }, { once: true });
+
+            } else if (typeof file === 'string' && file.match(/\.(obj|stl|gltf|glb)$/i)) { // For initial load with a URL
+                modelViewer.src = file;
+                previewContainer.style.display = 'block';
+            } else {
+                previewContainer.style.display = 'none';
+                modelViewer.src = ''; // Clear source
+                if (file instanceof File && file.name.match(/\.step$/i)) {
+                    Toastify({ text: 'STEP files cannot be previewed in-browser. Use OBJ, GLTF, or STL.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                }
+            }
+        }
+
+        function setupDropzone(dropzone, fileInput) {
+            if (!dropzone || !fileInput) return;
+            dropzone.addEventListener('click', () => fileInput.click());
+            dropzone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropzone.classList.add('bg-light');
+            });
+            dropzone.addEventListener('dragleave', () => {
+                dropzone.classList.remove('bg-light');
+            });
+            dropzone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropzone.classList.remove('bg-light');
+                if (e.dataTransfer.files.length) {
+                    fileInput.files = e.dataTransfer.files;
+                    fileInput.dispatchEvent(new Event('change'));
+                }
+            });
+        }
+        
         function populateDropdown(selectElement, options, defaultText = 'Select...') {
             if (!selectElement) return;
             selectElement.innerHTML = `<option value="">${defaultText}</option>`;
@@ -379,160 +301,453 @@
             });
         }
 
-        // --- Form Submission Logic ---
-        async function submitProject(isPublishedStatus) {
+        function renderDynamicFields(projectSpecificFields = {}) {
+            dynamicFieldsContainer.innerHTML = '';
+            const selectedType = projectTypeSelect.value || 'Default';
+            const schema = window.projectSchemas[selectedType] || window.projectSchemas.Default;
+            
+            if (schema.length === 0 && selectedType !== 'Default') {
+                dynamicFieldsContainer.innerHTML = '<p class="text-muted mb-0">No specific fields required for this project type.</p>';
+                return;
+            } else if (selectedType === 'Default') {
+                dynamicFieldsContainer.innerHTML = '<p class="text-muted mb-0">Specific fields (e.g., CAD File, Technical Description) will appear here after selecting a Project Type.</p>';
+                return;
+            }
+
+            schema.forEach(field => {
+                const fieldDiv = document.createElement('div');
+                fieldDiv.classList.add('mb-3');
+                const requiredAttr = field.required ? 'required aria-required="true"' : '';
+                const fieldId = field.name;
+                const fieldLabel = field.label;
+                
+                // Get existing data from project's details object or default to empty
+                let currentValue = projectSpecificFields[fieldId];
+                if (Array.isArray(currentValue)) {
+                     currentValue = currentValue.join(', ');
+                } else if (currentValue === undefined || currentValue === null) {
+                    currentValue = '';
+                }
+                
+                let htmlContent = '';
+                
+                if (field.type === 'file') {
+                    const isCAD = fieldId === 'CADFile';
+                    const maxSizeMB = isCAD ? 10 : 2;
+                    const currentFileUrl = currentValue; 
+
+                    htmlContent = `
+                        <label for="${fieldId}" class="form-label">${fieldLabel} ${field.required ? '<span class="text-danger">*</span>' : ''}</label>
+                        <div class="dropzone p-3 border rounded text-center" id="${fieldId}Dropzone" role="region" aria-label="Dropzone for ${fieldLabel}">
+                            <p class="mb-0">Drag & drop a new ${fieldLabel} or click to select (${field.accept || 'Max 10MB'})</p>
+                            <input type="file" class="form-control d-none" id="${fieldId}" name="${fieldId}" accept="${field.accept}" ${requiredAttr}>
+                            <input type="hidden" id="${fieldId}Current" name="${fieldId}Current" value="${currentFileUrl}">
+                        </div>
+                        <div id="${fieldId}PreviewContainer" class="mt-2" style="display: ${currentFileUrl ? 'block' : 'none'};">
+                            ${isCAD ? `
+                                <small class="form-text text-muted mb-1 d-block">Current File Preview (upload new file to replace):</small>
+                                <div id="${fieldId}Preview">
+                                    <model-viewer src="${currentFileUrl}" alt="${fieldLabel} preview" camera-controls auto-rotate shadow-intensity="1" style="width: 100%; height: 300px; background-color: #f8f9fa;"></model-viewer>
+                                </div>
+                                <small class="form-text text-muted">Preview works best with GLB, GLTF, OBJ, or STL files. STEP files require download.</small>
+                            ` : `
+                                <small class="form-text text-muted mb-1 d-block">Current Image Preview (upload new image to replace):</small>
+                                <img id="${fieldId}Preview" src="${currentFileUrl}" alt="${fieldLabel} preview" class="rounded" style="max-width: 200px; max-height: 200px; object-fit: cover;">
+                            `}
+                            <button type="button" class="btn btn-sm btn-outline-danger ms-2 mt-2" data-remove-dynamic-file="${fieldId}">Remove Current File</button>
+                        </div>
+                        `;
+                } else if (field.type === 'textarea') {
+                    htmlContent = `
+                        <label for="${fieldId}" class="form-label">${fieldLabel} ${field.required ? '<span class="text-danger">*</span>' : ''}</label>
+                        <textarea class="form-control" id="${fieldId}" name="${fieldId}" rows="4" placeholder="${field.placeholder}" ${requiredAttr}>${currentValue}</textarea>`;
+                } else {
+                    htmlContent = `
+                        <label for="${fieldId}" class="form-label">${fieldLabel} ${field.required ? '<span class="text-danger">*</span>' : ''}</label>
+                        <input type="${field.type}" class="form-control" id="${fieldId}" name="${fieldId}" placeholder="${field.placeholder}" value="${currentValue}" ${requiredAttr}>`;
+                }
+
+                htmlContent += field.note ? `<small class="form-text text-muted">${field.note}</small>` : '';
+                htmlContent += `<div class="invalid-feedback">${fieldLabel} is required.</div>`;
+
+                fieldDiv.innerHTML = htmlContent;
+                dynamicFieldsContainer.appendChild(fieldDiv);
+
+                // --- ATTACH LISTENERS AFTER ELEMENTS EXIST ---
+                if (field.type === 'file') {
+                    const dropzone = document.getElementById(`${fieldId}Dropzone`);
+                    const fileInput = document.getElementById(fieldId);
+                    const currentFileHidden = document.getElementById(`${fieldId}Current`);
+                    const previewContainer = document.getElementById(`${fieldId}PreviewContainer`);
+                    
+                    setupDropzone(dropzone, fileInput);
+                    
+                    fileInput.addEventListener('change', () => {
+                        validateFileSize(fileInput, isCAD ? 10 : 2, fieldLabel);
+                        if (fileInput.files[0]) {
+                            if (isCAD) {
+                                previewCADFile(fileInput.files[0]);
+                            } else {
+                                previewImage(fileInput.files[0], document.getElementById(`${fieldId}Preview`), previewContainer, false);
+                            }
+                            // Clear current file hidden input as a new one is being uploaded
+                            currentFileHidden.value = '';
+                        }
+                    });
+
+                    // Remove File Button Listener
+                    const removeBtn = document.querySelector(`[data-remove-dynamic-file="${fieldId}"]`);
+                    if (removeBtn) {
+                        removeBtn.addEventListener('click', () => {
+                            if (confirm(`Are you sure you want to remove the current ${fieldLabel}?`)) {
+                                currentFileHidden.value = 'DELETED'; // Signal to server to remove
+                                fileInput.value = ''; // Clear file input
+                                if (isCAD) {
+                                    previewCADFile(null);
+                                } else {
+                                    previewImage(null, document.getElementById(`${fieldId}Preview`), previewContainer, false);
+                                }
+                                Toastify({ text: `${fieldLabel} marked for deletion on save.`, duration: 2000, style: { background: "#dc3545" } }).showToast();
+                            }
+                        });
+                    }
+                }
+            });
+        }
+
+        // --- Collaboration Functions (Omitted for brevity, assume correct) ---
+        
+        function updateCollaboratorIdsHiddenInput() { collaboratorIdsHiddenInput.value = selectedCollaboratorIds.join(','); }
+
+        function addCollaboratorChip(userId, userName, profilePic, isInitialLoad = false) {
+            // Adapted logic from your edit page for chips
+            const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(userId);
+            if (!isValidObjectId) {
+                if (!isInitialLoad) { Toastify({ text: `Invalid user ID for ${userName}. Cannot add collaborator.`, duration: 3000, style: { background: "#e74c3c" } }).showToast(); }
+                return;
+            }
+            if (selectedCollaboratorIds.includes(userId)) {
+                if (!isInitialLoad) { Toastify({ text: `${userName} is already added.`, duration: 2000, style: { background: "#ffc107" } }).showToast(); }
+                return;
+            }
+
+            selectedCollaboratorIds.push(userId);
+            const chip = document.createElement('div');
+            chip.classList.add('collaborator-chip', 'd-flex', 'align-items-center', 'bg-light', 'border', 'rounded', 'px-2', 'py-1');
+            chip.setAttribute('data-user-id', userId);
+            chip.innerHTML = `
+                <img src="${profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg'}" class="rounded-circle me-1" style="width: 24px; height: 24px; object-fit: cover;" alt="${userName}">
+                <span>${userName}</span>
+                <button type="button" class="btn-close btn-close-small ms-2" aria-label="Remove collaborator"></button>
+            `;
+            chip.querySelector('.btn-close').addEventListener('click', () => {
+                selectedCollaboratorIds = selectedCollaboratorIds.filter(id => id !== userId);
+                chip.remove();
+                updateCollaboratorIdsHiddenInput();
+                Toastify({ text: `Collaborator removed`, duration: 2000, style: { background: "#dc3545" } }).showToast();
+            });
+            selectedCollaboratorsDisplay.appendChild(chip);
+            updateCollaboratorIdsHiddenInput();
+            
+            if (!isInitialLoad) {
+                collaboratorSearchInput.value = '';
+                collaboratorSearchResults.style.display = 'none';
+                Toastify({ text: `${userName} added as collaborator`, duration: 2000, style: { background: "#28a745" } }).showToast();
+            }
+        }
+
+        // --- Validation and Submission (Omitted for brevity, assume correct) ---
+        
+        function validateForm(isPublishing) {
+            let isValid = true;
+            editForm.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+            
+            const requiredFields = isPublishing ? ['title', 'projectType', 'description'] : ['title'];
+            requiredFields.forEach(id => {
+                const input = document.getElementById(id);
+                if (input && !input.value.trim()) {
+                    input.classList.add('is-invalid');
+                    isValid = false;
+                }
+            });
+            
+            if (isPublishing) {
+                const hasNewImage = imageInput.files[0];
+                const hasCurrentImage = imagePreview.src && imagePreview.src !== window.location.href;
+                const isImageMarkedForDeletion = currentProjectData.image === 'DELETED';
+                
+                if (!hasNewImage && (!hasCurrentImage || isImageMarkedForDeletion)) { 
+                    imageInput.classList.add('is-invalid'); 
+                    isValid = false; 
+                    Toastify({ text: 'Project Image is required to publish.', duration: 3000, style: { background: '#e74c3c' } }).showToast(); 
+                } else {
+                    imageInput.classList.remove('is-invalid');
+                }
+
+                const selectedTags = Array.from(tagsSelect.selectedOptions).map(option => option.value);
+                const coreTags = [yearSelect.value, departmentSelect.value, categorySelect.value].filter(t => t);
+
+                if (selectedTags.length === 0 && coreTags.length === 0) { 
+                    tagsSelect.classList.add('is-invalid'); 
+                    Toastify({ text: 'At least one tag is required to publish.', duration: 3000, style: { background: '#e74c3c' } }).showToast(); 
+                    isValid = false; 
+                } else {
+                    tagsSelect.classList.remove('is-invalid');
+                }
+                
+                const schema = window.projectSchemas[projectTypeSelect.value] || window.projectSchemas.Default;
+                schema.forEach(field => {
+                    if (field.required) {
+                        const input = document.getElementById(field.name);
+                        const currentFileHidden = document.getElementById(`${field.name}Current`);
+
+                        if (input && field.type === 'file') {
+                            const isMarkedForDeletion = currentFileHidden?.value === 'DELETED';
+                            if (!input.files[0] && (!currentFileHidden?.value || isMarkedForDeletion)) {
+                                input.classList.add('is-invalid'); 
+                                isValid = false; 
+                            } else {
+                                input.classList.remove('is-invalid');
+                            }
+                        } else if (input && !input.value.trim()) { 
+                            input.classList.add('is-invalid'); 
+                            isValid = false; 
+                        }
+                    }
+                });
+            }
+            if (!isValid) { 
+                Toastify({ text: 'Please check the form for required fields.', duration: 3000, style: { background: '#e74c3c' } }).showToast(); 
+            }
+            return isValid;
+        }
+
+        async function submitProject(isPublished) {
+            const projectId = document.getElementById('projectId').value;
+            if (!projectId) {
+                Toastify({ text: 'Project ID is missing for update.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                return;
+            }
+
+            if (!validateForm(isPublished)) return;
+            
+            const formData = new FormData(editForm);
+            
+            // Set the final status
+            formData.append('isPublished', isPublished ? 'true' : 'false');
+            
+            // Collect all selected tags
+            const selectedTags = Array.from(tagsSelect.selectedOptions).map(option => option.value);
+            const coreTags = [yearSelect.value, departmentSelect.value, categorySelect.value].filter(t => t);
+            
+            formData.delete('tags'); 
+            formData.append('tags', [...new Set([...selectedTags, ...coreTags])].join(','));
+
+            try {
+                // Ensure dynamic fields are included in the FormData
+                const schema = window.projectSchemas[projectTypeSelect.value] || window.projectSchemas.Default;
+                schema.forEach(field => {
+                    const input = document.getElementById(field.name);
+                    if (input && field.type !== 'file') {
+                        formData.append(field.name, input.value);
+                    }
+                    // The file and current value for dynamic files are handled via the FormData(editForm) constructor
+                });
+                
+                // Track image deletion separately if the button was used
+                if (currentProjectData.image === 'DELETED' && !imageInput.files[0]) {
+                    formData.append('removeCurrentImage', 'true');
+                }
+
+
+                const response = await fetch(`/projects/${projectId}`, { method: 'PUT', body: formData, credentials: 'include' });
+                const data = await response.json();
+                
+                if (response.ok) {
+                    const message = isPublished ? 'Project published successfully!' : 'Project changes saved!';
+                    Toastify({ text: data.message || message, duration: 3000, style: { background: '#28a745' } }).showToast();
+                    setTimeout(() => window.location.href = data.redirect || `/project/${projectId}`, 3000);
+                } else {
+                    const errorMsg = data.error || data.details || 'Failed to update project.';
+                    Toastify({ text: errorMsg, duration: 5000, style: { background: '#e74c3c' } }).showToast();
+                }
+            } catch (error) {
+                console.error('Error submitting project:', error);
+                Toastify({ text: 'A network error occurred during update.', duration: 5000, style: { background: '#e74c3c' } }).showToast();
+            }
+        }
+
+
+        // --- Initial Load Logic ---
+
+        async function loadProjectSchemas() {
+            try {
+                const response = await fetch('/projects/dynamic-filter-options', { credentials: 'include', headers: { 'Accept': 'application/json' } });
+                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                const data = await response.json();
+                
+                window.projectSchemas = data.projectSchemas || { Default: [] };
+
+                populateDropdown(projectTypeSelect, data.types || ['Engineering', 'Art', 'Other'], 'Select Project Type');
+                populateDropdown(yearSelect, data.years || [], 'Select Year');
+                populateDropdown(departmentSelect, data.departments || [], 'Select Department');
+                populateDropdown(categorySelect, data.categories || [], 'Select Category');
+                populateDropdown(tagsSelect, data.tools || [], 'Select tags'); 
+                
+            } catch (error) {
+                console.error('Error loading filter options:', error);
+                // Fallback schemas (Using your hardcoded data for robustness)
+                window.projectSchemas = { 
+                    Default: [], 
+                    Engineering: [{ name: 'CADFile', label: 'CAD File', type: 'file', accept: '.stl,.obj,.gltf,.glb,.step', required: false, note: 'Upload STL, OBJ, GLTF, GLB, or STEP (max 10MB).' }, { name: 'technicalDescription', label: 'Technical Description', type: 'textarea', placeholder: 'Describe the technical aspects of your project.', required: true }, { name: 'toolsSoftware', label: 'Tools/Software Used', type: 'text', placeholder: 'e.g., SolidWorks, AutoCAD', required: true }, { name: 'functionalGoals', label: 'Functional Goals', type: 'textarea', placeholder: 'What are the functional objectives?', required: false }], 
+                    Art: [{ name: 'artworkImage', label: 'Artwork Image', type: 'file', accept: 'image/jpeg,image/png,image/gif', required: true, note: 'Upload JPEG, PNG, or GIF (max 2MB)' }, { name: 'mediumTechnique', label: 'Medium/Technique', type: 'text', placeholder: 'e.g., Oil on Canvas', required: true }, { name: 'artistStatement', label: 'Artist Statement', type: 'textarea', placeholder: 'Describe the concept behind your artwork.', required: true }, { name: 'exhibitionHistory', label: 'Exhibition History', type: 'text', placeholder: 'e.g., Exhibited at Art Fair 2023', required: false }]
+                };
+                populateDropdown(projectTypeSelect, ['Engineering', 'Art', 'Other'], 'Select Project Type');
+                populateDropdown(yearSelect, ['2020', '2021', '2022', '2023', '2024', '2025'], 'Select Year');
+                populateDropdown(departmentSelect, ['Mechanical Engineering', 'Computer Science', 'Fine Arts'], 'Select Department');
+                populateDropdown(categorySelect, ['Robotics', 'Software', 'Painting'], 'Select Category');
+                populateDropdown(tagsSelect, ['SolidWorks', 'Python', 'AutoCAD', 'Photoshop'], 'Select tags');
+            }
+        }
+
+        async function loadProjectData() {
             const urlParams = new URLSearchParams(window.location.search);
             const projectId = urlParams.get('id');
             if (!projectId) {
                 Toastify({ text: 'No project ID provided.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                setTimeout(() => window.location.href = '/profile.html', 3000);
                 return;
             }
-
-            const isPublishingDraft = (originalProjectStatus === 'false' && isPublishedStatus);
-
-            // Client-side validation for publishing
-            if (isPublishedStatus) {
-                const title = document.getElementById('title').value.trim();
-                const projectType = document.getElementById('projectType').value;
-                if (!title) {
-                    Toastify({ text: 'Project Title is required to publish.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                    return;
-                }
-                if (!projectType) {
-                    Toastify({ text: 'Project Type is required to publish.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-                    return;
-                }
-            }
-
-            const formData = new FormData();
-            formData.append('title', document.getElementById('title').value.trim());
-            formData.append('projectType', document.getElementById('projectType').value || 'Other');
-            formData.append('description', document.getElementById('description').value);
-            formData.append('problemStatement', document.getElementById('problemStatement').value);
-
-            // Collect tags from dropdowns
-            const selectedTags = [];
-            const course = document.getElementById('course').value;
-            const year = document.getElementById('year').value;
-            const department = document.getElementById('department').value;
-            const category = document.getElementById('category').value;
-            if (course) selectedTags.push(course);
-            if (year) selectedTags.push(year);
-            if (department) selectedTags.push(department);
-            if (category) selectedTags.push(category);
-            formData.append('tags', selectedTags.join(','));
-
-            formData.append('collaboratorIds', collaboratorIdsHiddenInput.value);
-            formData.append('otherCollaborators', document.getElementById('otherCollaborators').value);
-            formData.append('resources', document.getElementById('resources').value);
-            formData.append('isPublished', isPublishedStatus ? 'true' : 'false');
-            formData.append('isPublishingDraft', isPublishingDraft ? 'true' : 'false');
-
-            const imageFile = document.getElementById('image').files[0];
-            if (imageFile) {
-                formData.append('image', imageFile);
-            }
+            document.getElementById('projectId').value = projectId;
 
             try {
-                const response = await fetch(`/project/${projectId}`, {
-                    method: 'PUT',
-                    body: formData,
-                    credentials: 'include'
-                });
-
-                if (response.ok) {
-                    const message = isPublishedStatus ? 'Project published successfully!' : 'Project saved successfully!';
-                    Toastify({ text: message, duration: 3000, style: { background: '#28a745' } }).showToast();
-                    setTimeout(() => window.location.href = '/profile.html', 3000);
-                } else {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Failed to update project');
+                // 🛑 FIX: Corrected endpoint to include the required namespace
+                const projectResponse = await fetch(`/projects/project/${projectId}`, { credentials: 'include' });
+                
+                if (!projectResponse.ok) {
+                    const errorText = await projectResponse.text();
+                    console.error('Server response text:', errorText);
+                    throw new Error(`Failed to load project details. Status: ${projectResponse.status}`);
                 }
+                const project = await projectResponse.json();
+                currentProjectData = project; // Store for form state checks
+                
+                // Populate basic form fields
+                document.getElementById('title').value = project.title || '';
+                document.getElementById('description').value = project.description || '';
+                document.getElementById('problemStatement').value = project.problemStatement || '';
+                
+                // 🛑 FIX: Use conditional check to handle both Array and String types for otherContributors
+                const contributorValue = project.otherContributors
+                    ? (Array.isArray(project.otherContributors) 
+                        ? project.otherContributors.join(', ') 
+                        : project.otherContributors) 
+                    : '';
+                document.getElementById('otherContributors').value = contributorValue;
+
+                document.getElementById('resources').value = project.resources?.join(', ') || '';
+                
+                // Set Project Type (must be set before calling renderDynamicFields)
+                projectTypeSelect.value = project.projectType || ''; 
+
+                // Populate core select dropdowns based on tags array
+                if (project.tags && project.tags.length > 0) {
+                    project.tags.forEach(tag => {
+                        // Attempt to populate core tags first
+                        if (yearSelect.querySelector(`option[value="${tag}"]`)) yearSelect.value = tag;
+                        else if (departmentSelect.querySelector(`option[value="${tag}"]`)) departmentSelect.value = tag;
+                        else if (categorySelect.querySelector(`option[value="${tag}"]`)) categorySelect.value = tag;
+                    });
+                }
+                
+                // Pre-select multiple tags
+                if (project.tags && project.tags.length > 0) {
+                    Array.from(tagsSelect.options).forEach(option => {
+                        if (project.tags.includes(option.value)) {
+                            option.selected = true;
+                        }
+                    });
+                }
+
+
+                // Image Preview
+                if (project.image) {
+                    previewImage(project.image, imagePreview, imagePreviewContainer, false);
+                    document.getElementById('imageDropzoneText').textContent = 'Drag & drop a NEW image to replace the current one.';
+                } else {
+                    document.getElementById('imageDropzoneText').textContent = 'Drag & drop an image or click to select (JPEG, PNG, GIF, max 2MB)';
+                    imagePreviewContainer.style.display = 'none';
+                }
+
+                // Populate collaborators
+                selectedCollaboratorIds = [];
+                selectedCollaboratorsDisplay.innerHTML = '';
+                if (project.collaborators && project.collaborators.length > 0) {
+                    project.collaborators.forEach(collab => {
+                        addCollaboratorChip(collab._id, collab.name, collab.profilePic, true);
+                    });
+                }
+                updateCollaboratorIdsHiddenInput();
+
+                // Call renderDynamicFields with project-specific data (handles CAD/Art details)
+                renderDynamicFields(project.projectDetails || {});
+                
             } catch (error) {
-                console.error('Error updating project:', error);
-                Toastify({ text: error.message || 'Error updating project', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                console.error('Error loading project data:', error);
+                Toastify({ text: 'Error loading project details: ' + error.message, duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                setTimeout(() => window.location.href = '/profile.html', 3000);
             }
         }
 
-        // --- Event Listeners and Initial Load ---
+        // --- Main Initialization Function and Event Listeners ---
+
         document.addEventListener('DOMContentLoaded', () => {
-            const editForm = document.getElementById('editForm');
-            const saveChangesBtn = document.getElementById('saveChangesBtn');
-            const publishBtn = document.getElementById('publishBtn');
-            const cancelEditBtn = document.getElementById('cancelEditBtn');
-
-            if (editForm && saveChangesBtn && publishBtn && cancelEditBtn) {
-                saveChangesBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    submitProject(false); // Save as draft or maintain current status
-                });
-
-                publishBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    submitProject(true); // Publish the project
-                });
-
-                cancelEditBtn.addEventListener('click', () => {
-                    editForm.reset();
-                    imagePreview.style.display = 'none';
-                    window.selectedCollaboratorIds = [];
-                    selectedCollaboratorsDisplay.innerHTML = '';
-                    updateCollaboratorIdsHiddenInput();
-                    Toastify({ text: 'Edit cancelled', duration: 2000, style: { background: "#6c757d" } }).showToast();
-                    setTimeout(() => window.location.href = '/profile.html', 2000);
-                });
-
-                // Prevent Enter key submission in text inputs and textareas
-                const textareas = editForm.querySelectorAll('textarea');
-                textareas.forEach(textarea => {
-                    textarea.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                        }
-                    });
-                });
-
-                const textInputs = editForm.querySelectorAll('input[type="text"]');
-                textInputs.forEach(input => {
-                    input.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter') {
-                            e.preventDefault();
-                        }
-                    });
-                });
-            }
-
-            // Header search bar functionality
-            const searchInput = document.getElementById('searchInput');
-            const autocompleteSuggestions = document.getElementById('autocompleteSuggestions');
-            if (searchInput && autocompleteSuggestions) {
-                searchInput.addEventListener('input', () => {
-                    clearTimeout(debounceTimeout);
-                    debounceTimeout = setTimeout(() => window.performGlobalSearch(), DEBOUNCE_DELAY_SEARCH);
-                });
-                searchInput.addEventListener('focus', () => {
-                    if (searchInput.value.trim() && autocompleteSuggestions.children.length > 0) {
-                        autocompleteSuggestions.style.display = 'block';
-                    }
-                });
-                document.addEventListener('click', (event) => {
-                    if (!autocompleteSuggestions.contains(event.target) && event.target !== searchInput) {
-                        autocompleteSuggestions.style.display = 'none';
-                    }
-                });
-            }
-
-            // Filter button (placeholder)
-            const filterBtn = document.getElementById('filterBtn');
-            if (filterBtn) {
-                filterBtn.addEventListener('click', () => {
-                    Toastify({ text: 'Filter modal not implemented on this page.', duration: 2000, style: { background: "#ffc107" } }).showToast();
-                });
-            }
-
-            // Initial load
+            // 1. Initial Data Load
+            loadProjectSchemas().then(loadProjectData);
             window.loadUserProfileInHeader();
-            loadDynamicOptionsAndProject();
+            
+            // 2. Main Event Listeners
+            projectTypeSelect.addEventListener('change', () => renderDynamicFields({})); // Clears dynamic fields on type change
+            
+            // Static image upload listener
+            imageInput.addEventListener('change', () => {
+                validateFileSize(imageInput, 2, 'Project Image');
+                if (imageInput.files[0]) {
+                    previewImage(imageInput.files[0], imagePreview, imagePreviewContainer, false);
+                    currentProjectData.image = ''; // Mark that a new image is pending upload
+                }
+            });
+            setupDropzone(imageDropzone, imageInput);
+            
+            removeImageBtn.addEventListener('click', () => {
+                imageInput.value = ''; // Clear file input
+                previewImage(null, imagePreview, imagePreviewContainer, false); // Clear preview
+                currentProjectData.image = 'DELETED'; // Mark for server deletion
+                Toastify({ text: 'Current image will be deleted on save.', duration: 2000, style: { background: "#dc3545" } }).showToast();
+            });
+
+
+            // Collaborator Search Listener
+            collaboratorSearchInput.addEventListener('input', () => {
+                clearTimeout(debounceTimeout);
+                debounceTimeout = setTimeout(() => {
+                    const query = collaboratorSearchInput.value.trim();
+                    if (query) {
+                        window.searchUsers(query, collaboratorSearchResults, addCollaboratorChip, selectedCollaboratorIds);
+                    } else {
+                        collaboratorSearchResults.style.display = 'none';
+                    }
+                }, DEBOUNCE_DELAY_SEARCH);
+            });
+            
+            // Submission Listeners
+            document.getElementById('saveChangesBtn').addEventListener('click', (e) => { e.preventDefault(); submitProject(currentProjectData.isPublished); }); // Keep current published status
+            document.getElementById('publishBtn').addEventListener('click', (e) => { e.preventDefault(); submitProject(true); });
+            
+            document.getElementById('cancelEditBtn').addEventListener('click', () => {
+                Toastify({ text: 'Edit cancelled', duration: 2000, style: { background: '#6c757d' } }).showToast();
+                setTimeout(() => window.location.href = '/profile.html', 2000);
+            });
         });
     </script>
 </body>
