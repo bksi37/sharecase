@@ -3,16 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShareCase - About</title>
+    <title>ShareCase - Revolutionizing Student Portfolios</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/_base.css">
     <link rel="stylesheet" href="/css/_header.css">
-    <link rel="stylesheet" href="/css/_forms.css">
     <link rel="stylesheet" href="/css/_utilities.css">
-    <link rel="stylesheet" href="/css/_about_pages.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+
+    <style>
+        /* Define ShareCase brand colors based on your logo */
+        :root {
+            --sharecase-blue: #007bff; /* Original Bootstrap primary, matching your logo's lighter blue */
+            --sharecase-dark-blue: #004c8c; /* Darker blue from your logo's nodes */
+            --sharecase-orange: #ffa500; /* Orange from your logo's corner */
+            --sharecase-light-gray: #f8f9fa; /* For subtle backgrounds */
+            --sharecase-text-color: #333;
+        }
+
+        /* Notification Styles for Header Consistency */
+        .notification-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+        }
+        /* Page Specific Styles */
+        .hero-banner {
+            background: linear-gradient(135deg, var(--sharecase-blue), var(--sharecase-dark-blue)); /* Gradient using brand blues */
+            color: white;
+            padding: 80px 0;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+        }
+        .hero-banner h1 {
+            font-size: 3rem;
+            font-weight: 700;
+        }
+        .section-title-dynamic {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--sharecase-blue); /* Section titles in primary blue */
+            border-bottom: 3px solid var(--sharecase-orange); /* Accent with orange */
+            padding-bottom: 5px;
+            margin-bottom: 25px;
+            animation: fadeInDown 1s ease-out;
+        }
+        .feature-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            height: 100%;
+            border: 1px solid rgba(0, 0, 0, 0.05); /* Subtle border for definition */
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15); /* Stronger shadow on hover */
+        }
+        .feature-icon {
+            font-size: 2.8rem; /* Slightly larger icons */
+            color: var(--sharecase-orange); /* Icons in accent orange */
+            margin-bottom: 15px;
+            animation: bounceIn 1s ease-out; /* Add a subtle icon animation */
+        }
+        .feature-card .card-title {
+            color: var(--sharecase-dark-blue); /* Card titles in darker blue */
+            font-weight: 700;
+        }
+        .accordion-header button {
+            font-weight: 600;
+            color: var(--sharecase-text-color); /* Ensure good contrast */
+        }
+        .accordion-item {
+            border: 1px solid var(--sharecase-light-gray);
+            margin-bottom: 10px; /* Space between accordion items */
+        }
+        .accordion-button:not(.collapsed) {
+            background-color: var(--sharecase-blue); /* Active accordion in blue */
+            color: white;
+        }
+        .accordion-button:focus {
+            box-shadow: 0 0 0 0.25rem rgba(0, 123, 255, 0.25); /* Bootstrap-like focus */
+        }
+        .footer {
+            background-color: var(--sharecase-dark-blue) !important; /* Dark blue footer */
+            color: var(--sharecase-light-gray);
+        }
+        .footer a {
+            color: var(--sharecase-orange); /* Footer links in orange */
+        }
+    </style>
 </head>
 <body>
     <header class="d-flex justify-content-between align-items-center">
@@ -21,16 +101,22 @@
                 <img src="https://res.cloudinary.com/dphfedhek/image/upload/sharecase-logo.png" alt="ShareCase Logo" style="height: 90px;">
             </a>
         </div>
-        <div class="search-bar-container position-relative">
-            <div class="input-group">
-                <input type="text" class="form-control" id="searchInput" placeholder="Search projects, users...">
-                <button class="btn btn-outline-secondary" id="filterBtn" data-bs-toggle="modal" data-bs-target="#filterModal" type="button">
-                    <i class="fas fa-filter"></i>
+        <div class="user-menu d-flex align-items-center">
+            <a href="/store-placeholder.html" class="btn btn-outline-dark me-3" id="storeButton" aria-label="Store" title="Store Placeholder">
+                <i class="fas fa-store"></i>
+            </a>
+            <div class="dropdown">
+                <button class="btn btn-outline-dark me-2" id="notificationButton" aria-label="Notifications" title="Notifications" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-bell"></i>
+                    <span class="badge bg-danger" id="notificationCount" style="display: none;">0</span>
                 </button>
+                <div class="dropdown-menu dropdown-menu-end" id="notificationDropdown" style="min-width: 300px;">
+                    <div class="dropdown-header">Notifications</div>
+                    <div id="notificationList">
+                        <div class="dropdown-item-text">No new notifications</div>
+                    </div>
+                </div>
             </div>
-            <div id="autocompleteSuggestions" class="autocomplete-suggestions"></div>
-        </div>
-        <div class="user-menu">
             <div class="profile-container" id="userMenuToggle" style="display: none;">
                 <img id="headerProfilePic" src="https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg" alt="Profile Picture">
                 <span id="headerProfileName">Guest</span>
@@ -53,71 +139,81 @@
             </div>
         </div>
     </header>
-
     <main>
-        <div class="container about-container my-4 p-4 card shadow-sm">
-            <h1 class="text-center mb-4">About ShareCase</h1>
-            <p class="lead text-muted text-center mb-5">Empowering students to showcase, collaborate, and innovate.</p>
-            <p>ShareCase is a platform built for university students to share academic projects, connect with peers, and create professional portfolios. Designed by a mechanical engineering student, ShareCase makes past projects accessible for inspiration, driving innovation. From robotics designs to software prototypes, this is your space to stand out.</p>
+        <div class="hero-banner text-center">
+            <div class="container">
+                <h1 class="animate__animated animate__fadeInUp">ShareCase: Where Innovation Meets Exposure</h1>
+                <p class="lead mt-3 animate__animated animate__fadeInDown">Turning academic projects into career launchpads. Stop filing, start sharing.</p>
+            </div>
+        </div>
+        
+        <div class="container my-5">
+            <div class="row">
+                <div class="col-lg-12">
+                    <h2 class="section-title-dynamic text-center mb-5">The Problem & Our Promise 💡</h2>
+                    <p class="lead text-center">Every semester, brilliant student work vanishes into old hard drives and forgotten folders. ShareCase changes that by creating a persistent, dynamic repository for **all** university projects.</p>
+                </div>
+            </div>
 
-            <h3 class="mt-5 mb-3">Our Mission</h3>
-            <p>We aim to foster a collaborative space where students can learn from each other, minimize redundant work, and spark fresh ideas. ShareCase’s project repository lets you build on existing knowledge while pushing for originality.</p>
+            <div class="row row-cols-1 row-cols-md-3 g-4 text-center mt-4">
+                <div class="col">
+                    <div class="card p-4 feature-card">
+                        <i class="feature-icon fas fa-users"></i>
+                        <h4 class="card-title">**Collaborate & Inspire**</h4>
+                        <p class="card-text">Find prior work, connect with project creators, and build on existing knowledge. Minimize redundant effort, maximize innovation.</p>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="card p-4 feature-card">
+                        <i class="feature-icon fas fa-briefcase"></i>
+                        <h4 class="card-title">**Portfolio, Automated**</h4>
+                        <p class="card-text">Instantly convert your best projects into a clean, professional, shareable portfolio ready for employers and grad schools.</p>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="card p-4 feature-card">
+                        <i class="feature-icon fas fa-lock"></i>
+                        <h4 class="card-title">**Integrity First**</h4>
+                        <p class="card-text">We emphasize ethical use. You own your work; we protect its integrity while facilitating educational sharing—not resubmission.</p>
+                    </div>
+                </div>
+            </div>
 
-            <h3 class="mt-5 mb-3">Protecting Your Work</h3>
-            <p>Your project’s integrity and ownership matter to us. Here’s how we keep your work safe:</p>
-            <ul>
-                <li><strong>Learn, Don’t Copy:</strong> ShareCase is for inspiration, not resubmission. Projects are shared to guide and inspire, with ethical use in mind.</li>
-                <li><strong>Academic Integrity:</strong> Your professors set the rules for academic honesty. Always check course guidelines before using project references.</li>
-                <li><strong>Full Ownership:</strong> You retain complete ownership of your uploaded projects. By sharing, you confirm you’re the creator and agree to educational use.</li>
-                <li><strong>Privacy Options:</strong> Control who sees your work by adjusting visibility settings (public or private) in <a href="/settings.html">Settings</a>.</li>
-            </ul>
-
-            <h3 class="mt-5 mb-3">User Help & Guide</h3>
-            <p>Maximize your ShareCase experience with these tips:</p>
-            <ul>
-                <li><strong>Build Your Profile:</strong> Add your major, department, and LinkedIn in <a href="/settings.html">Settings</a> to boost visibility and credibility.</li>
-                <li><strong>Search Smart:</strong> Use the search bar for projects or users by keywords, or apply filters (course, year, type) for better results.</li>
-                <li><strong>Team Up:</strong> Include collaborators when uploading projects to share credit. Search by name or email to add them.</li>
-                <li><strong>Manage Your Work:</strong> Edit or view published and draft projects on your <a href="/profile.html">Profile</a>. Save drafts for works in progress.</li>
-                <li><strong>Earn Points:</strong> Gain points through uploads, likes, or comments. Check your points in the header dropdown.</li>
-                <li><strong>Get Support:</strong> Reach out to <a href="mailto:support@sharecase.com">support@sharecase.com</a> for technical help or feedback.</li>
-            </ul>
-
-            <h3 class="mt-5 mb-3">Frequently Asked Questions</h3>
+            <h2 class="section-title-dynamic mt-5 pt-5 text-center">Your Questions, Answered ❓</h2>
             <div class="accordion" id="faqAccordion">
                 <div class="accordion-item">
                     <h2 class="accordion-header">
                         <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
-                            How do I upload a project?
+                            How do I ensure my work isn't plagiarized?
                         </button>
                     </h2>
                     <div id="faq1" class="accordion-collapse collapse show" data-bs-parent="#faqAccordion">
                         <div class="accordion-body">
-                            From your <a href="/profile.html">Profile</a>, click “Upload Project” to add a project. Include files, a description, tags, and choose to publish or save as a draft.
+                            ShareCase is an **educational tool** for reference and inspiration. While you retain full ownership, we explicitly promote academic honesty. **We recommend consulting your course syllabus and instructor** regarding the permissible use of external project examples. You can also utilize our **Private** setting in <a href="/settings.html">Settings</a> for maximum security.
                         </div>
                     </div>
                 </div>
                 <div class="accordion-item">
                     <h2 class="accordion-header">
                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
-                            Who can see my projects?
+                            What kind of files can I upload and view?
                         </button>
                     </h2>
                     <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
                         <div class="accordion-body">
-                            Published projects are visible to all ShareCase users by default. Set your profile to private in <a href="/settings.html">Settings</a> to limit access.
+                            We support a wide range of academic output: **Engineering** (3D CAD files like `.gltf`, `.stl`, `.step`), **Design** (images, renders), **Software** (code links, prototypes), and **Reports** (PDFs, documentation). Our system includes specialized viewers for popular file types.
                         </div>
                     </div>
                 </div>
                 <div class="accordion-item">
                     <h2 class="accordion-header">
                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
-                            How does ShareCase ensure academic integrity?
+                            How do I get points and what are they for?
                         </button>
                     </h2>
                     <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
                         <div class="accordion-body">
-                            ShareCase promotes learning, not copying. Your instructors enforce academic integrity. We provide guidelines to ensure ethical use of shared content.
+                            Points reward engagement! You earn them for uploading projects, receiving likes and comments, and helping the community. Currently, points serve as a metric of **community impact and credibility**. Future plans include integrating points with exclusive platform features.
                         </div>
                     </div>
                 </div>
@@ -125,105 +221,92 @@
         </div>
     </main>
 
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <p>This platform was created by Gideon T. Okutu to share ideas and projects. For questions or suggestions, email <a href="mailto:gideon.t.okutu-1@ou.edu">gideon.t.okutu-1@ou.edu</a>.</p>
-                <p>© 2025 ShareCase. All rights reserved.</p>
-            </div>
+    <footer class="footer py-4 mt-5">
+        <div class="container text-center">
+            <p class="mb-1">Platform founded by Gideon T. Okutu (Mechanical Engineering Student).</p>
+            <p>For support, collaboration inquiries, or feedback, reach us at <a href="mailto:support@sharecase.com" class="text-info">support@sharecase.com</a>.</p>
+            <p class="mb-0">&copy; 2025 ShareCase. All rights reserved.</p>
         </div>
     </footer>
-
-    <div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="filterModalLabel">Filter Projects</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="courseFilter" class="form-label">Course</label>
-                        <select id="courseFilter" class="form-select">
-                            <option value="">All Courses</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="yearFilter" class="form-label">Year</label>
-                        <select id="yearFilter" class="form-select">
-                            <option value="">All Years</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="typeFilter" class="form-label">Type</label>
-                        <select id="typeFilter" class="form-select">
-                            <option value="">All Types</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="departmentFilter" class="form-label">Department</label>
-                        <select id="departmentFilter" class="form-select">
-                            <option value="">All Departments</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="categoryFilter" class="form-label">Category</label>
-                        <select id="categoryFilter" class="form-select">
-                            <option value="">All Categories</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary" id="applyFilters">Apply Filters</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="/js/scripts.js"></script>
+    
     <script>
+        // --- Local Notification Functions (Required for Header) ---
+        async function deleteNotification(notificationId) {
+            if (!confirm('Remove this notification?')) return;
+            try {
+                const response = await fetch(`/notifications/${notificationId}`, {
+                    method: 'DELETE', credentials: 'include'
+                });
+                if (response.ok) {
+                    Toastify({ text: 'Notification removed.', duration: 2000, style: { background: '#ff5858' } }).showToast();
+                    fetchNotifications(); 
+                } else {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Failed to remove notification.');
+                }
+            } catch (error) {
+                console.error('Error deleting notification:', error);
+                Toastify({ text: error.message, duration: 3000, style: { background: '#e74c3c' } }).showToast();
+            }
+        }
+
+        async function fetchNotifications() {
+            const notificationList = document.getElementById('notificationList');
+            const notificationCount = document.getElementById('notificationCount');
+            if (!notificationList || !notificationCount) return;
+
+            notificationList.innerHTML = '<div class="dropdown-item-text text-muted">Fetching...</div>';
+            notificationCount.style.display = 'none';
+
+            try {
+                const response = await fetch('/notifications', { credentials: 'include' });
+                if (response.status === 401) {
+                    notificationList.innerHTML = '<div class="dropdown-item-text">Please log in to view notifications.</div>';
+                    return;
+                }
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch notifications: Status ${response.status}`);
+                }
+                const notifications = await response.json();
+                const unreadCount = notifications.filter(n => !n.read).length;
+                
+                notificationList.innerHTML = notifications.length > 0
+                    ? notifications.map(n => `
+                        <div class="notification-item ${n.read ? '' : 'unread'}" data-id="${n._id}" title="${n.read ? 'Read' : 'Unread'}">
+                            <span class="message">${n.message}</span>
+                            <button class="btn btn-link btn-sm text-danger p-0" onclick="deleteNotification('${n._id}')" aria-label="Remove notification">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    `).join('')
+                    : '<div class="dropdown-item-text">No new notifications</div>';
+                    
+                notificationCount.textContent = unreadCount;
+                notificationCount.style.display = unreadCount > 0 ? 'inline' : 'none';
+
+            } catch (error) {
+                console.error('Error fetching notifications:', error);
+                document.getElementById('notificationList').innerHTML = `<div class="dropdown-item-text text-danger">Error loading: ${error.message}</div>`;
+                document.getElementById('notificationCount').style.display = 'none';
+                Toastify({ text: 'Error loading notifications.', duration: 5000, style: { background: '#e74c3c' } }).showToast();
+            }
+        }
+        
+        // --- Main Initialization ---
         document.addEventListener('DOMContentLoaded', () => {
-            const searchInput = document.getElementById('searchInput');
-            const autocompleteSuggestions = document.getElementById('autocompleteSuggestions');
-            if (searchInput && autocompleteSuggestions) {
-                searchInput.addEventListener('input', () => {
-                    clearTimeout(window.searchTimeout); 
-                    window.searchTimeout = setTimeout(window.performGlobalSearch, window.DEBOUNCE_DELAY);
-                });
-                searchInput.addEventListener('focus', () => {
-                    if (searchInput.value.trim() && autocompleteSuggestions.children.length > 0) {
-                        autocompleteSuggestions.style.display = 'block';
-                    }
-                });
-                document.addEventListener('click', (event) => {
-                    if (!autocompleteSuggestions.contains(event.target) && event.target !== searchInput) {
-                        autocompleteSuggestions.style.display = 'none';
-                    }
-                });
-            }
-
-            const filterBtn = document.getElementById('filterBtn');
-            if (filterBtn) {
-                filterBtn.addEventListener('click', () => {
-                    window.loadDynamicFilterOptions();
-                });
-            }
-
-            const applyFiltersBtn = document.getElementById('applyFilters');
-            if (applyFiltersBtn) {
-                applyFiltersBtn.addEventListener('click', () => {
-                    window.performGlobalSearch();
-                    const filterModal = bootstrap.Modal.getInstance(document.getElementById('filterModal'));
-                    if (filterModal) {
-                        filterModal.hide();
-                    }
-                });
-            }
-
             window.loadUserProfileInHeader();
+            
+            const notificationButton = document.getElementById('notificationButton');
+            if (notificationButton) {
+                notificationButton.addEventListener('shown.bs.dropdown', () => {
+                    fetchNotifications(); 
+                });
+                window.deleteNotification = deleteNotification;
+            }
         });
     </script>
 </body>

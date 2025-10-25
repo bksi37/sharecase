@@ -13,6 +13,36 @@
     <link rel="stylesheet" href="/css/_utilities.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <script type="module" src="https://unpkg.com/@google/model-viewer@4.0.0/dist/model-viewer.min.js"></script>
+
+    <style>
+        .notification-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+        }
+        .notification-item.unread {
+            background-color: #e6f7ff;
+            font-weight: 500;
+        }
+        .notification-item .message {
+            flex-grow: 1;
+            padding-right: 10px;
+        }
+        .notification-item button {
+            opacity: 0.5;
+            transition: opacity 0.2s;
+        }
+        .notification-item:hover button {
+            opacity: 1;
+        }
+        /* Style for CAD Preview background */
+        .cad-preview-area model-viewer {
+            background-color: #6b6a6a; /* Light grey background for white models */
+            border-radius: 6px;
+        }
+    </style>
 </head>
 <body>
     <header class="d-flex justify-content-between align-items-center">
@@ -22,8 +52,11 @@
             </a>
         </div>
         <div class="user-menu d-flex align-items-center">
+            <a href="/store-placeholder.html" class="btn btn-outline-dark me-3" id="storeButton" aria-label="Store" title="Store">
+                <i class="fas fa-store"></i>
+            </a>
             <div class="dropdown">
-                <button class="btn btn-outline-dark me-2" id="notificationButton" aria-label="Notifications" title="Notifications" data-bs-toggle="dropdown">
+                <button class="btn btn-outline-dark me-2" id="notificationButton" aria-label="Notifications" title="Notifications" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="fas fa-bell"></i>
                     <span class="badge bg-danger" id="notificationCount" style="display: none;">0</span>
                 </button>
@@ -34,9 +67,6 @@
                     </div>
                 </div>
             </div>
-            <a href="/store-placeholder.html" class="btn btn-outline-dark me-3" id="storeButton" aria-label="Store" title="Store">
-                <i class="fas fa-store"></i>
-            </a>
             <div class="profile-container" id="userMenuToggle" style="display: none;">
                 <img id="headerProfilePic" src="https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg" alt="Profile Picture" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover;">
                 <span id="headerProfileName" class="ms-2">Guest</span>
@@ -60,7 +90,7 @@
         </div>
     </header>
 
-    <main class="container my-5">
+    <main class="container-lg my-5 mx-auto"> 
         <div class="card p-4 shadow-sm">
             <h2 class="mb-4" id="uploadFormTitle">Upload a New Project</h2>
             <form id="uploadForm" enctype="multipart/form-data" aria-labelledby="uploadFormTitle">
@@ -105,9 +135,30 @@
                     <label for="problemStatement" class="form-label">Problem Statement</label>
                     <textarea class="form-control" id="problemStatement" name="problemStatement" rows="4" placeholder="What problem does your project solve?"></textarea>
                 </div>
+                
+                <div id="CADFilePreview" class="mb-3 cad-preview-area" style="display: none;">
+                    <h5 class="fw-bold">CAD Preview:</h5>
+<model-viewer 
+    alt="CAD model preview" 
+    camera-controls 
+    auto-rotate 
+    shadow-intensity="1" 
+    style="width: 100%; height: 300px;" 
+    exposure="1.2"
+    
+    color="#007bff"    
+    metallic="0.5"     
+    roughness="0.5"    
+    
+    material-properties="apply-default-materials"
+    
+    camera-inertia="1.5"             camera-orbit-sensitivity="1.2"   ></model-viewer>
+             </div>
+                
                 <div id="dynamic-fields-container" class="mb-3 p-3 border rounded bg-light">
                     <p class="text-muted mb-0">Specific fields (e.g., CAD File, Technical Description) will appear here after selecting a Project Type.</p>
                 </div>
+                
                 <div class="mb-3">
                     <label for="image" class="form-label">Project Image <span class="text-danger">*</span></label>
                     <div class="dropzone p-3 border rounded text-center" id="imageDropzone" role="region" aria-label="Dropzone for project image">
@@ -180,11 +231,10 @@
     const imageInput = document.getElementById('image');
     const imageDropzone = document.getElementById('imageDropzone');
     const imagePreview = document.getElementById('imagePreview');
-    // FIX: Using tagsSelect which is the <select multiple>
     const tagsSelect = document.getElementById('tags'); 
-    // Removed tagsInput and tagsSuggestions DOM elements as they are not needed
+    const CADFilePreview = document.getElementById('CADFilePreview'); // Added DOM element
 
-    // --- File Handling Functions (No change to logic, kept for completeness) ---
+    // --- File Handling Functions (Updated previewCADFile) ---
     
     function validateFileSize(input, maxSizeMB, fieldName) {
         if (input.files && input.files[0]) {
@@ -217,23 +267,27 @@
     }
 
     function previewCADFile(file) {
-        const previewContainer = document.getElementById('CADFilePreview');
-        if (!previewContainer) return;
-        const modelViewer = previewContainer.querySelector('model-viewer');
-        
-        if (file && file.name.match(/\.(gltf|glb)$/i)) {
+        // Use the newly added CADFilePreview container
+        if (!CADFilePreview) return;
+        const modelViewer = CADFilePreview.querySelector('model-viewer');
+
+        if (file && file.name.match(/\.(obj|stl|gltf|glb)$/i)) {
             const fileURL = URL.createObjectURL(file);
             modelViewer.src = fileURL;
-            previewContainer.style.display = 'block';
+            CADFilePreview.style.display = 'block';
 
             modelViewer.addEventListener('load', () => {
                 setTimeout(() => URL.revokeObjectURL(fileURL), 5000);
             }, { once: true });
 
         } else {
-            previewContainer.style.display = 'none';
+            CADFilePreview.style.display = 'none';
             if (file && file.name.match(/\.step$/i)) {
-                Toastify({ text: 'STEP files cannot be previewed in-browser. Use OBJ, GLTF, or STL.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                Toastify({
+                    text: 'STEP files cannot be previewed in-browser. Use OBJ, GLTF, or STL.',
+                    duration: 3000,
+                    style: { background: '#e74c3c' }
+                }).showToast();
             }
         }
     }
@@ -258,7 +312,7 @@
         });
     }
     
-    // --- Core Dynamic Logic ---
+    // --- Core Dynamic Logic (Updated renderDynamicFields) ---
     
     async function loadProjectSchemas() {
         const endpoint = '/projects/dynamic-filter-options'; 
@@ -273,7 +327,6 @@
             window.populateDropdown(document.getElementById('year'), data.years || [], 'Select Year');
             window.populateDropdown(document.getElementById('department'), data.departments || [], 'Select Department');
             window.populateDropdown(document.getElementById('category'), data.categories || [], 'Select Category');
-            // FIX: Use populateDropdown for the tags SELECT element
             window.populateDropdown(tagsSelect, data.tools || [], 'Select tags'); 
             
         } catch (error) {
@@ -281,7 +334,8 @@
             // Fallback schemas (Using your hardcoded data for robustness)
             window.projectSchemas = { 
                 Default: [], 
-                Engineering: [{ name: 'CADFile', label: 'CAD File', type: 'file', accept: '.gltf,.glb', required: false, note: 'Upload STL, OBJ, GLTF, GLB, or STEP (max 10MB).' }, { name: 'technicalDescription', label: 'Technical Description', type: 'textarea', placeholder: 'Describe the technical aspects of your project.', required: true }, { name: 'toolsSoftware', label: 'Tools/Software Used', type: 'text', placeholder: 'e.g., SolidWorks, AutoCAD', required: true }, { name: 'functionalGoals', label: 'Functional Goals', type: 'textarea', placeholder: 'What are the functional objectives?', required: false }], 
+                // Updated Engineering schema to include CADFile
+                Engineering: [{ name: 'CADFile', label: 'CAD File', type: 'file', accept: '.gltf,.glb,.obj,.stl,.step', required: false, note: 'Upload STL, OBJ, GLTF, GLB, or STEP (max 10MB).' }, { name: 'technicalDescription', label: 'Technical Description', type: 'textarea', placeholder: 'Describe the technical aspects of your project.', required: true }, { name: 'toolsSoftware', label: 'Tools/Software Used', type: 'text', placeholder: 'e.g., SolidWorks, AutoCAD', required: true }, { name: 'functionalGoals', label: 'Functional Goals', type: 'textarea', placeholder: 'What are the functional objectives?', required: false }], 
                 Art: [{ name: 'artworkImage', label: 'Artwork Image', type: 'file', accept: 'image/jpeg,image/png,image/gif', required: true, note: 'Upload JPEG, PNG, or GIF (max 2MB)' }, { name: 'mediumTechnique', label: 'Medium/Technique', type: 'text', placeholder: 'e.g., Oil on Canvas', required: true }, { name: 'artistStatement', label: 'Artist Statement', type: 'textarea', placeholder: 'Describe the concept behind your artwork.', required: true }, { name: 'exhibitionHistory', label: 'Exhibition History', type: 'text', placeholder: 'e.g., Exhibited at Art Fair 2023', required: false }]
             };
             window.populateDropdown(projectTypeSelect, ['Engineering', 'Art', 'Other'], 'Select Project Type');
@@ -292,9 +346,12 @@
         }
     }
 
-    // Renders dynamic fields (CRUCIAL FUNCTION - Logic remains the same)
+    // Renders dynamic fields (CRUCIAL FUNCTION)
     function renderDynamicFields() {
         dynamicFieldsContainer.innerHTML = '';
+        // Hide the main CAD preview area initially when dynamic fields change
+        if (CADFilePreview) CADFilePreview.style.display = 'none'; 
+        
         const selectedType = projectTypeSelect.value || 'Default';
         const schema = window.projectSchemas[selectedType] || window.projectSchemas.Default;
         
@@ -315,20 +372,20 @@
             let htmlContent = '';
             
             if (field.type === 'file') {
+                const isCAD = field.name === 'CADFile';
+                
                 htmlContent = `
                     <label for="${field.name}" class="form-label">${field.label} ${field.required ? '<span class="text-danger">*</span>' : ''}</label>
                     <div class="dropzone p-3 border rounded text-center" id="${field.name}Dropzone" role="region" aria-label="Dropzone for ${field.label}">
                         <p class="mb-0">Drag & drop ${field.label} or click to select (${field.accept || 'Max 10MB'})</p>
                         <input type="file" class="form-control d-none" id="${field.name}" name="${field.name}" accept="${field.accept}" ${requiredAttr}>
                     </div>
-                    <div id="${field.name}Preview" class="mt-2" style="display: none;">
-                        ${field.name === 'CADFile' ? `
-                            <model-viewer alt="${field.label} preview" camera-controls auto-rotate shadow-intensity="1" style="width: 100%; height: 300px; background-color: #f8f9fa;"></model-viewer>
-                            <small class="form-text text-muted">Preview works best with GLB, GLTF, OBJ, or STL files.</small>
-                        ` : `
+                    ${field.name === 'artworkImage' ? `
+                        <div id="${field.name}Preview" class="mt-2" style="display: none;">
                             <img src="" alt="${field.label} preview" class="rounded" style="max-width: 200px; max-height: 200px; object-fit: cover;">
-                        `}
-                    </div>`;
+                        </div>
+                    ` : ''}
+                    `;
             } else if (field.type === 'textarea') {
                 htmlContent = `
                     <label for="${field.name}" class="form-label">${field.label} ${field.required ? '<span class="text-danger">*</span>' : ''}</label>
@@ -349,13 +406,14 @@
             if (field.type === 'file') {
                 const dropzone = document.getElementById(`${field.name}Dropzone`);
                 const fileInput = document.getElementById(field.name);
+                const isCAD = field.name === 'CADFile';
                 
                 setupDropzone(dropzone, fileInput);
                 
                 fileInput.addEventListener('change', () => {
-                    validateFileSize(fileInput, field.name === 'CADFile' ? 10 : 2, field.label);
+                    validateFileSize(fileInput, isCAD ? 10 : 2, field.label);
                     if (fileInput.files[0]) {
-                        if (field.name === 'CADFile') {
+                        if (isCAD) {
                             previewCADFile(fileInput.files[0]);
                         } else if (field.name === 'artworkImage') {
                             previewImage(fileInput.files[0], `${field.name}Preview`);
@@ -366,7 +424,7 @@
         });
     }
     
-    // --- Collaboration and Tags Functions (Using correct tagsSelect) ---
+    // --- Collaboration and Tags Functions (Logic remains the same) ---
 
     function updateCollaboratorIdsHiddenInput() { collaboratorIdsHiddenInput.value = selectedCollaboratorIds.join(','); }
 
@@ -391,9 +449,6 @@
             collaboratorSearchResults.style.display = 'none';
         }
     }
-
-    // FIX: Tags Autocomplete/Suggestion is no longer needed since we use a <select multiple>
-    // The loadTagsSuggestions function and related event listeners were removed/ignored.
 
     // --- Validation and Submission ---
     
@@ -447,13 +502,10 @@
         const formData = new FormData(uploadForm);
         formData.append('isPublished', isPublished);
         
-        // FIX: Collect all selected tags from the SELECT multiple
         const selectedTags = Array.from(tagsSelect.selectedOptions).map(option => option.value);
         const coreTags = [document.getElementById('year').value, document.getElementById('department').value, document.getElementById('category').value].filter(t => t);
         
-        // Remove the existing 'tags' field if it was added automatically (as it may be empty/default)
         formData.delete('tags'); 
-        // Append the final, comma-separated list of all relevant tags
         formData.append('tags', [...new Set([...selectedTags, ...coreTags])].join(','));
 
 
@@ -516,8 +568,6 @@
                 }, DEBOUNCE_DELAY_SEARCH);
             });
             
-            // NOTE: Tags input is a SELECT, so we remove the autocomplete logic.
-            
             // Submission Listeners
             document.getElementById('uploadProjectBtn').addEventListener('click', (e) => { e.preventDefault(); submitProject(true); });
             document.getElementById('saveDraftBtn').addEventListener('click', (e) => { e.preventDefault(); submitProject(false); });
@@ -529,6 +579,15 @@
                 dynamicFieldsContainer.innerHTML = '<p class="text-muted mb-0">Specific fields (e.g., CAD File, Technical Description) will appear here after selecting a Project Type.</p>';
                 Toastify({ text: 'Upload cancelled', duration: 2000, style: { background: '#6c757d' } }).showToast();
             });
+            
+            // Initialize notification button listener
+            const notificationButton = document.getElementById('notificationButton');
+            if (notificationButton) {
+                notificationButton.addEventListener('shown.bs.dropdown', () => {
+                    window.fetchNotifications(); // Assuming fetchNotifications is global in scripts.js
+                });
+                window.deleteNotification = window.deleteNotification || function() {}; // Ensure exists
+            }
         });
     });
 </script>

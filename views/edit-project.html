@@ -13,6 +13,31 @@
     <link rel="stylesheet" href="/css/_utilities.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <script type="module" src="https://unpkg.com/@google/model-viewer@4.0.0/dist/model-viewer.min.js"></script>
+
+    <style>
+        .notification-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+        }
+        .notification-item.unread {
+            background-color: #e6f7ff;
+            font-weight: 500;
+        }
+        .notification-item .message {
+            flex-grow: 1;
+            padding-right: 10px;
+        }
+        .notification-item button {
+            opacity: 0.5;
+            transition: opacity 0.2s;
+        }
+        .notification-item:hover button {
+            opacity: 1;
+        }
+    </style>
 </head>
 <body>
     <header class="d-flex justify-content-between align-items-center">
@@ -22,8 +47,11 @@
             </a>
         </div>
         <div class="user-menu d-flex align-items-center">
+            <a href="/store-placeholder.html" class="btn btn-outline-dark me-3" id="storeButton" aria-label="Store" title="Store">
+                <i class="fas fa-store"></i>
+            </a>
             <div class="dropdown">
-                <button class="btn btn-outline-dark me-2" id="notificationButton" aria-label="Notifications" title="Notifications" data-bs-toggle="dropdown">
+                <button class="btn btn-outline-dark me-2" id="notificationButton" aria-label="Notifications" title="Notifications" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="fas fa-bell"></i>
                     <span class="badge bg-danger" id="notificationCount" style="display: none;">0</span>
                 </button>
@@ -34,9 +62,6 @@
                     </div>
                 </div>
             </div>
-            <a href="/store-placeholder.html" class="btn btn-outline-dark me-3" id="storeButton" aria-label="Store" title="Store">
-                <i class="fas fa-store"></i>
-            </a>
             <div class="profile-container" id="userMenuToggle" style="display: none;">
                 <img id="headerProfilePic" src="https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg" alt="Profile Picture" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover;">
                 <span id="headerProfileName" class="ms-2">Guest</span>
@@ -59,7 +84,6 @@
             </div>
         </div>
     </header>
-
     <main class="container my-5">
         <div class="card p-4 shadow-sm">
             <h2 class="mb-4" id="editFormTitle">Edit Project</h2>
@@ -175,8 +199,9 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="/js/scripts.js"></script>
+    
     <script type="module">
-        // Global Variables
+        // --- Global Variables/Constants ---
         const DEBOUNCE_DELAY_SEARCH = 300;
         let debounceTimeout;
         let selectedCollaboratorIds = [];
@@ -184,7 +209,7 @@
         window.projectSchemas = { Default: [] }; 
         let currentProjectData = {}; // Stores project data after load
 
-        // DOM Elements
+        // --- DOM Elements ---
         const editForm = document.getElementById('editForm');
         const projectTypeSelect = document.getElementById('projectType');
         const dynamicFieldsContainer = document.getElementById('dynamic-fields-container');
@@ -202,15 +227,76 @@
         const departmentSelect = document.getElementById('department');
         const categorySelect = document.getElementById('category');
 
-        // --- Utility Functions (Omitted for brevity, assume correct) ---
-        
+        // --- Local Notification Functions (Required for Header) ---
+        async function deleteNotification(notificationId) {
+            if (!confirm('Remove this notification?')) return;
+            try {
+                const response = await fetch(`/notifications/${notificationId}`, {
+                    method: 'DELETE', credentials: 'include'
+                });
+                if (response.ok) {
+                    Toastify({ text: 'Notification removed.', duration: 2000, style: { background: '#ff5858' } }).showToast();
+                    fetchNotifications(); 
+                } else {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Failed to remove notification.');
+                }
+            } catch (error) {
+                console.error('Error deleting notification:', error);
+                Toastify({ text: error.message, duration: 3000, style: { background: '#e74c3c' } }).showToast();
+            }
+        }
+
+        async function fetchNotifications() {
+            const notificationList = document.getElementById('notificationList');
+            const notificationCount = document.getElementById('notificationCount');
+            if (!notificationList || !notificationCount) return;
+
+            notificationList.innerHTML = '<div class="dropdown-item-text text-muted">Fetching...</div>';
+            notificationCount.style.display = 'none';
+
+            try {
+                const response = await fetch('/notifications', { credentials: 'include' });
+                if (response.status === 401) {
+                    notificationList.innerHTML = '<div class="dropdown-item-text">Please log in to view notifications.</div>';
+                    return;
+                }
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch notifications: Status ${response.status}`);
+                }
+                const notifications = await response.json();
+                const unreadCount = notifications.filter(n => !n.read).length;
+                
+                notificationList.innerHTML = notifications.length > 0
+                    ? notifications.map(n => `
+                        <div class="notification-item ${n.read ? '' : 'unread'}" data-id="${n._id}" title="${n.read ? 'Read' : 'Unread'}">
+                            <span class="message">${n.message}</span>
+                            <button class="btn btn-link btn-sm text-danger p-0" onclick="deleteNotification('${n._id}')" aria-label="Remove notification">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    `).join('')
+                    : '<div class="dropdown-item-text">No new notifications</div>';
+                    
+                notificationCount.textContent = unreadCount;
+                notificationCount.style.display = unreadCount > 0 ? 'inline' : 'none';
+
+            } catch (error) {
+                console.error('Error fetching notifications:', error);
+                document.getElementById('notificationList').innerHTML = `<div class="dropdown-item-text text-danger">Error loading: ${error.message}</div>`;
+                document.getElementById('notificationCount').style.display = 'none';
+                Toastify({ text: 'Error loading notifications.', duration: 5000, style: { background: '#e74c3c' } }).showToast();
+            }
+        }
+
+        // --- Utility Functions ---
         function validateFileSize(input, maxSizeMB, fieldName) {
             if (input.files && input.files[0]) {
                 const fileSizeMB = input.files[0].size / (1024 * 1024);
                 if (fileSizeMB > maxSizeMB) {
                     Toastify({ text: `${fieldName} exceeds ${maxSizeMB}MB limit.`, duration: 3000, style: { background: '#e74c3c' } }).showToast();
                     input.value = '';
-                    const previewElement = document.getElementById(`${input.id}Preview`) || imagePreviewContainer;
+                    const previewElement = document.getElementById(`${input.id}PreviewContainer`) || imagePreviewContainer;
                     if (previewElement) previewElement.style.display = 'none';
                     return false;
                 }
@@ -243,7 +329,7 @@
         }
 
         function previewCADFile(file) {
-            const previewContainer = document.getElementById('CADFilePreview');
+            const previewContainer = document.getElementById('CADFilePreviewContainer');
             if (!previewContainer) return;
             const modelViewer = previewContainer.querySelector('model-viewer');
             
@@ -319,7 +405,6 @@
                 const fieldId = field.name;
                 const fieldLabel = field.label;
                 
-                // Get existing data from project's details object or default to empty
                 let currentValue = projectSpecificFields[fieldId];
                 if (Array.isArray(currentValue)) {
                      currentValue = currentValue.join(', ');
@@ -377,19 +462,20 @@
                     const fileInput = document.getElementById(fieldId);
                     const currentFileHidden = document.getElementById(`${fieldId}Current`);
                     const previewContainer = document.getElementById(`${fieldId}PreviewContainer`);
+                    const isCAD = fieldId === 'CADFile';
+                    const maxSizeMB = isCAD ? 10 : 2;
                     
                     setupDropzone(dropzone, fileInput);
                     
                     fileInput.addEventListener('change', () => {
-                        validateFileSize(fileInput, isCAD ? 10 : 2, fieldLabel);
+                        validateFileSize(fileInput, maxSizeMB, fieldLabel);
                         if (fileInput.files[0]) {
                             if (isCAD) {
                                 previewCADFile(fileInput.files[0]);
                             } else {
                                 previewImage(fileInput.files[0], document.getElementById(`${fieldId}Preview`), previewContainer, false);
                             }
-                            // Clear current file hidden input as a new one is being uploaded
-                            currentFileHidden.value = '';
+                            currentFileHidden.value = ''; // Clear current file hidden input as a new one is being uploaded
                         }
                     });
 
@@ -413,12 +499,10 @@
             });
         }
 
-        // --- Collaboration Functions (Omitted for brevity, assume correct) ---
-        
+        // --- Collaboration Functions ---
         function updateCollaboratorIdsHiddenInput() { collaboratorIdsHiddenInput.value = selectedCollaboratorIds.join(','); }
 
         function addCollaboratorChip(userId, userName, profilePic, isInitialLoad = false) {
-            // Adapted logic from your edit page for chips
             const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(userId);
             if (!isValidObjectId) {
                 if (!isInitialLoad) { Toastify({ text: `Invalid user ID for ${userName}. Cannot add collaborator.`, duration: 3000, style: { background: "#e74c3c" } }).showToast(); }
@@ -453,9 +537,8 @@
                 Toastify({ text: `${userName} added as collaborator`, duration: 2000, style: { background: "#28a745" } }).showToast();
             }
         }
-
-        // --- Validation and Submission (Omitted for brevity, assume correct) ---
         
+        // --- Validation and Submission ---
         function validateForm(isPublishing) {
             let isValid = true;
             editForm.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
@@ -472,7 +555,8 @@
             if (isPublishing) {
                 const hasNewImage = imageInput.files[0];
                 const hasCurrentImage = imagePreview.src && imagePreview.src !== window.location.href;
-                const isImageMarkedForDeletion = currentProjectData.image === 'DELETED';
+                // Check if the current image is marked for deletion and no new one uploaded
+                const isImageMarkedForDeletion = currentProjectData.image === 'DELETED'; 
                 
                 if (!hasNewImage && (!hasCurrentImage || isImageMarkedForDeletion)) { 
                     imageInput.classList.add('is-invalid'); 
@@ -493,6 +577,7 @@
                     tagsSelect.classList.remove('is-invalid');
                 }
                 
+                // Validate dynamic required fields
                 const schema = window.projectSchemas[projectTypeSelect.value] || window.projectSchemas.Default;
                 schema.forEach(field => {
                     if (field.required) {
@@ -501,7 +586,9 @@
 
                         if (input && field.type === 'file') {
                             const isMarkedForDeletion = currentFileHidden?.value === 'DELETED';
-                            if (!input.files[0] && (!currentFileHidden?.value || isMarkedForDeletion)) {
+                            const hasCurrentFile = currentFileHidden?.value && currentFileHidden.value !== 'DELETED';
+
+                            if (!input.files[0] && (!hasCurrentFile || isMarkedForDeletion)) {
                                 input.classList.add('is-invalid'); 
                                 isValid = false; 
                             } else {
@@ -549,35 +636,29 @@
                     if (input && field.type !== 'file') {
                         formData.append(field.name, input.value);
                     }
+                    // For file inputs, the File or the hidden *Current field is already in FormData by default
                 });
                 
-                // Track image deletion separately if the button was used
+                // Track image deletion separately
                 if (currentProjectData.image === 'DELETED' && !imageInput.files[0]) {
                     formData.append('removeCurrentImage', 'true');
                 }
 
-
-                // 🛑 FIX: Use the correct PUT endpoint path: /projects/:id
                 const response = await fetch(`/projects/${projectId}`, { method: 'PUT', body: formData, credentials: 'include' });
                 
                 if (!response.ok) {
-                    // CRITICAL: Read response as text to get details from the 400 Bad Request
                     const errorText = await response.text();
                     console.error('Server returned error text (Validation Error):', errorText);
                     
-                    // Attempt to parse the JSON error body to show a readable message
                     let errorData;
                     try { errorData = JSON.parse(errorText); } catch { errorData = { error: 'Unknown Error', details: errorText }; }
 
-                    throw new Error(`HTTP error! Status: ${response.status}. ${errorData.details || errorData.error}`);
+                    throw new Error(`HTTP error! Status: ${response.status}. ${errorData.details || errorData.error || response.statusText}`);
                 }
                 
-                // Since response.ok is true, we now safely parse the JSON
                 const data = await response.json();
                 
                 if (data.success) {
-                    // NOTE: Since the publish button is removed, clicking 'Save Changes' 
-                    // retains the project's current status (published or draft).
                     const message = currentProjectData.isPublished ? 'Project changes saved!' : 'Draft saved successfully!';
                     Toastify({ text: data.message || message, duration: 3000, style: { background: '#28a745' } }).showToast();
                     
@@ -593,9 +674,7 @@
             }
         }
 
-
-        // --- Initial Load Logic (Omitted for brevity, assume correct) ---
-
+        // --- Initial Load Logic ---
         async function loadProjectSchemas() {
             try {
                 const response = await fetch('/projects/dynamic-filter-options', { credentials: 'include', headers: { 'Accept': 'application/json' } });
@@ -604,6 +683,7 @@
                 
                 window.projectSchemas = data.projectSchemas || { Default: [] };
 
+                // Populate all selector fields
                 populateDropdown(projectTypeSelect, data.types || ['Engineering', 'Art', 'Other'], 'Select Project Type');
                 populateDropdown(yearSelect, data.years || [], 'Select Year');
                 populateDropdown(departmentSelect, data.departments || [], 'Select Department');
@@ -611,13 +691,9 @@
                 populateDropdown(tagsSelect, data.tools || [], 'Select tags'); 
                 
             } catch (error) {
-                console.error('Error loading filter options:', error);
-                // Fallback schemas (Using your hardcoded data for robustness)
-                window.projectSchemas = { 
-                    Default: [], 
-                    Engineering: [{ name: 'CADFile', label: 'CAD File', type: 'file', accept: '.gltf,.glb', required: false, note: 'Upload STL, OBJ, GLTF, GLB, or STEP (max 10MB).' }, { name: 'technicalDescription', label: 'Technical Description', type: 'textarea', placeholder: 'Describe the technical aspects of your project.', required: true }, { name: 'toolsSoftware', label: 'Tools/Software Used', type: 'text', placeholder: 'e.g., SolidWorks, AutoCAD', required: true }, { name: 'functionalGoals', label: 'Functional Goals', type: 'textarea', placeholder: 'What are the functional objectives?', required: false }], 
-                    Art: [{ name: 'artworkImage', label: 'Artwork Image', type: 'file', accept: 'image/jpeg,image/png,image/gif', required: true, note: 'Upload JPEG, PNG, or GIF (max 2MB)' }, { name: 'mediumTechnique', label: 'Medium/Technique', type: 'text', placeholder: 'e.g., Oil on Canvas', required: true }, { name: 'artistStatement', label: 'Artist Statement', type: 'textarea', placeholder: 'Describe the concept behind your artwork.', required: true }, { name: 'exhibitionHistory', label: 'Exhibition History', type: 'text', placeholder: 'e.g., Exhibited at Art Fair 2023', required: false }]
-                };
+                console.error('Error loading filter options (using fallback):', error);
+                // Fallback schemas and options to prevent crash
+                window.projectSchemas = { Default: [], Engineering: [{ name: 'CADFile', label: 'CAD File', type: 'file', accept: '.gltf,.glb', required: false, note: 'Upload STL, OBJ, GLTF, GLB, or STEP (max 10MB).' }, { name: 'technicalDescription', label: 'Technical Description', type: 'textarea', placeholder: 'Describe the technical aspects of your project.', required: true }, { name: 'toolsSoftware', label: 'Tools/Software Used', type: 'text', placeholder: 'e.g., SolidWorks, AutoCAD', required: true }, { name: 'functionalGoals', label: 'Functional Goals', type: 'textarea', placeholder: 'What are the functional objectives?', required: false }], Art: [{ name: 'artworkImage', label: 'Artwork Image', type: 'file', accept: 'image/jpeg,image/png,image/gif', required: true, note: 'Upload JPEG, PNG, or GIF (max 2MB)' }, { name: 'mediumTechnique', label: 'Medium/Technique', type: 'text', placeholder: 'e.g., Oil on Canvas', required: true }, { name: 'artistStatement', label: 'Artist Statement', type: 'textarea', placeholder: 'Describe the concept behind your artwork.', required: true }, { name: 'exhibitionHistory', label: 'Exhibition History', type: 'text', placeholder: 'e.g., Exhibited at Art Fair 2023', required: false }] };
                 populateDropdown(projectTypeSelect, ['Engineering', 'Art', 'Other'], 'Select Project Type');
                 populateDropdown(yearSelect, ['2020', '2021', '2022', '2023', '2024', '2025'], 'Select Year');
                 populateDropdown(departmentSelect, ['Mechanical Engineering', 'Computer Science', 'Fine Arts'], 'Select Department');
@@ -637,7 +713,6 @@
             document.getElementById('projectId').value = projectId;
 
             try {
-                // Corrected endpoint to include the required namespace
                 const projectResponse = await fetch(`/projects/project/${projectId}`, { credentials: 'include' });
                 
                 if (!projectResponse.ok) {
@@ -646,14 +721,13 @@
                     throw new Error(`Failed to load project details. Status: ${projectResponse.status}`);
                 }
                 const project = await projectResponse.json();
-                currentProjectData = project; // Store for form state checks
+                currentProjectData = project; 
                 
                 // Populate basic form fields
                 document.getElementById('title').value = project.title || '';
                 document.getElementById('description').value = project.description || '';
                 document.getElementById('problemStatement').value = project.problemStatement || '';
                 
-                // FIX: Use conditional check to handle both Array and String types for otherContributors
                 const contributorValue = project.otherContributors
                     ? (Array.isArray(project.otherContributors) 
                         ? project.otherContributors.join(', ') 
@@ -669,7 +743,6 @@
                 // Populate core select dropdowns based on tags array
                 if (project.tags && project.tags.length > 0) {
                     project.tags.forEach(tag => {
-                        // Attempt to populate core tags first
                         if (yearSelect.querySelector(`option[value="${tag}"]`)) yearSelect.value = tag;
                         else if (departmentSelect.querySelector(`option[value="${tag}"]`)) departmentSelect.value = tag;
                         else if (categorySelect.querySelector(`option[value="${tag}"]`)) categorySelect.value = tag;
@@ -684,7 +757,6 @@
                         }
                     });
                 }
-
 
                 // Image Preview
                 if (project.image) {
@@ -705,7 +777,7 @@
                 }
                 updateCollaboratorIdsHiddenInput();
 
-                // Call renderDynamicFields with project-specific data (handles CAD/Art details)
+                // Call renderDynamicFields with project-specific data
                 renderDynamicFields(project.projectDetails || {});
                 
             } catch (error) {
@@ -716,14 +788,20 @@
         }
 
         // --- Main Initialization Function and Event Listeners ---
-
         document.addEventListener('DOMContentLoaded', () => {
-            // 1. Initial Data Load
-            loadProjectSchemas().then(loadProjectData);
+            // 1. Initialize Global Header Features
             window.loadUserProfileInHeader();
+            const notificationButton = document.getElementById('notificationButton');
+            if (notificationButton) {
+                notificationButton.addEventListener('shown.bs.dropdown', () => { fetchNotifications(); });
+                window.deleteNotification = deleteNotification; // Export delete for use in the mapped HTML
+            }
+
+            // 2. Initial Data Load
+            loadProjectSchemas().then(loadProjectData);
             
-            // 2. Main Event Listeners
-            projectTypeSelect.addEventListener('change', () => renderDynamicFields({})); // Clears dynamic fields on type change
+            // 3. Main Event Listeners
+            projectTypeSelect.addEventListener('change', () => renderDynamicFields({})); 
             
             // Static image upload listener
             imageInput.addEventListener('change', () => {
@@ -736,12 +814,11 @@
             setupDropzone(imageDropzone, imageInput);
             
             removeImageBtn.addEventListener('click', () => {
-                imageInput.value = ''; // Clear file input
-                previewImage(null, imagePreview, imagePreviewContainer, false); // Clear preview
-                currentProjectData.image = 'DELETED'; // Mark for server deletion
+                imageInput.value = ''; 
+                previewImage(null, imagePreview, imagePreviewContainer, false);
+                currentProjectData.image = 'DELETED'; 
                 Toastify({ text: 'Current image will be deleted on save. (Undo by reloading)', duration: 2000, style: { background: "#dc3545" } }).showToast();
             });
-
 
             // Collaborator Search Listener
             collaboratorSearchInput.addEventListener('input', () => {
@@ -757,9 +834,7 @@
             });
             
             // Submission Listeners
-            document.getElementById('saveChangesBtn').addEventListener('click', (e) => { e.preventDefault(); submitProject(currentProjectData.isPublished); }); // Keep current published status
-            // NOTE: Publish button removed from HTML, so this listener is unnecessary
-            // document.getElementById('publishBtn').addEventListener('click', (e) => { e.preventDefault(); submitProject(true); }); 
+            document.getElementById('saveChangesBtn').addEventListener('click', (e) => { e.preventDefault(); submitProject(currentProjectData.isPublished); });
             
             document.getElementById('cancelEditBtn').addEventListener('click', () => {
                 Toastify({ text: 'Edit cancelled', duration: 2000, style: { background: '#6c757d' } }).showToast();
