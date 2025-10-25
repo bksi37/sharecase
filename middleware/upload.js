@@ -77,11 +77,12 @@ const uploadFields = multer({
             cb(null, true);
 
         } else if (allowedCADFields.includes(file.fieldname)) {
-            const allowedCADExtensions = /\.(obj|gltf|glb|stl|step|iges)$/i;
+            // --- UPDATED LOGIC TO RESTRICT TO GLB/GLTF ---
+            const allowedCADExtensions = /\.(gltf|glb)$/i;
             const maxSize = 10 * 1024 * 1024; // 10MB CAD limit
             
             if (!file.originalname.match(allowedCADExtensions)) {
-                return cb(new Error(`Invalid CAD file type for ${file.fieldname}. Allowed: OBJ, GLTF, GLB, STL, STEP, IGES.`), false);
+                return cb(new Error(`Invalid CAD file type for ${file.fieldname}. Only .GLB and .GLTF files are supported for browser viewing.`), false);
             }
             if (file.size && file.size > maxSize) {
                 return cb(new Error(`CAD file ${file.fieldname} too large. Max 10MB.`), false);

@@ -162,7 +162,6 @@
                 
                 <div class="d-flex gap-2">
                     <button type="submit" class="btn btn-primary" id="saveChangesBtn">Save Changes</button>
-                    <button type="button" class="btn btn-primary" id="publishBtn">Publish</button>
                     <button type="button" class="btn btn-outline-secondary" id="cancelEditBtn">Cancel</button>
                 </div>
                 <small class="d-block mt-3 text-danger">Fields marked with (<span class="text-danger">*</span>) are required for publishing.</small>
@@ -173,16 +172,15 @@
     <footer class="text-center py-3">
         <p>© 2025 ShareCase. All rights reserved.</p>
     </footer>
-   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
-<script src="/js/scripts.js"></script>
-<script type="module">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="/js/scripts.js"></script>
+    <script type="module">
         // Global Variables
         const DEBOUNCE_DELAY_SEARCH = 300;
         let debounceTimeout;
         let selectedCollaboratorIds = [];
         window.selectedCollaboratorIds = selectedCollaboratorIds;
-        // Project Schemas will be loaded from endpoint or fallback
         window.projectSchemas = { Default: [] }; 
         let currentProjectData = {}; // Stores project data after load
 
@@ -340,7 +338,7 @@
                         <label for="${fieldId}" class="form-label">${fieldLabel} ${field.required ? '<span class="text-danger">*</span>' : ''}</label>
                         <div class="dropzone p-3 border rounded text-center" id="${fieldId}Dropzone" role="region" aria-label="Dropzone for ${fieldLabel}">
                             <p class="mb-0">Drag & drop a new ${fieldLabel} or click to select (${field.accept || 'Max 10MB'})</p>
-                            <input type="file" class="form-control d-none" id="${fieldId}" name="${fieldId}" accept="${field.accept}" ${requiredAttr}>
+                            <input type="file" class="form-control d-none" id="${fieldId}" name="${fieldId}" accept="${field.accept}">
                             <input type="hidden" id="${fieldId}Current" name="${fieldId}Current" value="${currentFileUrl}">
                         </div>
                         <div id="${fieldId}PreviewContainer" class="mt-2" style="display: ${currentFileUrl ? 'block' : 'none'};">
@@ -551,7 +549,6 @@
                     if (input && field.type !== 'file') {
                         formData.append(field.name, input.value);
                     }
-                    // The file and current value for dynamic files are handled via the FormData(editForm) constructor
                 });
                 
                 // Track image deletion separately if the button was used
@@ -560,25 +557,44 @@
                 }
 
 
+                // 🛑 FIX: Use the correct PUT endpoint path: /projects/:id
                 const response = await fetch(`/projects/${projectId}`, { method: 'PUT', body: formData, credentials: 'include' });
+                
+                if (!response.ok) {
+                    // CRITICAL: Read response as text to get details from the 400 Bad Request
+                    const errorText = await response.text();
+                    console.error('Server returned error text (Validation Error):', errorText);
+                    
+                    // Attempt to parse the JSON error body to show a readable message
+                    let errorData;
+                    try { errorData = JSON.parse(errorText); } catch { errorData = { error: 'Unknown Error', details: errorText }; }
+
+                    throw new Error(`HTTP error! Status: ${response.status}. ${errorData.details || errorData.error}`);
+                }
+                
+                // Since response.ok is true, we now safely parse the JSON
                 const data = await response.json();
                 
-                if (response.ok) {
-                    const message = isPublished ? 'Project published successfully!' : 'Project changes saved!';
+                if (data.success) {
+                    // NOTE: Since the publish button is removed, clicking 'Save Changes' 
+                    // retains the project's current status (published or draft).
+                    const message = currentProjectData.isPublished ? 'Project changes saved!' : 'Draft saved successfully!';
                     Toastify({ text: data.message || message, duration: 3000, style: { background: '#28a745' } }).showToast();
-                    setTimeout(() => window.location.href = data.redirect || `/project/${projectId}`, 3000);
+                    
+                    // Redirect to the project page or profile page based on the server response
+                    setTimeout(() => window.location.href = data.redirect || `/project.html?id=${projectId}`, 3000);
                 } else {
                     const errorMsg = data.error || data.details || 'Failed to update project.';
                     Toastify({ text: errorMsg, duration: 5000, style: { background: '#e74c3c' } }).showToast();
                 }
             } catch (error) {
                 console.error('Error submitting project:', error);
-                Toastify({ text: 'A network error occurred during update.', duration: 5000, style: { background: '#e74c3c' } }).showToast();
+                Toastify({ text: 'A network error occurred during update: ' + error.message, duration: 5000, style: { background: '#e74c3c' } }).showToast();
             }
         }
 
 
-        // --- Initial Load Logic ---
+        // --- Initial Load Logic (Omitted for brevity, assume correct) ---
 
         async function loadProjectSchemas() {
             try {
@@ -599,7 +615,7 @@
                 // Fallback schemas (Using your hardcoded data for robustness)
                 window.projectSchemas = { 
                     Default: [], 
-                    Engineering: [{ name: 'CADFile', label: 'CAD File', type: 'file', accept: '.stl,.obj,.gltf,.glb,.step', required: false, note: 'Upload STL, OBJ, GLTF, GLB, or STEP (max 10MB).' }, { name: 'technicalDescription', label: 'Technical Description', type: 'textarea', placeholder: 'Describe the technical aspects of your project.', required: true }, { name: 'toolsSoftware', label: 'Tools/Software Used', type: 'text', placeholder: 'e.g., SolidWorks, AutoCAD', required: true }, { name: 'functionalGoals', label: 'Functional Goals', type: 'textarea', placeholder: 'What are the functional objectives?', required: false }], 
+                    Engineering: [{ name: 'CADFile', label: 'CAD File', type: 'file', accept: '.gltf,.glb', required: false, note: 'Upload STL, OBJ, GLTF, GLB, or STEP (max 10MB).' }, { name: 'technicalDescription', label: 'Technical Description', type: 'textarea', placeholder: 'Describe the technical aspects of your project.', required: true }, { name: 'toolsSoftware', label: 'Tools/Software Used', type: 'text', placeholder: 'e.g., SolidWorks, AutoCAD', required: true }, { name: 'functionalGoals', label: 'Functional Goals', type: 'textarea', placeholder: 'What are the functional objectives?', required: false }], 
                     Art: [{ name: 'artworkImage', label: 'Artwork Image', type: 'file', accept: 'image/jpeg,image/png,image/gif', required: true, note: 'Upload JPEG, PNG, or GIF (max 2MB)' }, { name: 'mediumTechnique', label: 'Medium/Technique', type: 'text', placeholder: 'e.g., Oil on Canvas', required: true }, { name: 'artistStatement', label: 'Artist Statement', type: 'textarea', placeholder: 'Describe the concept behind your artwork.', required: true }, { name: 'exhibitionHistory', label: 'Exhibition History', type: 'text', placeholder: 'e.g., Exhibited at Art Fair 2023', required: false }]
                 };
                 populateDropdown(projectTypeSelect, ['Engineering', 'Art', 'Other'], 'Select Project Type');
@@ -621,7 +637,7 @@
             document.getElementById('projectId').value = projectId;
 
             try {
-                // 🛑 FIX: Corrected endpoint to include the required namespace
+                // Corrected endpoint to include the required namespace
                 const projectResponse = await fetch(`/projects/project/${projectId}`, { credentials: 'include' });
                 
                 if (!projectResponse.ok) {
@@ -637,7 +653,7 @@
                 document.getElementById('description').value = project.description || '';
                 document.getElementById('problemStatement').value = project.problemStatement || '';
                 
-                // 🛑 FIX: Use conditional check to handle both Array and String types for otherContributors
+                // FIX: Use conditional check to handle both Array and String types for otherContributors
                 const contributorValue = project.otherContributors
                     ? (Array.isArray(project.otherContributors) 
                         ? project.otherContributors.join(', ') 
@@ -723,7 +739,7 @@
                 imageInput.value = ''; // Clear file input
                 previewImage(null, imagePreview, imagePreviewContainer, false); // Clear preview
                 currentProjectData.image = 'DELETED'; // Mark for server deletion
-                Toastify({ text: 'Current image will be deleted on save.', duration: 2000, style: { background: "#dc3545" } }).showToast();
+                Toastify({ text: 'Current image will be deleted on save. (Undo by reloading)', duration: 2000, style: { background: "#dc3545" } }).showToast();
             });
 
 
@@ -742,7 +758,8 @@
             
             // Submission Listeners
             document.getElementById('saveChangesBtn').addEventListener('click', (e) => { e.preventDefault(); submitProject(currentProjectData.isPublished); }); // Keep current published status
-            document.getElementById('publishBtn').addEventListener('click', (e) => { e.preventDefault(); submitProject(true); });
+            // NOTE: Publish button removed from HTML, so this listener is unnecessary
+            // document.getElementById('publishBtn').addEventListener('click', (e) => { e.preventDefault(); submitProject(true); }); 
             
             document.getElementById('cancelEditBtn').addEventListener('click', () => {
                 Toastify({ text: 'Edit cancelled', duration: 2000, style: { background: '#6c757d' } }).showToast();

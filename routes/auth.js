@@ -11,6 +11,7 @@ const { isAuthenticated, isProfileComplete } = require('../middleware/auth');
 const uploadFields = require('../middleware/upload');
 const Notification = require('../models/Notification');
 
+
 // Signup
 router.post('/signup', async (req, res) => {
     try {

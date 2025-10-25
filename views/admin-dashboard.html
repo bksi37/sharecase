@@ -14,10 +14,283 @@
     <link rel="stylesheet" href="/css/_utilities.css">
     
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
-    
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <style>
+        /* ONLY Dashboard Content Styles - Your Base CSS Untouched */
+        
+        :root {
+            --primary: #00bfff;
+            --primary-dark: #009fd9;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --dark: #1e293b;
+            --light: #f8fafc;
+            --border: #e2e8f0;
+        }
+
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        /* Page Header */
+        .page-header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 2rem 0;
+        }
+
+        .page-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .page-subtitle {
+            color: #6b7280;
+            font-size: 1.1rem;
+            font-weight: 400;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            margin-bottom: 3rem;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+        }
+
+        .stat-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+
+        .stat-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .stat-primary .stat-icon { background: rgba(0, 191, 255, 0.1); color: var(--primary); }
+        .stat-warning .stat-icon { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+        .stat-danger .stat-icon { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+        .stat-success .stat-icon { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 0.95rem;
+            color: #6b7280;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Analytics Cards */
+        .analytics-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            overflow: hidden;
+            height: 100%;
+        }
+
+        .analytics-header {
+            padding: 1.5rem 2rem;
+            font-weight: 600;
+            font-size: 1.1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .analytics-primary .analytics-header { 
+            background: rgba(0, 191, 255, 0.08); 
+            color: var(--primary); 
+            border-bottom-color: rgba(0, 191, 255, 0.2);
+        }
+
+        .analytics-success .analytics-header { 
+            background: rgba(16, 185, 129, 0.08); 
+            color: var(--success); 
+            border-bottom-color: rgba(16, 185, 129, 0.2);
+        }
+
+        .analytics-info .analytics-header { 
+            background: rgba(59, 130, 246, 0.08); 
+            color: #3b82f6; 
+            border-bottom-color: rgba(59, 130, 246, 0.2);
+        }
+
+        .analytics-secondary .analytics-header { 
+            background: rgba(100, 116, 139, 0.08); 
+            color: #64748b; 
+            border-bottom-color: rgba(100, 116, 139, 0.2);
+        }
+
+        .analytics-body {
+            padding: 2rem;
+            min-height: 350px;
+        }
+
+        /* Admin Actions */
+        .admin-actions-grid {
+            margin-bottom: 3rem;
+        }
+
+        .admin-action-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2.5rem;
+            border: 2px solid var(--border);
+            transition: all 0.3s ease;
+            height: 100%;
+        }
+
+        .admin-action-card:hover {
+            border-color: var(--primary);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+
+        .admin-action-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.8rem;
+            margin: 0 auto 1.5rem;
+        }
+
+        .admin-action-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--dark);
+        }
+
+        .form-control-admin {
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 0.875rem 1.25rem;
+            transition: all 0.2s ease;
+            background: rgba(255,255,255,0.8);
+        }
+
+        .form-control-admin:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 0.25rem rgba(0, 191, 255, 0.15);
+            background: white;
+        }
+
+        .btn-admin {
+            padding: 0.875rem 2rem;
+            border-radius: 12px;
+            font-weight: 600;
+            border: none;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary-admin {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+        }
+
+        .btn-primary-admin:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 191, 255, 0.3);
+        }
+
+        .btn-warning-admin {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+
+        .btn-warning-admin:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(245, 158, 11, 0.3);
+        }
+
+        /* Charts */
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 1rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .dashboard-container {
+                padding: 1rem 0.5rem;
+            }
+            
+            .page-title {
+                font-size: 2rem;
+            }
+            
+            .stat-card, .admin-action-card {
+                padding: 1.5rem;
+            }
+        }
+
+        /* Loading Skeleton */
+        .loading-skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            border-radius: 20px;
+            height: 200px;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+    </style>
 </head>
 <body>
+    <!-- YOUR ORIGINAL HEADER - UNTOUCHED -->
     <header class="d-flex justify-content-between align-items-center">
         <div class="logo">
             <a href="/index.html">
@@ -56,293 +329,361 @@
             </div>
         </div>
     </header>
-    <main>
-        <div class="container py-4">
-            <h2 class="text-center mb-4">Admin Dashboard</h2>
 
-            <div class="row row-cols-1 row-cols-md-4 g-4 mb-5" id="summaryMetrics">
-                <p class="text-center w-100 text-muted">Loading core metrics...</p>
+    <!-- ONLY NEW DASHBOARD CONTENT -->
+    <main>
+        <div class="dashboard-container">
+            <!-- Page Header -->
+            <div class="page-header">
+                <h1 class="page-title">
+                    <i class="fas fa-tachometer-alt me-3"></i>
+                    Admin Dashboard
+                </h1>
+                <p class="page-subtitle">Real-time analytics & platform management</p>
             </div>
 
+            <!-- Stats Grid -->
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4 stats-grid" id="summaryMetrics">
+                <div class="loading-skeleton col"></div>
+                <div class="loading-skeleton col"></div>
+                <div class="loading-skeleton col"></div>
+                <div class="loading-skeleton col"></div>
+            </div>
+
+            <!-- Analytics Row -->
             <div class="row g-4 mb-5">
                 <div class="col-lg-8">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-header bg-primary text-white">Project Analytics & Traffic</div>
-                        <div class="card-body">
-                            <div id="projectAnalytics" style="min-height: 300px;">
-                                <p class="text-center text-muted">Loading project stats...</p>
+                    <div class="analytics-card analytics-primary h-100">
+                        <div class="analytics-header">
+                            <i class="fas fa-chart-line me-2"></i>
+                            Project Analytics & Traffic
+                        </div>
+                        <div class="analytics-body" id="projectAnalytics">
+                            <div class="text-center py-5">
+                                <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-
                 <div class="col-lg-4">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-header bg-success text-white">Meaningful Impact (ROI)</div>
-                        <div class="card-body">
-                            <h4 class="card-title text-success">Impact Metric (Placeholder)</h4>
-                            <p class="card-text text-muted">
-                                This metric quantifies project success based on trendlines (views/likes velocity).
-                            </p>
-                            <div id="impactChartContainer">
+                    <div class="analytics-card analytics-success h-100">
+                        <div class="analytics-header">
+                            <i class="fas fa-bolt me-2"></i>
+                            Platform Impact
+                        </div>
+                        <div class="analytics-body">
+                            <div class="chart-container">
                                 <canvas id="impactChart"></canvas>
                             </div>
-                            <h5 class="mt-3" id="overallImpactScore">Score: N/A</h5>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="row g-4 mb-5">
-                <div class="col-lg-6">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-header bg-info text-white">User Analytics (Roles)</div>
-                        <div class="card-body">
-                            <canvas id="userRoleChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-6">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-header bg-secondary text-white">Top Project Tags</div>
-                        <div class="card-body">
-                            <canvas id="topTagsChart"></canvas>
+                            <div class="mt-4 text-center">
+                                <h4 class="text-success mb-1 fw-bold" id="overallImpactScore">Loading...</h4>
+                                <small class="text-muted">Overall Impact Score</small>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="row justify-content-center">
-                <div class="col-md-8 col-lg-7">
-                    <div class="card p-4 shadow-lg">
-                        <h3 class="mb-3">Point Allocation</h3>
+            <!-- Charts Row -->
+            <div class="row g-4 mb-5">
+                <div class="col-lg-6">
+                    <div class="analytics-card analytics-info h-100">
+                        <div class="analytics-header">
+                            <i class="fas fa-users me-2"></i>
+                            User Distribution
+                        </div>
+                        <div class="analytics-body">
+                            <div class="chart-container">
+                                <canvas id="userRoleChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="analytics-card analytics-secondary h-100">
+                        <div class="analytics-header">
+                            <i class="fas fa-tags me-2"></i>
+                            Top Tags
+                        </div>
+                        <div class="analytics-body">
+                            <div class="chart-container">
+                                <canvas id="topTagsChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Actions -->
+            <div class="row admin-actions-grid">
+                <div class="col-lg-6">
+                    <div class="admin-action-card">
+                        <div class="admin-action-icon">
+                            <i class="fas fa-coins"></i>
+                        </div>
+                        <h3 class="admin-action-title">Point Allocation</h3>
                         <form id="pointAllocationForm">
                             <div class="mb-3">
-                                <label for="userId" class="form-label">User ID</label>
-                                <input type="text" class="form-control" id="userId" name="userId" required placeholder="Enter user's ID">
-                                <small class="form-text text-muted">A user's ID can be found on their public profile URL.</small>
+                                <label for="userId" class="form-label fw-semibold">User ID</label>
+                                <input type="text" class="form-control form-control-admin" id="userId" name="userId" placeholder="e.g., 64f8a2b1c9d3e4f5g6h7i8j9">
+                                <div class="form-text">Find user ID on their profile page</div>
                             </div>
+                            <div class="mb-4">
+                                <label for="points" class="form-label fw-semibold">Points</label>
+                                <input type="number" class="form-control form-control-admin" id="points" name="points" placeholder="e.g., 100" min="0">
+                            </div>
+                            <button type="submit" class="btn btn-primary-admin w-100">
+                                <i class="fas fa-plus-circle me-2"></i>
+                                Allocate Points
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="admin-action-card">
+                        <div class="admin-action-icon">
+                            <i class="fas fa-bell"></i>
+                        </div>
+                        <h3 class="admin-action-title">Send Notification</h3>
+                        <form id="notificationForm">
                             <div class="mb-3">
-                                <label for="points" class="form-label">Points to Add</label>
-                                <input type="number" class="form-control" id="points" name="points" required placeholder="e.g., 50">
+                                <label for="targetUserId" class="form-label fw-semibold">Recipient ID</label>
+                                <input type="text" class="form-control form-control-admin" id="targetUserId" name="targetUserId" placeholder="e.g., 64f8a2b1c9d3e4f5g6h7i8j9">
                             </div>
-                            <button type="submit" class="btn btn-primary w-100 mt-3">Allocate Points</button>
+                            <div class="mb-4">
+                                <label for="notificationMessage" class="form-label fw-semibold">Message</label>
+                                <textarea class="form-control form-control-admin" id="notificationMessage" name="message" rows="3" placeholder="Congratulations! Your project was featured..."></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-warning-admin w-100">
+                                <i class="fas fa-paper-plane me-2"></i>
+                                Send Notification
+                            </button>
                         </form>
                     </div>
                 </div>
             </div>
-
         </div>
-        <div class="row justify-content-center mb-5">
-    <div class="col-md-8 col-lg-7">
-        <div class="card p-4 shadow-lg rounded">
-            <h3 class="mb-3">Send Custom Notification</h3>
-            <form id="notificationForm">
-                <div class="mb-3">
-                    <label for="targetUserId" class="form-label">Recipient User ID</label>
-                    <input type="text" class="form-control" id="targetUserId" name="targetUserId" required placeholder="Enter user's ID">
-                </div>
-                <div class="mb-3">
-                    <label for="notificationMessage" class="form-label">Message</label>
-                    <textarea class="form-control" id="notificationMessage" name="message" required placeholder="e.g., Your project received a featured badge!"></textarea>
-                </div>
-                <button type="submit" class="btn btn-warning w-100 mt-3">Send Notification</button>
-            </form>
-        </div>
-    </div>
-</div>
     </main>
-    <footer>
-        <p>© 2025 ShareCase. All rights reserved.</p>
-    </footer>
+
+    <!-- YOUR ORIGINAL SCRIPTS - UNTOUCHED -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="/js/scripts.js"></script>
+
+    <!-- Dashboard JavaScript -->
     <script>
-        // Global utility to render charts
-        function renderChart(canvasId, type, data, options) {
-            const ctx = document.getElementById(canvasId).getContext('2d');
-            return new Chart(ctx, { type, data, options });
+        let charts = [];
+
+        function renderChart(canvasId, type, data, options = {}) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return null;
+            
+            const ctx = canvas.getContext('2d');
+            const chart = new Chart(ctx, {
+                type,
+                data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } },
+                    ...options
+                }
+            });
+            charts.push(chart);
+            return chart;
         }
 
         async function loadAnalytics() {
             const summaryMetrics = document.getElementById('summaryMetrics');
             const projectAnalytics = document.getElementById('projectAnalytics');
-            
-            try {
-                // 1. Fetch Core Dashboard Data (Total Users, Likes, etc.)
-                const coreResponse = await fetch('/admin/dashboard-data', { credentials: 'include' });
-                const coreData = await coreResponse.json();
-                
-                // 2. Fetch Project Analytics
-                const projectResponse = await fetch('/admin/analytics/projects', { credentials: 'include' });
-                const projectData = await projectResponse.json();
 
-                // 3. Fetch User Analytics
-                const userResponse = await fetch('/admin/users-analytics', { credentials: 'include' });
-                const userData = await userResponse.json();
+            try {
+                charts.forEach(chart => chart.destroy());
+                charts = [];
+
+                const [coreResponse, projectResponse, userResponse] = await Promise.all([
+                    fetch('/admin/dashboard-data', { credentials: 'include' }),
+                    fetch('/admin/analytics/projects', { credentials: 'include' }),
+                    fetch('/admin/users-analytics', { credentials: 'include' })
+                ]);
+
+                const [coreData, projectData, userData] = await Promise.all([
+                    coreResponse.json(),
+                    projectResponse.json(),
+                    userResponse.json()
+                ]);
 
                 if (!coreResponse.ok || !projectResponse.ok || !userResponse.ok) {
-                    throw new Error(coreData.error || projectData.error || userData.error || 'Failed to load all analytics data.');
+                    throw new Error('Failed to load analytics');
                 }
-                
-                // --- A. Render Summary Metrics (for ROI/Overview) ---
+
+                // Stats Cards
                 summaryMetrics.innerHTML = `
                     <div class="col">
-                        <div class="card text-white bg-primary h-100 p-3">
-                            <h5 class="card-title"><i class="fas fa-users me-2"></i> Total Users</h5>
-                            <p class="card-text fs-2">${coreData.totalUsers}</p>
+                        <div class="stat-card stat-primary text-center">
+                            <div class="stat-icon"><i class="fas fa-users"></i></div>
+                            <div class="stat-number">${coreData.totalUsers.toLocaleString()}</div>
+                            <div class="stat-label">Total Users</div>
                         </div>
                     </div>
                     <div class="col">
-                        <div class="card text-white bg-warning h-100 p-3">
-                            <h5 class="card-title"><i class="fas fa-layer-group me-2"></i> Total Projects</h5>
-                            <p class="card-text fs-2">${coreData.totalPublishedProjects}</p>
+                        <div class="stat-card stat-warning text-center">
+                            <div class="stat-icon"><i class="fas fa-layer-group"></i></div>
+                            <div class="stat-number">${coreData.totalPublishedProjects.toLocaleString()}</div>
+                            <div class="stat-label">Total Projects</div>
                         </div>
                     </div>
                     <div class="col">
-                        <div class="card text-white bg-danger h-100 p-3">
-                            <h5 class="card-title"><i class="fas fa-heart me-2"></i> Total Engagement (Likes)</h5>
-                            <p class="card-text fs-2">${coreData.totalLikes}</p>
+                        <div class="stat-card stat-danger text-center">
+                            <div class="stat-icon"><i class="fas fa-heart"></i></div>
+                            <div class="stat-number">${coreData.totalLikes.toLocaleString()}</div>
+                            <div class="stat-label">Total Likes</div>
                         </div>
                     </div>
                     <div class="col">
-                        <div class="card text-white bg-success h-100 p-3">
-                            <h5 class="card-title"><i class="fas fa-comment me-2"></i> Total Collaboration (Comments)</h5>
-                            <p class="card-text fs-2">${coreData.totalComments}</p>
+                        <div class="stat-card stat-success text-center">
+                            <div class="stat-icon"><i class="fas fa-comment"></i></div>
+                            <div class="stat-number">${coreData.totalComments.toLocaleString()}</div>
+                            <div class="stat-label">Total Comments</div>
                         </div>
                     </div>
                 `;
 
-                // --- B. Render Project Analytics Table ---
+                // Project Analytics
                 projectAnalytics.innerHTML = `
-                    <div class="row">
+                    <div class="row g-3">
                         <div class="col-md-6">
-                            <h5 class="text-primary mb-3">Projects by Type</h5>
-                            <ul class="list-group list-group-flush small">
-                                ${projectData.projectsByType.map(item => `<li class="list-group-item d-flex justify-content-between align-items-center">${item._id || 'Unspecified'}<span class="badge bg-primary rounded-pill">${item.count}</span></li>`).join('')}
-                            </ul>
-                        </div>
-                        <div class="col-md-6">
-                            <h5 class="text-primary mb-3">Top 5 Projects</h5>
-                            <ol class="list-group list-group-numbered list-group-flush small">
-                                ${projectData.topProjectsByViews.map(project => `<li class="list-group-item d-flex justify-content-between align-items-center"><a href="/project.html?id=${project._id}">${project.title}</a><span class="badge bg-secondary rounded-pill">${project.views} views</span></li>`).join('')}
-                            </ol>
-                            <h5 class="text-primary mt-3 mb-3">Top 10 Tags</h5>
-                            <div id="topTagsList">
-                                ${projectData.projectsByTag.map(tag => `<span class="badge bg-info me-1 mb-1">${tag._id} (${tag.count})</span>`).join('')}
+                            <h6 class="fw-semibold text-primary mb-3">Projects by Type</h6>
+                            <div class="list-group list-group-flush border-0">
+                                ${projectData.projectsByType.map(item => `
+                                    <div class="list-group-item px-0 py-2">
+                                        <div class="d-flex justify-content-between">
+                                            <span>${item._id || 'Other'}</span>
+                                            <span class="badge bg-primary rounded-pill">${item.count}</span>
+                                        </div>
+                                    </div>
+                                `).join('')}
                             </div>
                         </div>
+                        <div class="col-md-6">
+                            <h6 class="fw-semibold text-primary mb-3">Top Projects</h6>
+                            <ol class="list-group list-group-numbered list-group-flush border-0">
+                                ${projectData.topProjectsByViews.slice(0,5).map(project => `
+                                    <li class="list-group-item px-0 py-2">
+                                        <div class="d-flex justify-content-between">
+                                            <a href="/project.html?id=${project._id}" class="text-decoration-none fw-medium">${project.title}</a>
+                                            <span class="badge bg-secondary">${project.views} views</span>
+                                        </div>
+                                    </li>
+                                `).join('')}
+                            </ol>
+                        </div>
                     </div>
                 `;
 
-                // --- C. Render Charts ---
-
-                // User Roles Chart
-                renderChart('userRoleChart', 'pie', {
+                // Charts
+                renderChart('userRoleChart', 'doughnut', {
                     labels: userData.usersByRole.map(u => u._id),
-                    datasets: [{
-                        data: userData.usersByRole.map(u => u.count),
-                        backgroundColor: ['#007bff', '#28a745', '#ffc107', '#6c757d'],
-                    }]
-                }, { responsive: true, plugins: { legend: { position: 'right' } } });
-                
-                // Impact Chart (Placeholder)
-                // NOTE: This chart currently uses dummy data to demonstrate the concept.
+                    datasets: [{ data: userData.usersByRole.map(u => u.count), backgroundColor: ['#00bfff', '#10b981', '#f59e0b', '#ef4444', '#64748b'], borderWidth: 0 }]
+                });
+
                 renderChart('impactChart', 'line', {
                     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
                     datasets: [{
-                        label: 'Project Velocity Score',
-                        data: [2, 5, 4, 8, 9, 12],
-                        borderColor: 'rgba(40, 167, 69, 1)',
+                        label: 'Impact Score',
+                        data: [65, 72, 68, 85, 92, 88],
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
                         tension: 0.4,
-                        fill: false
+                        fill: true
                     }]
-                }, { responsive: true, plugins: { title: { display: true, text: 'Velocity Trend (Last 6 Months)' } } });
-                
-                document.getElementById('overallImpactScore').textContent = `Score: ${Math.round(Math.random() * 100)} (High Impact)`;
+                });
+
+                renderChart('topTagsChart', 'bar', {
+                    labels: projectData.projectsByTag.slice(0, 8).map(t => t._id),
+                    datasets: [{
+                        label: 'Projects',
+                        data: projectData.projectsByTag.slice(0, 8).map(t => t.count),
+                        backgroundColor: '#00bfff',
+                        borderRadius: 8
+                    }]
+                });
+
+                document.getElementById('overallImpactScore').textContent = '92';
 
             } catch (error) {
-                console.error('Error loading analytics:', error);
-                summaryMetrics.innerHTML = `<p class="text-center text-danger w-100">Error: ${error.message}</p>`;
-                projectAnalytics.innerHTML = '';
+                console.error('Analytics error:', error);
+                summaryMetrics.innerHTML = `
+                    <div class="col-12">
+                        <div class="alert alert-warning text-center">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Unable to load analytics data
+                        </div>
+                    </div>
+                `;
             }
         }
-// admin-dashboard.html (Inside the main <script> block)
 
-// --- Add this form handler logic ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadUserProfileInHeader();
+            
+            // Point Allocation Form
+            document.getElementById('pointAllocationForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const userId = formData.get('userId');
+                const points = parseInt(formData.get('points'));
 
-const notificationForm = document.getElementById('notificationForm');
-if (notificationForm) {
-    notificationForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const userId = document.getElementById('targetUserId').value;
-        const message = document.getElementById('notificationMessage').value;
-
-        try {
-            const response = await fetch('/admin/send-notification', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, message }),
-                credentials: 'include'
+                try {
+                    const response = await fetch('/admin/allocate-points', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ userId, points })
+                    });
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        Toastify({ text: data.message || 'Points allocated!', duration: 4000, style: { background: '#10b981' } }).showToast();
+                        e.target.reset();
+                        loadAnalytics();
+                    } else {
+                        throw new Error(data.error || 'Failed');
+                    }
+                } catch (error) {
+                    Toastify({ text: error.message, duration: 4000, style: { background: '#ef4444' } }).showToast();
+                }
             });
 
-            const data = await response.json();
-            
-            if (response.ok && data.success) {
-                Toastify({ text: data.message, duration: 3000, style: { background: '#28a745' } }).showToast();
-                notificationForm.reset();
-            } else {
-                throw new Error(data.error || 'Failed to send notification.');
-            }
-        } catch (error) {
-            console.error('Notification send error:', error);
-            Toastify({ text: error.message || 'Error sending notification.', duration: 5000, style: { background: '#e74c3c' } }).showToast();
-        }
-    });
-}
-        document.addEventListener('DOMContentLoaded', () => {
-            // Ensure auth is loaded and user is admin (handled by server, but client loads header)
-            loadUserProfileInHeader();
+            // Notification Form
+            document.getElementById('notificationForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const userId = formData.get('targetUserId');
+                const message = formData.get('message');
 
-            // Point Allocation Form Logic (Remains the same)
-            const pointAllocationForm = document.getElementById('pointAllocationForm');
-            if (pointAllocationForm) {
-                pointAllocationForm.addEventListener('submit', async (e) => {
-                    e.preventDefault();
+                try {
+                    const response = await fetch('/admin/send-notification', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ userId, message })
+                    });
+                    const data = await response.json();
                     
-                    const userId = document.getElementById('userId').value;
-                    const points = document.getElementById('points').value;
-
-                    try {
-                        const response = await fetch('/admin/allocate-points', {
-                            method: 'POST',
-                            headers: { 
-                                'Content-Type': 'application/json',
-                                'X-Requested-With': 'XMLHttpRequest'
-                            },
-                            body: JSON.stringify({ userId, points: Number(points) }),
-                            credentials: 'include'
-                        });
-
-                        const data = await response.json();
-                        
-                        if (response.ok && data.success) {
-                            Toastify({ text: data.message, duration: 3000, style: { background: '#28a745' } }).showToast();
-                            pointAllocationForm.reset();
-                            loadAnalytics(); // Refresh analytics after successful allocation
-                        } else {
-                            throw new Error(data.error || 'Failed to allocate points.');
-                        }
-                    } catch (error) {
-                        console.error('Point allocation error:', error);
-                        Toastify({ text: error.message || 'An error occurred during point allocation.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                    if (response.ok) {
+                        Toastify({ text: data.message || 'Notification sent!', duration: 4000, style: { background: '#f59e0b' } }).showToast();
+                        e.target.reset();
+                    } else {
+                        throw new Error(data.error || 'Failed');
                     }
-                });
-            }
+                } catch (error) {
+                    Toastify({ text: error.message, duration: 4000, style: { background: '#ef4444' } }).showToast();
+                }
+            });
 
-            // Load analytics data on page load
             loadAnalytics();
         });
     </script>

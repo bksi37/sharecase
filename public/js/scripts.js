@@ -18,10 +18,11 @@ window.renderCollaboratorSearchResults = renderCollaboratorSearchResults;
 window.populateDropdown = populateDropdown;
 window.loadDynamicFilterOptions = loadDynamicFilterOptions;
 window.performGlobalSearch = performGlobalSearch;
-window.toggleLike = toggleLike; // New global export
-window.deleteComment = deleteComment; // New global export
+window.toggleLike = toggleLike; 
+window.deleteComment = deleteComment; 
 window.DEBOUNCE_DELAY = DEBOUNCE_DELAY;
 window.searchTimeout = searchTimeout;
+window.cachedUserData = cachedUserData; 
 
 document.addEventListener('DOMContentLoaded', () => {
     loadUserProfileInHeader();
@@ -95,12 +96,9 @@ document.addEventListener('DOMContentLoaded', () => {
 // public/js/scripts.js (REVISED fetchNotifications)
 
 async function fetchNotifications() {
-    // NOTE: This assumes the header elements have been loaded by loadUserProfileInHeader()
     const notificationList = document.getElementById('notificationList');
     const notificationCount = document.getElementById('notificationCount');
 
-    // If fetch failed previously, the error might contain "Error loading notifications".
-    // Clear the list while fetching to show a clean loading state, then restore.
     if (notificationList) {
         notificationList.innerHTML = '<div class="dropdown-item-text text-muted">Fetching...</div>';
     } else {
@@ -110,7 +108,6 @@ async function fetchNotifications() {
     try {
         const response = await fetch('/notifications', { credentials: 'include' });
         
-        // Handle 401 Unauthorized explicitly before trying to parse JSON
         if (response.status === 401) {
             throw new Error('Unauthorized: Please log in.');
         }
@@ -120,18 +117,14 @@ async function fetchNotifications() {
         
         const notifications = await response.json();
         
-        // --- UI Update Logic ---
         notificationList.innerHTML = notifications.length > 0
             ? notifications.map(n => `<div class="dropdown-item-text">${n.message}</div>`).join('')
             : '<div class="dropdown-item-text">No new notifications</div>';
             
         if (notificationCount) {
-            notificationCount.textContent = notifications.filter(n => !n.read).length; // Show count of UNREAD notifications
+            notificationCount.textContent = notifications.filter(n => !n.read).length; 
             notificationCount.style.display = notifications.filter(n => !n.read).length > 0 ? 'inline' : 'none';
         }
-        
-        // Optional: Mark notifications as read after successful fetch/display
-        // await markNotificationsAsRead(); 
 
     } catch (error) {
         console.error('Error fetching notifications:', error);
@@ -169,7 +162,9 @@ async function loadUserProfileInHeader() {
 
         if (response.ok && data.isLoggedIn && data.user && data.user._id) {
             cachedUserData = data;
+            window.cachedUserData = data; 
             currentLoggedInUserId = data.user._id.toString();
+            window.currentLoggedInUserId = currentLoggedInUserId; 
             currentLoggedInUserRole = data.user.role || 'external';
             currentLoggedInUserFollowing = Array.isArray(data.user.following) ? data.user.following.map(id => id.toString()) : [];
             updateHeaderUI(data.user);
@@ -179,7 +174,9 @@ async function loadUserProfileInHeader() {
             }
         } else {
             cachedUserData = { isLoggedIn: false };
+            window.cachedUserData = cachedUserData;
             currentLoggedInUserId = null;
+            window.currentLoggedInUserId = null;
             currentLoggedInUserRole = null;
             currentLoggedInUserFollowing = [];
             updateHeaderUI(null);
@@ -187,7 +184,9 @@ async function loadUserProfileInHeader() {
     } catch (error) {
         console.error('Error fetching current user:', error);
         cachedUserData = { isLoggedIn: false };
+        window.cachedUserData = cachedUserData;
         currentLoggedInUserId = null;
+        window.currentLoggedInUserId = null;
         currentLoggedInUserRole = null;
         currentLoggedInUserFollowing = [];
         updateHeaderUI(null);
@@ -307,10 +306,8 @@ async function toggleFollow(targetUserId, followButton, callback) {
 }
 
 function renderProjectCard(project) {
-    // 🛑 FIX: Prioritize 'id' (from search/projects API response) but fall back to '_id'
     const projectId = project.id || project._id;
     
-    // Defensive check against missing/invalid ID
     if (!projectId || projectId === 'undefined' || typeof projectId !== 'string' || projectId.length < 5) {
         console.warn('Invalid project ID detected during render:', project);
         return `
@@ -337,23 +334,23 @@ function renderProjectCard(project) {
 
     return `
         <div class="col">
-                 <div class="card h-100" style="cursor: pointer;" onclick="${clickAction}">
-                    <img src="${thumbnailURL}" class="card-img-top project-image w-100" alt="${project.title || 'Project'}" 
-                    onerror="this.src='https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'">
-                <div class="card-body">
-                    <h5 class="card-title">${project.title || 'Untitled'}</h5>
-                    <p class="card-text">${project.description ? project.description.substring(0, 100) + '...' : 'No description'}</p>
-                    <div class="project-meta">
-                        <span class="project-author">By <a href="/profile/${project.userId}">${project.userName || 'Unknown'}</a></span>
-                        <span class="project-views"><i class="fas fa-eye"></i> ${project.views || 0}</span>
-                        <span class="project-likes"><i class="fas fa-heart"></i> ${project.likes || 0}</span>
-                    </div>
-                    <div class="project-tags">
-                        ${(project.tags || []).map(tag => `<span class="tag">${tag}</span>`).join('')}
+                     <div class="card h-100" style="cursor: pointer;" onclick="${clickAction}">
+                        <img src="${thumbnailURL}" class="card-img-top project-image w-100" alt="${project.title || 'Project'}" 
+                        onerror="this.src='https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'">
+                    <div class="card-body">
+                        <h5 class="card-title">${project.title || 'Untitled'}</h5>
+                        <p class="card-text">${project.description ? project.description.substring(0, 100) + '...' : 'No description'}</p>
+                        <div class="project-meta">
+                            <span class="project-author">By <a href="/profile/${project.userId}">${project.userName || 'Unknown'}</a></span>
+                            <span class="project-views"><i class="fas fa-eye"></i> ${project.views || 0}</span>
+                            <span class="project-likes"><i class="fas fa-heart"></i> ${project.likes || 0}</span>
+                        </div>
+                        <div class="project-tags">
+                            ${(project.tags || []).map(tag => `<span class="tag">${tag}</span>`).join('')}
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
     `;
 }
 
@@ -411,7 +408,6 @@ async function loadDynamicFilterOptions() {
 }
 
 async function performGlobalSearch() {
-    // Ensure DOM is ready
     if (document.readyState !== 'complete') {
         console.log('DOM not ready. Delaying performGlobalSearch.');
         return new Promise(resolve => window.addEventListener('load', resolve)).then(performGlobalSearch);
@@ -626,81 +622,84 @@ function renderCollaboratorSearchResults(users, resultsContainer, addChipCallbac
     resultsContainer.style.display = resultsContainer.children.length > 0 ? 'block' : 'none';
 }
 
-/**
- * Toggles the like status for a project and updates the UI (via callback).
- * @param {string} targetProjectId
- * @param {function} callback Function to reload project details on success (e.g., loadProject)
- */
-async function toggleLike(targetProjectId, callback) {
-    if (!currentLoggedInUserId) {
-        Toastify({
-            text: 'Please log in to like a project.',
-            duration: 3000,
-            style: { background: '#e74c3c' },
-        }).showToast();
-        // Redirect to login if not logged in
-        window.location.href = `/login.html?redirectedFrom=${encodeURIComponent(window.location.pathname + window.location.search)}`;
-        return;
-    }
-
+/** --------------------------------------------------------------
+ * toggleLike – FIXED for proper Like/Unlike UI and icons
+ * -------------------------------------------------------------- */
+async function toggleLike(projectId, userId, callback) {
     try {
-        const response = await fetch(`/projects/project/${targetProjectId}/like`, {
+        const r = await fetch(`/projects/project/${projectId}/like`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            credentials: 'include'
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include'       
         });
-        const data = await response.json();
 
-        if (response.ok && data.success) {
-            Toastify({
-                text: data.hasLiked ? 'Project liked! 🎉' : 'Project unliked.',
-                duration: 3000,
-                style: { background: data.hasLiked ? '#ff5858' : '#6c757d' },
-            }).showToast();
-            
-            if (callback) callback(); 
-        } else {
-            Toastify({
-                text: data.error || 'Failed to toggle like status.',
-                duration: 3000,
-                style: { background: '#e74c3c' },
-            }).showToast();
+        // 401/403 → session lost → redirect
+        if (r.status === 401 || r.status === 403) {
+            const d = await r.json().catch(() => ({}));
+            Toastify({ text: d.error || 'Please sign in to like projects', style: { background: '#ef4444' } }).showToast();
+            window.location.href = d.redirect || '/login.html';
+            return;
         }
-    } catch (error) {
-        console.error('Error toggling like:', error);
-        Toastify({
-            text: 'Error toggling like status.',
-            duration: 3000,
-            style: { background: '#e74c3c' },
-        }).showToast();
+
+        if (!r.ok) {
+            const d = await r.json().catch(() => ({}));
+            throw new Error(d.error || `HTTP ${r.status}`);
+        }
+
+        const { likes, hasLiked } = await r.json();
+
+        // ---- instant UI update: Toggle appearance, text, and counter ------------------------------------
+        const btn = document.getElementById('likeButton');
+        const cnt = document.getElementById('projectLikes');
+        
+        // hasLiked here refers to the NEW state returned by the server
+        if (hasLiked) {
+            // New state is LIKED
+            btn.innerHTML = '<i class="fas fa-heart me-2"></i> Liked'; 
+            btn.className = 'btn btn-primary mb-2 w-100'; // Solid color
+            Toastify({ text: 'Project liked!', style: { background: '#28a745' } }).showToast();
+        } else {
+            // New state is UNLIKED
+            btn.innerHTML = '<i class="fas fa-heart me-2"></i> Like'; 
+            btn.className = 'btn btn-outline-primary mb-2 w-100'; // Outline color
+            Toastify({ text: 'Project unliked.', style: { background: '#e74c3c' } }).showToast();
+        }
+        
+        cnt.textContent = likes; // Update count based on server response
+
+        if (callback) callback(); // This calls loadProject to sync with server
+    } catch (e) {
+        console.error(e);
+        Toastify({ text: e.message || 'Like failed', style: { background: '#ef4444' } }).showToast();
     }
 }
 
-/**
- * Deletes a comment.
- * @param {string} projectId
- * @param {string} commentId
- */
+
+/** --------------------------------------------------------------
+ * deleteComment – uses the global userId
+ * -------------------------------------------------------------- */
 async function deleteComment(projectId, commentId) {
-    if (!currentLoggedInUserId) return;
-    if (!confirm("Are you sure you want to delete this comment?")) return;
-    
+    const userId = window.currentLoggedInUserId;
+    if (!userId) { Toastify({text:'Login required',style:{background:'#ef4444'}}).showToast(); return; }
+    if (!confirm('Delete this comment?')) return;
+
     try {
-        const response = await fetch(`/projects/project/${projectId}/comment/${commentId}`, {
+        const r = await fetch(`/projects/project/${projectId}/comment/${commentId}`, {
             method: 'DELETE',
             credentials: 'include'
         });
-        
-        if (response.ok) {
-            Toastify({ text: 'Comment deleted successfully!', duration: 3000, style: { background: '#28a745' } }).showToast();
-            return true;
+        if (r.ok) {
+            Toastify({text:'Comment deleted',style:{background:'#28a745'}}).showToast();
+            if (typeof loadProject === 'function') {
+                loadProject(userId); 
+            } else {
+                window.location.reload(); 
+            }
         } else {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Failed to delete comment');
+            const d = await r.json().catch(()=>({}));
+            throw new Error(d.message || 'Delete failed');
         }
-    } catch (error) {
-        console.error('Error deleting comment:', error);
-        Toastify({ text: error.message || 'Error deleting comment', duration: 3000, style: { background: '#e74c3c' } }).showToast();
-        return false;
+    } catch (e) {
+        Toastify({text:e.message||'Error',style:{background:'#ef4444'}}).showToast();
     }
 }
