@@ -338,3 +338,33 @@
     width: 33.3333% !important; 
     max-width: 33.3333% !important;
 }
+
+/*
+ * FIX: Override the column definition for the project grid 
+ * to ensure it maintains the three-column layout (row-cols-md-3) 
+ * inside the 'profile-content' area, regardless of the sidebar's height/content.
+ */
+
+.profile-layout .profile-content .project-grid > * {
+    /* * Target the direct children (the project card columns) of the project grid. 
+     * This forces the columns to adhere to the desired width, ignoring potential 
+     * shrinkage caused by surrounding elements.
+     * This is a strong override, often necessary when mixing CSS Grid and Bootstrap's flex utilities.
+     */
+    flex: 0 0 auto; /* Do not grow or shrink */
+    width: 33.333333%; /* Match the Bootstrap 'col-md-4' equivalent for a 3-column layout */
+}
+
+/* Also ensure the row container inside the content is behaving like a standard Bootstrap row */
+.profile-content .row {
+    margin-right: calc(-.5 * var(--bs-gutter-x, 1.5rem));
+    margin-left: calc(-.5 * var(--bs-gutter-x, 1.5rem));
+}
+
+
+/* Adjust for screens where the columns should stack (row-cols-1) */
+@media (max-width: 768px) {
+    .profile-layout .profile-content .project-grid > * {
+        width: 100% !important; /* Forces 1 column */
+    }
+}
