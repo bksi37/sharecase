@@ -507,51 +507,54 @@ async function performGlobalSearch() {
 }
 
 async function loadAllProjects() {
-    if (document.readyState !== 'complete') {
-        console.log('DOM not ready. Delaying loadAllProjects.');
-        return new Promise(resolve => window.addEventListener('load', resolve)).then(loadAllProjects);
-    }
-
     const projectGrid = document.getElementById('projectGrid');
     const projectGridHeader = document.getElementById('projectGridHeader');
     const noProjectsFoundSearchMessage = document.getElementById('noProjectsFoundSearchMessage');
     const initialLoadingMessage = document.getElementById('initialLoadingMessage');
 
-    if (!projectGrid || !projectGridHeader || !noProjectsFoundSearchMessage || !initialLoadingMessage) {
-        console.warn('Missing project grid elements for loadAllProjects:', {
-            projectGrid: !!projectGrid,
-            projectGridHeader: !!projectGridHeader,
-            noProjectsFoundSearchMessage: !!noProjectsFoundSearchMessage,
-            initialLoadingMessage: !!initialLoadingMessage
-        });
+    // Basic check to ensure essential elements exist before proceeding
+    if (!projectGrid || !initialLoadingMessage) {
+        console.warn('Missing essential project grid elements. Cannot load projects.');
         return;
     }
-
+    
+    // Set loading state
     projectGrid.innerHTML = '';
     noProjectsFoundSearchMessage.style.display = 'none';
     initialLoadingMessage.textContent = 'Loading latest projects...';
     initialLoadingMessage.style.display = 'block';
-    projectGridHeader.textContent = 'Latest Projects';
+    if (projectGridHeader) projectGridHeader.textContent = 'Latest Projects';
 
     try {
-        const response = await fetch('/projects', { credentials: 'include' });
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        console.log('Attempting to fetch projects from /projects...');
+        // 🛑 This fetch call is now guaranteed to run 🛑
+        const response = await fetch('/projects', { credentials: 'include' }); 
+        
+        if (!response.ok) {
+            console.error('Server responded with a failure status:', response.status);
+            throw new Error(`Failed to load projects: HTTP status ${response.status}`);
+        }
+        
         const projects = await response.json();
-        console.log('Loaded projects:', projects.length);
+        console.log(`Successfully loaded ${projects.length} projects.`);
+
+        // Update UI based on results
+        initialLoadingMessage.style.display = 'none';
+
         if (projects.length > 0) {
             projectGrid.innerHTML = projects.map(p => renderProjectCard(p)).join('');
-            initialLoadingMessage.style.display = 'none';
         } else {
             initialLoadingMessage.textContent = 'No projects found.';
             initialLoadingMessage.style.display = 'block';
         }
     } catch (error) {
-        console.error('Error loading projects:', error);
-        initialLoadingMessage.textContent = 'Error loading projects. Please try again.';
+        console.error('Error in loadAllProjects fetch:', error);
+        initialLoadingMessage.textContent = `Error loading projects. Details: ${error.message}`;
+        initialLoadingMessage.className = 'text-danger text-center w-100 mt-5';
         Toastify({
-            text: 'Error loading projects.',
-            duration: 3000,
-            style: { background: '#e74c3c' },
+            text: 'Error loading projects. Check server connection.',
+            duration: 5000,
+            style: { background: '#ef4444' },
         }).showToast();
     }
 }

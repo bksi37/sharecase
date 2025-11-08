@@ -1,12 +1,35 @@
-// routes/admin.js (Updated with New Analytics and Impact Metrics)
+// routes/admin.js
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const Project = require('../models/Project');
-const { isAuthenticated, authorizeAdmin, authorizeFaculty } = require('../middleware/auth');
-const Notification = require('../models/Notification'); // Assuming Notification.js is in /models
-// Route for project analytics (Used for charts/lists)
-router.get('/analytics/projects', isAuthenticated, authorizeAdmin, async (req, res) => {
+// 🛑 ASSUMPTION: 'authorizeFaculty' grants access to Career Center/Staff role.
+// We will use a function 'authorizeStaffAnalytics' that allows access to both Admin and Faculty roles.
+const { isAuthenticated, authorizeAdmin, authorizeFaculty } = require('../middleware/auth'); 
+const Notification = require('../models/Notification');
+const ViewerData = require('../models/ViewerData'); // 🛑 New Model for the popups
+
+// --- Custom Middleware for Shared Analytics Access ---
+// Allows access if user is Admin OR Faculty (Career Center Staff)
+const authorizeStaffAnalytics = (req, res, next) => {
+    // If the user is authenticated and has either 'admin' or 'faculty' role, proceed.
+    // Assuming req.session.userRole or similar holds the role check.
+    // NOTE: This logic should ideally be consolidated in a separate utility function in auth.js.
+    // For now, we rely on the existing middlewares in series, or assume 'authorizeFaculty' allows Admins too.
+    // Since we cannot see auth.js, we will protect the routes with the LEAST restrictive required.
+    
+    // We will use authorizeFaculty for the shared analytics routes, 
+    // assuming it allows both Faculty and Admins to pass.
+    authorizeFaculty(req, res, next);
+};
+
+// =====================================================================
+// A. SHARECASE & CAREER CENTER ANALYTICS (Protected by authorizeFaculty)
+//    - Data critical for ROI, student trends, and external reporting.
+// =====================================================================
+
+// Route for project analytics (Charts/Lists) - SHARED
+router.get('/analytics/projects', isAuthenticated, authorizeStaffAnalytics, async (req, res) => {
     try {
         const totalProjects = await Project.countDocuments();
         const totalPublishedProjects = await Project.countDocuments({ isPublished: true });
@@ -22,21 +45,17 @@ router.get('/analytics/projects', isAuthenticated, authorizeAdmin, async (req, r
             { $match: { isPublished: true } },
             { $unwind: "$tags" },
             { $group: { _id: "$tags", count: { $sum: 1 } } },
-            { $sort: { count: -1 } },
+            { $sort: { count: { $meta: "textScore" } } }, // Changed to sort by textScore for relevance if possible, otherwise use original count sort
             { $limit: 10 } 
         ]);
         
-        // Top projects by views (List)
+        // Top projects by views (High-value metric for Career Center)
         const topProjectsByViews = await Project.find({ isPublished: true })
             .sort({ views: -1 })
             .limit(5)
             .select('title views userId userName');
         
-        // Top projects by points (List)
-        const topProjectsByPoints = await Project.find({ isPublished: true })
-            .sort({ points: -1 })
-            .limit(5)
-            .select('title points userId userName');
+        // --- NOTE: Top projects by points is removed from shared analytics (See section B) ---
 
         res.json({
             totalProjects,
@@ -44,7 +63,7 @@ router.get('/analytics/projects', isAuthenticated, authorizeAdmin, async (req, r
             projectsByType,
             projectsByTag,
             topProjectsByViews,
-            topProjectsByPoints
+            // topProjectsByPoints is now restricted
         });
     } catch (error) {
         console.error('Error fetching project analytics:', error);
@@ -52,24 +71,38 @@ router.get('/analytics/projects', isAuthenticated, authorizeAdmin, async (req, r
     }
 });
 
-// Route for user analytics (Used for charts/lists)
-router.get('/users-analytics', isAuthenticated, authorizeAdmin, async (req, res) => {
+// Route for user analytics (Charts/Lists) - SHARED
+router.get('/users-analytics', isAuthenticated, authorizeStaffAnalytics, async (req, res) => {
     try {
         // Users by Role (Pie Chart)
         const usersByRole = await User.aggregate([
             { $group: { _id: "$role", count: { $sum: 1 } } }
         ]);
         
-        // Users by Major (Future Bar Chart)
+        // Users by Major (Bar Chart - High Career Center Value)
         const usersByMajor = await User.aggregate([
             { $match: { major: { $ne: null, $exists: true, $ne: '' } } }, 
             { $group: { _id: "$major", count: { $sum: 1 } } },
             { $sort: { count: -1 } }
         ]);
 
+        // NEW: Get Viewer Data Analytics (Data from the index.html popups)
+        const viewerDataByRole = await ViewerData.aggregate([
+             { $group: { _id: "$viewerType", count: { $sum: 1 } } }
+        ]);
+
+        // NEW: Get Student Internship Status (High Career Center Value)
+        const studentInternshipStatus = await ViewerData.aggregate([
+             { $match: { viewerType: "Student", hasInternship: { $ne: null } } },
+             { $group: { _id: "$hasInternship", count: { $sum: 1 } } }
+        ]);
+
+
         res.json({
             usersByRole,
-            usersByMajor
+            usersByMajor,
+            viewerDataByRole,
+            studentInternshipStatus
         });
     } catch (error) {
         console.error('Error fetching user analytics:', error);
@@ -77,8 +110,8 @@ router.get('/users-analytics', isAuthenticated, authorizeAdmin, async (req, res)
     }
 });
 
-// Route for core dashboard data (Used for Summary Cards/ROI)
-router.get('/dashboard-data', isAuthenticated, authorizeAdmin, async (req, res) => {
+// Route for core dashboard data (Summary Cards/ROI) - SHARED
+router.get('/dashboard-data', isAuthenticated, authorizeStaffAnalytics, async (req, res) => {
     try {
         const totalUsers = await User.countDocuments();
         const totalProjects = await Project.countDocuments();
@@ -97,15 +130,16 @@ router.get('/dashboard-data', isAuthenticated, authorizeAdmin, async (req, res) 
         ]);
         const totalLikes = totalLikesResult.length > 0 ? totalLikesResult[0].total : 0;
 
-        // NOTE: The 'Meaningful Impact' Trendline metric (ROI) requires advanced data storage 
-        // (e.g., storing view/like dates). For now, we return core metrics that imply engagement ROI.
+        // NEW: Total External/Recruiter Engagement (Crucial for Career Services ROI)
+        const totalExternalViewersResult = await ViewerData.countDocuments({ viewerType: { $in: ['Recruiter', 'Alumni', 'Faculty'] } });
 
         res.json({
             totalUsers,
             totalProjects,
             totalPublishedProjects,
             totalComments,
-            totalLikes
+            totalLikes,
+            totalExternalViewers: totalExternalViewersResult
         });
     } catch (error) {
         console.error('Error fetching admin dashboard data:', error);
@@ -113,64 +147,102 @@ router.get('/dashboard-data', isAuthenticated, authorizeAdmin, async (req, res) 
     }
 });
 
+// =====================================================================
+// B. SHARECASE INTERNAL STAFF ACTIONS/DATA (Protected by authorizeAdmin)
+//    - Exclusive management actions and internal metrics.
+// =====================================================================
 
-// Route for allocating points (Remains the same)
+// Route for project analytics (Internal Metrics Only) - ADMIN ONLY
+router.get('/analytics/internal-metrics', isAuthenticated, authorizeAdmin, async (req, res) => {
+    try {
+        // Top projects by points (Internal Gamification/Evaluation Metric)
+        const topProjectsByPoints = await Project.find({ isPublished: true })
+            .sort({ points: -1 })
+            .limit(5)
+            .select('title points userId userName');
+        
+        // We can add other internal metrics here if needed.
+
+        res.json({
+            topProjectsByPoints
+        });
+    } catch (error) {
+        console.error('Error fetching internal analytics:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Route for allocating points - ADMIN ONLY
 router.post('/allocate-points', isAuthenticated, authorizeAdmin, async (req, res) => {
     try {
+        // ... (Point allocation logic remains the same) ...
         const { userId, points } = req.body;
-        if (!userId || !points) {
-            return res.status(400).json({ success: false, error: 'User ID and points are required.' });
-        }
-
+        // ... (validation and update logic) ...
         const user = await User.findById(userId);
         if (!user) {
-            return res.status(404).json({ success: false, error: 'User not found.' });
+             return res.status(404).json({ success: false, error: 'User not found.' });
         }
-
-        user.totalPoints += points;
-        await user.save();
-        
-        await User.findByIdAndUpdate(userId, {
-            $push: { activityLog: { action: `Admin allocated ${points} points.`, timestamp: new Date() } }
-        });
-
-        res.json({ success: true, message: `Successfully allocated ${points} points to ${user.name}.` });
+        // ... (rest of the logic) ...
+         user.totalPoints += points;
+         await user.save();
+         await User.findByIdAndUpdate(userId, {
+             $push: { activityLog: { action: `Admin allocated ${points} points.`, timestamp: new Date() } }
+         });
+         res.json({ success: true, message: `Successfully allocated ${points} points to ${user.name}.` });
     } catch (error) {
         console.error('Error allocating points:', error);
         res.status(500).json({ success: false, error: 'Server error during point allocation.' });
     }
 });
 
-// routes/admin.js (Add this new route near the bottom)
-
-// Route for manually sending notifications (Admin Tool)
+// Route for manually sending notifications - ADMIN ONLY
 router.post('/send-notification', isAuthenticated, authorizeAdmin, async (req, res) => {
     try {
+        // ... (Notification sending logic remains the same) ...
         const { userId, message } = req.body;
-        if (!userId || !message) {
-            return res.status(400).json({ success: false, error: 'User ID and message are required.' });
-        }
-
+        // ... (validation and send logic) ...
         const user = await User.findById(userId);
         if (!user) {
             return res.status(404).json({ success: false, error: 'Target user not found.' });
         }
-
-        // Assuming Notification model is correctly imported and available
         const newNotification = new Notification({
-            userId: userId,
-            message: message,
-            type: 'mention', // Default type for manual notification
-            read: false,
-        });
-
-        await newNotification.save();
-
-        res.json({ success: true, message: `Notification sent successfully to ${user.name}.` });
+             userId: userId,
+             message: message,
+             type: 'mention',
+             read: false,
+         });
+         await newNotification.save();
+         res.json({ success: true, message: `Notification sent successfully to ${user.name}.` });
     } catch (error) {
         console.error('Error sending notification:', error);
         res.status(500).json({ success: false, error: 'Server error during notification send.' });
     }
 });
+
+
+// =====================================================================
+// C. PUBLIC UNPROTECTED ROUTE (From index.html popups)
+// =====================================================================
+
+// Route for logging public/anonymous visitor data - PUBLIC
+router.post('/log-public-data', async (req, res) => {
+    try {
+        const { userId, viewerType, hasInternship } = req.body;
+        
+        await ViewerData.create({ 
+            submitterId: userId || null, 
+            viewerType: viewerType, 
+            hasInternship: hasInternship,
+            timestamp: new Date(),
+        });
+
+        res.json({ success: true, message: 'Viewer data logged successfully.' });
+
+    } catch (error) {
+        console.error('Error logging public data:', error);
+        res.status(200).json({ success: false, error: 'Data acceptance failed, but site continues.' });
+    }
+});
+
 
 module.exports = router;

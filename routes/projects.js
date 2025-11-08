@@ -282,7 +282,7 @@ router.get('/dynamic-filter-options', async (req, res) => {
 // ---------------------------------------------------------------------
 // 5. Fetch Single Project (router.get /project/:id)
 // ---------------------------------------------------------------------
-router.get('/project/:id', isAuthenticated, async (req, res) => {
+router.get('/project/:id', async (req, res) => {
     try {
         const project = await Project.findById(req.params.id)
             .populate('userId', 'name profilePic')

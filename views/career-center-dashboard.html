@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShareCase - Admin Dashboard</title>
+    <title>ShareCase - Career Center Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -17,7 +17,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
     <style>
-        /* Shared Dashboard CSS from original prompt */
+        /* CSS is identical to admin-dashboard.html for visual consistency */
         :root {
             --primary: #00bfff;
             --primary-dark: #009fd9;
@@ -50,20 +50,8 @@
         .analytics-info .analytics-header { background: rgba(59, 130, 246, 0.08); color: #3b82f6; border-bottom-color: rgba(59, 130, 246, 0.2); }
         .analytics-secondary .analytics-header { background: rgba(100, 116, 139, 0.08); color: #64748b; border-bottom-color: rgba(100, 116, 139, 0.2); }
         .analytics-body { padding: 2rem; min-height: 350px; }
-        .admin-actions-grid { margin-bottom: 3rem; }
-        .admin-action-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-radius: 20px; padding: 2.5rem; border: 2px solid var(--border); transition: all 0.3s ease; height: 100%; }
-        .admin-action-card:hover { border-color: var(--primary); box-shadow: 0 20px 40px rgba(0,0,0,0.15); }
-        .admin-action-icon { width: 80px; height: 80px; border-radius: 20px; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); display: flex; align-items: center; justify-content: center; color: white; font-size: 1.8rem; margin: 0 auto 1.5rem; }
-        .admin-action-title { font-size: 1.3rem; font-weight: 600; margin-bottom: 1rem; color: var(--dark); }
-        .form-control-admin { border: 2px solid var(--border); border-radius: 12px; padding: 0.875rem 1.25rem; transition: all 0.2s ease; background: rgba(255,255,255,0.8); }
-        .form-control-admin:focus { border-color: var(--primary); box-shadow: 0 0 0 0.25rem rgba(0, 191, 255, 0.15); background: white; }
-        .btn-admin { padding: 0.875rem 2rem; border-radius: 12px; font-weight: 600; border: none; transition: all 0.3s ease; }
-        .btn-primary-admin { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; }
-        .btn-primary-admin:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0, 191, 255, 0.3); }
-        .btn-warning-admin { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; }
-        .btn-warning-admin:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(245, 158, 11, 0.3); }
         .chart-container { position: relative; height: 300px; margin-top: 1rem; }
-        @media (max-width: 768px) { .dashboard-container { padding: 1rem 0.5rem; } .page-title { font-size: 2rem; } .stat-card, .admin-action-card { padding: 1.5rem; } }
+        @media (max-width: 768px) { .dashboard-container { padding: 1rem 0.5rem; } .page-title { font-size: 2rem; } }
         .loading-skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: loading 1.5s infinite; border-radius: 20px; height: 200px; }
         @keyframes loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
     </style>
@@ -102,8 +90,8 @@
     <main>
         <div class="dashboard-container">
             <div class="page-header">
-                <h1 class="page-title"> <i class="fas fa-user-shield me-3"></i> ShareCase Admin Dashboard </h1>
-                <p class="page-subtitle">Platform Management and Internal Analytics</p>
+                <h1 class="page-title"> <i class="fas fa-handshake me-3"></i> Career Center Analytics </h1>
+                <p class="page-subtitle">Platform impact metrics and student career data for funding justification</p>
             </div>
 
             <div class="row row-cols-1 row-cols-md-2 row-cols-lg-5 g-4 stats-grid" id="summaryMetrics">
@@ -111,7 +99,8 @@
                 <div class="loading-skeleton col"></div>
                 <div class="loading-skeleton col"></div>
                 <div class="loading-skeleton col"></div>
-                <div class="loading-skeleton col d-none d-lg-block"></div> </div>
+                <div class="loading-skeleton col d-none d-lg-block"></div>
+            </div>
 
             <div class="row g-4 mb-5">
                 <div class="col-lg-8">
@@ -143,66 +132,37 @@
                  <div class="col-lg-6">
                     <div class="analytics-card analytics-secondary h-100">
                         <div class="analytics-header">
-                            <i class="fas fa-trophy me-2"></i> Internal Metrics (Top Points)
+                            <i class="fas fa-search me-2"></i> Viewer Interest & Internship Status
                         </div>
-                        <div class="analytics-body">
-                            <ul class="list-group list-group-flush border-0" id="topPointsList">
-                                <li class="list-group-item">Loading internal ranking...</li>
-                            </ul>
+                        <div class="analytics-body" id="viewerDataAnalytics">
+                            <div class="chart-container mb-3">
+                                <canvas id="internshipStatusChart"></canvas> 
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="externalViewerChart"></canvas> 
+                            </div>
                         </div>
                     </div>
                 </div>
                 <div class="col-lg-6">
                     <div class="analytics-card analytics-info h-100">
                         <div class="analytics-header">
-                            <i class="fas fa-users me-2"></i> User Segmentation
+                            <i class="fas fa-users me-2"></i> User Distribution by Major/Role
                         </div>
                         <div class="analytics-body">
-                            <div class="chart-container"> <canvas id="userRoleChart"></canvas> </div>
+                             <div class="chart-container"> <canvas id="userRoleChart"></canvas> </div>
+                             <div class="mt-4">
+                                <h6 class="fw-semibold text-info mb-1">Top Majors</h6>
+                                <ul class="list-group list-group-flush border-0 small" id="topMajorsList">
+                                    <li class="list-group-item px-0 py-1 text-muted">Loading major data...</li>
+                                </ul>
+                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-
-            <h2 class="text-center mb-4 text-primary fw-bold">Management Tools</h2>
-            <div class="row admin-actions-grid">
-                <div class="col-lg-6">
-                    <div class="admin-action-card">
-                        <div class="admin-action-icon"> <i class="fas fa-coins"></i> </div>
-                        <h3 class="admin-action-title">Point Allocation</h3>
-                        <form id="pointAllocationForm">
-                            <div class="mb-3">
-                                <label for="userId" class="form-label fw-semibold">User ID</label>
-                                <input type="text" class="form-control form-control-admin" id="userId" name="userId" placeholder="e.g., 64f8a2b1c9d3e4f5g6h7i8j9">
-                                <div class="form-text">Find user ID on their profile page</div>
-                            </div>
-                            <div class="mb-4">
-                                <label for="points" class="form-label fw-semibold">Points</label>
-                                <input type="number" class="form-control form-control-admin" id="points" name="points" placeholder="e.g., 100" min="0">
-                            </div>
-                            <button type="submit" class="btn btn-primary-admin w-100"> <i class="fas fa-plus-circle me-2"></i> Allocate Points </button>
-                        </form>
-                    </div>
-                </div>
-                <div class="col-lg-6">
-                    <div class="admin-action-card">
-                        <div class="admin-action-icon"> <i class="fas fa-bell"></i> </div>
-                        <h3 class="admin-action-title">Send Notification</h3>
-                        <form id="notificationForm">
-                            <div class="mb-3">
-                                <label for="targetUserId" class="form-label fw-semibold">Recipient ID</label>
-                                <input type="text" class="form-control form-control-admin" id="targetUserId" name="targetUserId" placeholder="e.g., 64f8a2b1c9d3e4f5g6h7i8j9">
-                            </div>
-                            <div class="mb-4">
-                                <label for="notificationMessage" class="form-label fw-semibold">Message</label>
-                                <textarea class="form-control form-control-admin" id="notificationMessage" name="message" rows="3" placeholder="Congratulations! Your project was featured..."></textarea>
-                            </div>
-                            <button type="submit" class="btn btn-warning-admin w-100"> <i class="fas fa-paper-plane me-2"></i> Send Notification </button>
-                        </form>
-                    </div>
-                </div>
+            
             </div>
-        </div>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -232,37 +192,9 @@
             charts.push(chart);
             return chart;
         }
-        
-        // Function to load admin-only internal metrics
-        async function loadInternalMetrics() {
-             try {
-                const response = await fetch('/admin/analytics/internal-metrics', { credentials: 'include' });
-                const data = await response.json();
-
-                if (!response.ok) throw new Error(data.error || 'Failed to load internal metrics');
-                
-                const list = document.getElementById('topPointsList');
-                if (data.topProjectsByPoints && data.topProjectsByPoints.length > 0) {
-                    list.innerHTML = data.topProjectsByPoints.map(project => `
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <a href="/project.html?id=${project._id}" class="text-decoration-none fw-medium text-dark">${project.title}</a>
-                            <span class="badge bg-primary rounded-pill">${project.points} pts</span>
-                        </li>
-                    `).join('');
-                } else {
-                    list.innerHTML = '<li class="list-group-item text-muted">No point data available.</li>';
-                }
-
-            } catch (error) {
-                console.error('Error loading internal metrics:', error);
-                document.getElementById('topPointsList').innerHTML = '<li class="list-group-item text-danger">Error loading points data.</li>';
-            }
-        }
-
 
         async function loadAnalytics() {
             const summaryMetrics = document.getElementById('summaryMetrics');
-            const projectAnalytics = document.getElementById('projectAnalytics');
 
             try {
                 charts.forEach(chart => chart.destroy());
@@ -288,13 +220,6 @@
                 summaryMetrics.innerHTML = `
                     <div class="col">
                         <div class="stat-card stat-primary text-center">
-                            <div class="stat-icon"><i class="fas fa-users"></i></div>
-                            <div class="stat-number">${coreData.totalUsers.toLocaleString()}</div>
-                            <div class="stat-label">Total Users</div>
-                        </div>
-                    </div>
-                    <div class="col">
-                        <div class="stat-card stat-warning text-center">
                             <div class="stat-icon"><i class="fas fa-layer-group"></i></div>
                             <div class="stat-number">${coreData.totalPublishedProjects.toLocaleString()}</div>
                             <div class="stat-label">Total Projects</div>
@@ -314,7 +239,14 @@
                             <div class="stat-label">Total Comments</div>
                         </div>
                     </div>
-                     <div class="col d-none d-lg-block">
+                    <div class="col">
+                        <div class="stat-card stat-warning text-center">
+                            <div class="stat-icon"><i class="fas fa-users"></i></div>
+                            <div class="stat-number">${coreData.totalUsers.toLocaleString()}</div>
+                            <div class="stat-label">Total Users</div>
+                        </div>
+                    </div>
+                    <div class="col d-none d-lg-block">
                         <div class="stat-card stat-info text-center">
                             <div class="stat-icon"><i class="fas fa-briefcase"></i></div>
                             <div class="stat-number">${(coreData.totalExternalViewers || 0).toLocaleString()}</div>
@@ -323,8 +255,9 @@
                     </div>
                 `;
 
-                // Project Analytics
-                projectAnalytics.innerHTML = `
+                // Project Analytics (Project Types & Top Views)
+                const projectAnalytics = document.getElementById('projectAnalytics');
+                 projectAnalytics.innerHTML = `
                     <div class="row g-3">
                         <div class="col-md-6">
                             <h6 class="fw-semibold text-primary mb-3">Projects by Type</h6>
@@ -355,12 +288,50 @@
                     </div>
                 `;
 
-                // Charts
+                // User Distribution Chart (Shared)
                 renderChart('userRoleChart', 'doughnut', {
                     labels: userData.usersByRole.map(u => u._id),
                     datasets: [{ data: userData.usersByRole.map(u => u.count), backgroundColor: ['#00bfff', '#10b981', '#f59e0b', '#ef4444', '#64748b'], borderWidth: 0 }]
                 });
 
+                // Top Majors List (High value for Career Center)
+                document.getElementById('topMajorsList').innerHTML = userData.usersByMajor.slice(0, 5).map(m => `
+                    <li class="list-group-item px-0 py-1 d-flex justify-content-between">
+                        <span>${m._id}</span>
+                        <span class="badge bg-info">${m.count}</span>
+                    </li>
+                `).join('');
+
+
+                // Viewer Data Charts (New Career Center specific data)
+                const viewerLabels = userData.viewerDataByRole.map(v => v._id);
+                const viewerCounts = userData.viewerDataByRole.map(v => v.count);
+                
+                renderChart('externalViewerChart', 'bar', {
+                    labels: viewerLabels,
+                    datasets: [{
+                        label: 'Viewer Type Counts',
+                        data: viewerCounts,
+                        backgroundColor: ['#0d6efd', '#20c997', '#ffc107', '#6c757d'],
+                        borderRadius: 8
+                    }]
+                }, { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } });
+
+
+                const internshipLabels = userData.studentInternshipStatus.map(s => s._id);
+                const internshipCounts = userData.studentInternshipStatus.map(s => s.count);
+
+                renderChart('internshipStatusChart', 'pie', {
+                    labels: internshipLabels,
+                    datasets: [{
+                        data: internshipCounts,
+                        backgroundColor: ['#198754', '#dc3545', '#adb5bd'], // Green, Red, Gray
+                        borderWidth: 0
+                    }]
+                });
+
+
+                // Impact Chart (Shared)
                 renderChart('impactChart', 'line', {
                     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
                     datasets: [{
@@ -373,9 +344,6 @@
                     }]
                 });
 
-                // Load internal metrics (Top points)
-                loadInternalMetrics();
-
                 document.getElementById('overallImpactScore').textContent = '92';
 
             } catch (error) {
@@ -383,7 +351,7 @@
                 summaryMetrics.innerHTML = `
                     <div class="col-12">
                         <div class="alert alert-warning text-center">
-                            <i class="fas fa-exclamation-triangle me-2"></i> Unable to load platform analytics data (Authentication failed or Server Error).
+                            <i class="fas fa-exclamation-triangle me-2"></i> Unable to load analytics data (Authentication failed or Server Error).
                         </div>
                     </div>
                 `;
@@ -392,62 +360,6 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             loadUserProfileInHeader();
-            
-            // Point Allocation Form
-            document.getElementById('pointAllocationForm').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target);
-                const userId = formData.get('userId');
-                const points = parseInt(formData.get('points'));
-
-                try {
-                    const response = await fetch('/admin/allocate-points', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include',
-                        body: JSON.stringify({ userId, points })
-                    });
-                    const data = await response.json();
-                    
-                    if (response.ok) {
-                        Toastify({ text: data.message || 'Points allocated!', duration: 4000, style: { background: '#10b981' } }).showToast();
-                        e.target.reset();
-                        loadAnalytics();
-                    } else {
-                        throw new Error(data.error || 'Failed');
-                    }
-                } catch (error) {
-                    Toastify({ text: error.message, duration: 4000, style: { background: '#ef4444' } }).showToast();
-                }
-            });
-
-            // Notification Form
-            document.getElementById('notificationForm').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target);
-                const userId = formData.get('targetUserId');
-                const message = formData.get('message');
-
-                try {
-                    const response = await fetch('/admin/send-notification', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include',
-                        body: JSON.stringify({ userId, message })
-                    });
-                    const data = await response.json();
-                    
-                    if (response.ok) {
-                        Toastify({ text: data.message || 'Notification sent!', duration: 4000, style: { background: '#f59e0b' } }).showToast();
-                        e.target.reset();
-                    } else {
-                        throw new Error(data.error || 'Failed');
-                    }
-                } catch (error) {
-                    Toastify({ text: error.message, duration: 4000, style: { background: '#ef4444' } }).showToast();
-                }
-            });
-
             loadAnalytics();
         });
     </script>

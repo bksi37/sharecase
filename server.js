@@ -10,7 +10,7 @@ const path = require('path');
 require('dotenv').config();
 
 // Middleware and Config
-const { isAuthenticated, isProfileComplete, authorizeAdmin } = require('./middleware/auth');
+const { isAuthenticated, isProfileComplete, authorizeAdmin, authorizeFaculty } = require('./middleware/auth');
 const tags = require('./config/tags');
 // Models (loaded for routes but used after connection)
 const Project = require('./models/Project');
@@ -130,6 +130,9 @@ mongoose.connect(process.env.MONGO_URL, { useNewUrlParser: true, useUnifiedTopol
         app.get('/edit-project.html', isAuthenticated, isProfileComplete, (req, res) => res.sendFile(path.join(__dirname, 'views', 'edit-project.html')));
         app.get('/admin/dashboard.html', isAuthenticated, authorizeAdmin, (req, res) => {
             res.sendFile(path.join(__dirname, 'views', 'admin-dashboard.html'));
+        });
+        app.get('/admin/career-center-dashboard.html', isAuthenticated, authorizeFaculty, (req, res) => {
+    res.sendFile(path.join(__dirname, 'views', 'career-center-dashboard.html'));
         });
         app.get('/select-portfolio-type.html', isAuthenticated, isProfileComplete, (req, res) => {
             console.log('Serving select-portfolio-type.html for user:', req.session.userId);

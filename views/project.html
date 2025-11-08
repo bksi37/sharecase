@@ -18,27 +18,45 @@
     <script type="module" src="https://unpkg.com/@google/model-viewer@4.0.0/dist/model-viewer.min.js"></script>
 
     <style>
-        .project-meta-box {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 15px;
-            margin-top: 15px;
+        /* --- General Project Layout (Single Column) --- */
+        .project-meta-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #e9ecef;
+            padding-bottom: 10px;
+            margin-bottom: 25px;
+        }
+        .project-meta-info {
+            display: flex;
+            gap: 15px;
+            font-size: 0.9rem;
+            color: #6c757d;
         }
         .section-title {
-            font-size: 1.4rem;
+            font-size: 1.6rem; 
             font-weight: 600;
             color: #212529;
-            margin-top: 1.5rem;
-            margin-bottom: 0.75rem;
-            border-bottom: 2px solid #e9ecef;
-            padding-bottom: 5px;
+            margin-top: 2.5rem; 
+            margin-bottom: 1.5rem;
+            border-bottom: none;
+            padding-bottom: 0;
         }
+        .content-text {
+            white-space: pre-wrap; /* Preserve line breaks/formatting from textarea */
+            line-height: 1.7;
+            font-size: 1.05rem;
+            color: #343a40;
+        }
+
+        /* --- Comment Styling Overrides for Consistency --- */
+        /* Note: Using comment-item-custom to target the structure in this file */
         .comment-item-custom {
             display: flex;
             align-items: flex-start;
             padding: 15px 0;
             border-bottom: 1px solid #f1f5f9;
+            position: relative;
         }
         .comment-item-custom .author-info {
             line-height: 1.2;
@@ -55,6 +73,16 @@
             margin-top: 2rem;
             padding-top: 1rem;
             border-top: 1px solid #e9ecef;
+        }
+        .comment-item-custom .btn-link {
+            position: absolute;
+            top: 10px;
+            right: 0;
+            padding: 0;
+            opacity: 0.5;
+        }
+        .comment-item-custom:hover .btn-link {
+            opacity: 1;
         }
     </style>
 </head>
@@ -118,99 +146,87 @@
             <div class="col-lg-10 col-md-11">
                 <div class="project-detail-card card p-4 shadow-sm mb-4">
                     
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h1 id="projectTitle" class="card-title mb-0">Loading Project...</h1>
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <h1 id="projectTitle" class="card-title mb-1">Loading Project...</h1>
                     </div>
 
-                    <div class="row project-media-section">
-                        <div class="col-lg-8">
-                            <div id="dynamicMediaContainer" class="mb-3">
-                                <div class="text-muted text-center py-5">Loading media...</div>
+                    <div class="project-meta-bar mb-4">
+                        <div class="d-flex align-items-center">
+                            <span class="text-muted me-3">By: <span id="projectAuthor" class="fw-bold">Loading...</span></span>
+                            
+                            <div class="project-engagement-icons d-flex gap-3 text-muted small">
+                                <span><i class="fas fa-eye me-1"></i> <span id="projectViews">0</span></span>
+                                <span class="text-danger"><i class="fas fa-heart me-1"></i> <span id="projectLikes">0</span></span>
                             </div>
+                        </div>
+
+                        <button id="likeButton" class="btn btn-outline-primary"><i class="fas fa-heart me-2"></i> Like </button>
+
+                    </div>
+                    
+                    <div id="dynamicMediaContainer" class="mb-5">
+                        <div class="text-muted text-center py-5">Loading media...</div>
+                    </div>
+                    
+                    <div class="project-content-flow">
+                        
+                        <div id="projectTagsContainer" style="display: none;">
+                            <h3 class="section-title">Tags</h3>
+                            <div id="projectTags" class="d-flex flex-wrap gap-2"></div>
                         </div>
                         
-                        <div class="col-lg-4">
-                            <div class="project-meta-box">
-                                <h5 class="fw-bold mb-3">Project Overview</h5>
-                                <ul class="list-unstyled small">
-                                    <li><strong>Author:</strong> <span id="projectAuthor">Loading...</span></li>
-                                    <li><strong>Type:</strong> <span id="projectType">-</span></li>
-                                    <li><strong>Year:</strong> <span id="projectYear">-</span></li>
-                                    <li><strong>Department:</strong> <span id="projectDepartment">-</span></li>
-                                    <li><strong>Category:</strong> <span id="projectCategory">-</span></li>
-                                </ul>
+                        <div class="project-description">
+                            <h3 class="section-title">Description</h3>
+                            <p id="projectDescription" class="content-text">Loading description...</p>
+                        </div>
+                        
+                        <div id="problemStatementContainer" style="display: none;">
+                            <h3 class="section-title">Problem Statement</h3>
+                            <p id="problemStatement" class="content-text"></p>
+                        </div>
 
-                                <hr>
-                                
-                                <h5 class="fw-bold mb-3">Engagement</h5>
-                                <button id="likeButton" class="btn btn-outline-primary mb-2 w-100"><i class="fas fa-heart me-2"></i> Like </button>
-                                
-                                <ul class="list-unstyled small mt-3">
-                                    <li><i class="fas fa-heart text-danger me-2"></i> <strong>Likes:</strong> <strong id="projectLikes">0</strong></li>
-                                    <li><i class="fas fa-eye me-2"></i> <strong>Views:</strong> <span id="projectViews">0</span></li>
-                                </ul>
+                        <div id="projectDetailsContainer" style="display: none;">
+                            </div>
+
+                        <div id="collaboratorInfoContainer" style="display: none;" class="mt-4">
+                            <h3 class="section-title">Contributors & Resources</h3>
+                            <div class="row g-3">
+                                <div class="col-md-6" id="collaboratorListContainer" style="display: none;">
+                                    <strong>Collaborators:</strong>
+                                    <div id="collaboratorList" class="mt-1"></div>
+                                </div>
+                                <div class="col-md-6" id="otherContributorsContainer" style="display: none;">
+                                    <strong>Other Contributors:</strong>
+                                    <div id="otherContributors" class="mt-1"></div>
+                                </div>
+                                <div class="col-12 mt-3" id="resourcesContainer" style="display: none;">
+                                    <strong>Resources:</strong>
+                                    <div id="projectResources" class="mt-1"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="row mt-4">
-                        <div class="col-12">
-
-                            <div class="project-description">
-                                <h3 class="section-title">Description</h3>
-                                <p id="projectDescription" class="content-text">Loading description...</p>
-                            </div>
-
-                            <div class="problem-statement">
-                                <h3 class="section-title">Problem Statement</h3>
-                                <p id="problemStatement" class="content-text">Loading...</p>
-                            </div>
-
-                            <div id="projectDetailsContainer" style="display: none;"></div>
-
-                            <div class="project-info-block p-3 bg-light rounded mt-5">
-                                <h3 class="section-title mb-3">Additional Info</h3>
-                                <div class="row g-3">
-                                    <div class="col-md-6">
-                                        <strong>Collaborators:</strong>
-                                        <div id="collaboratorList" class="mt-1"></div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <strong>Other Contributors:</strong>
-                                        <div id="otherContributors" class="mt-1"></div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <strong>Tags:</strong>
-                                        <div id="projectTags" class="mt-1"></div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <strong>Resources:</strong>
-                                        <div id="projectResources" class="mt-1"></div>
-                                    </div>
+                    <div class="comments-section">
+                        <div class="comments-header">
+                            <h3 class="comments-title">Comments (<span id="commentCountDisplay">0</span>)</h3>
+                            <button class="btn btn-outline-primary btn-sm" id="toggleCommentFormBtn">
+                                <i class="fas fa-comment me-1"></i> Add Comment
+                            </button>
+                        </div>
+                        
+                        <div id="commentsList">
+                            <p class="text-muted text-center py-3">No comments yet. Be the first!</p>
+                        </div>
+                        
+                        <div id="commentFormContainer" style="display: none;">
+                            <form id="commentForm">
+                                <div class="mb-3">
+                                    <textarea class="form-control" id="commentText" rows="3" placeholder="Share your feedback, questions, or appreciation..."></textarea>
                                 </div>
-                            </div>
-
-                            <div class="comments-section">
-                                <div class="comments-header">
-                                    <h3 class="comments-title">Comments (<span id="commentCountDisplay">0</span>)</h3>
-                                    <button class="btn btn-outline-primary btn-sm" id="toggleCommentFormBtn">
-                                        <i class="fas fa-comment me-1"></i> Add Comment
-                                    </button>
-                                </div>
-                                
-                                <div id="commentsList">
-                                    <p class="text-muted text-center py-3">No comments yet. Be the first!</p>
-                                </div>
-                                
-                                <div id="commentFormContainer" style="display: none;">
-                                    <form id="commentForm">
-                                        <div class="mb-3">
-                                            <textarea class="form-control" id="commentText" rows="3" placeholder="Share your feedback, questions, or appreciation..."></textarea>
-                                        </div>
-                                        <button type="submit" class="btn btn-primary btn-sm">Post Comment</button>
-                                    </form>
-                                </div>
-                            </div>
+                                <button type="submit" class="btn btn-primary btn-sm">Post Comment</button>
+                                <p id="commentLoginPrompt" class="text-danger small mt-2" style="display:none;">Please <a href="/login.html">login</a> to post a comment.</p>
+                            </form>
                         </div>
                     </div>
                 </div>
@@ -218,43 +234,53 @@
         </div>
     </main>
 
-    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="/js/scripts.js"></script>
 
-    <!-- Main Project Logic -->
     <script>
         // Expose for scripts.js
         window.currentLoggedInUserId = null;
+        window.deleteComment = deleteComment; // Expose globally for inline use
 
-        // project.html (REVISED - Corrected)
         document.addEventListener('DOMContentLoaded', async () => {
-            // 1. Load user profile first → guarantees session & user ID
-            // window.loadUserProfileInHeader() sets window.currentLoggedInUserId globally in scripts.js
+            // Load user profile first (handles visibility of auth/user-menu)
             await window.loadUserProfileInHeader(); 
-            
-            // Get the ID that was globally set by loadUserProfileInHeader
             const userId = window.currentLoggedInUserId; 
             
-            // 2. Load project
+            // Load project
             loadProject(userId);
 
-            // 3. Load filters (if on other pages)
+            // Load filters (if defined elsewhere)
             if (typeof loadDynamicFilterOptions === 'function') {
                 loadDynamicFilterOptions();
             }
         });
+
         // Toggle comment form
         document.getElementById('toggleCommentFormBtn')?.addEventListener('click', () => {
             const container = document.getElementById('commentFormContainer');
-            container.style.display = container.style.display === 'none' ? 'block' : 'none';
-            if (container.style.display === 'block') {
-                document.getElementById('commentText').focus();
+            const userId = window.currentLoggedInUserId;
+            
+            if (!userId) {
+                // If not logged in, show prompt and hide form controls
+                document.getElementById('commentLoginPrompt').style.display = 'block';
+                document.getElementById('commentText').style.display = 'none';
+                container.querySelector('button[type="submit"]').style.display = 'none';
+                container.style.display = container.style.display === 'none' ? 'block' : 'none';
+            } else {
+                // Logged in user: show form
+                document.getElementById('commentLoginPrompt').style.display = 'none';
+                document.getElementById('commentText').style.display = 'block';
+                container.querySelector('button[type="submit"]').style.display = 'block';
+                container.style.display = container.style.display === 'none' ? 'block' : 'none';
+                if (container.style.display === 'block') {
+                    document.getElementById('commentText').focus();
+                }
             }
         });
-
-        // Load Project
+        
+        // --- Core Project Load Logic ---
         async function loadProject(userId) {
             const urlParams = new URLSearchParams(window.location.search);
             const projectId = urlParams.get('id');
@@ -264,72 +290,130 @@
             }
 
             try {
+                // Backend route is now public, credentials 'include' handles logged-in state
                 const response = await fetch(`/projects/project/${projectId}`, { credentials: 'include' });
                 if (!response.ok) throw new Error('Failed to fetch project');
                 const project = await response.json();
 
-                // Basic Info
+                // 1. Core Info
                 document.getElementById('projectTitle').textContent = project.title;
-                document.getElementById('projectAuthor').innerHTML = `<a href="/profile/${project.userId}" class="text-decoration-none">${project.userName}</a>`;
-                document.getElementById('projectType').textContent = project.projectType || 'Other';
-                document.getElementById('projectYear').textContent = project.year || 'N/A';
-                document.getElementById('projectDepartment').textContent = project.department || 'N/A';
-                document.getElementById('projectCategory').textContent = project.category || 'N/A';
-                document.getElementById('projectLikes').textContent = project.likes || 0;
+                document.getElementById('projectAuthor').innerHTML = `<a href="/profile.html?id=${project.userId}" class="text-decoration-none text-dark">${project.userName}</a>`;
                 document.getElementById('projectViews').textContent = project.views || 0;
-                document.getElementById('projectDescription').textContent = project.description || 'No description.';
-                document.getElementById('problemStatement').textContent = project.problemStatement || 'No problem statement.';
+                document.getElementById('projectLikes').textContent = project.likes || 0;
+                
+                // 2. Conditional Description & Problem Statement
+                const desc = project.description || '';
+                const problem = project.problemStatement || '';
 
-                // Media
+                document.getElementById('projectDescription').textContent = desc || 'No description provided.';
+                
+                document.getElementById('problemStatementContainer').style.display = problem ? 'block' : 'none';
+                document.getElementById('problemStatement').textContent = problem;
+
+
+                // 3. Media
                 const mediaContainer = document.getElementById('dynamicMediaContainer');
-                if (project.projectType === 'Engineering' && project.projectDetails?.CADFileLink) {
-                    mediaContainer.innerHTML = `<model-viewer src="${project.projectDetails.CADFileLink}" camera-controls auto-rotate shadow-intensity="1" style="width:100%; height:500px; border-radius:12px;"></model-viewer>`;
-                } else if (project.projectDetails?.artworkImage) {
-                    mediaContainer.innerHTML = `<img src="${project.projectDetails.artworkImage}" alt="${project.title}" class="img-fluid rounded" style="width:100%; height:500px; object-fit:cover; border-radius:12px;">`;
-                } else {
-                    mediaContainer.innerHTML = `<img src="${project.image || 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'}" alt="${project.title}" class="img-fluid rounded" style="width:100%; height:500px; object-fit:cover; border-radius:12px;">`;
-                }
+                let mediaHtml = '';
 
-                // Dynamic Details
+                if (project.projectType === 'Engineering' && project.projectDetails?.CADFileLink) {
+                    mediaHtml = `<model-viewer src="${project.projectDetails.CADFileLink}" camera-controls auto-rotate shadow-intensity="1" style="width:100%; height:500px; border-radius:12px;"></model-viewer>`;
+                } else if (project.projectType === 'Art' && project.projectDetails?.artworkImage) {
+                    // Use object-fit: contain to ensure full image visibility without cropping
+                    mediaHtml = `<img src="${project.projectDetails.artworkImage}" alt="${project.title}" class="img-fluid rounded" style="width:100%; max-height: 80vh; object-fit:contain; border-radius:12px;">`;
+                } else {
+                    // Fallback to main project image
+                    mediaHtml = `<img src="${project.image || 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'}" alt="${project.title}" class="img-fluid rounded" style="width:100%; max-height: 80vh; object-fit:contain; border-radius:12px;">`;
+                }
+                mediaContainer.innerHTML = mediaHtml;
+
+                // 4. Conditional Dynamic Details
                 const detailsContainer = document.getElementById('projectDetailsContainer');
+                let detailsContent = '';
+
+                // Engineering Details
                 if (project.projectType === 'Engineering') {
-                    detailsContainer.innerHTML = `
-                        <h3 class="section-title">Technical Details</h3>
-                        <p><strong>Technical Description:</strong> ${project.projectDetails?.technicalDescription || 'N/A'}</p>
-                        <p><strong>Tools/Software:</strong> ${(project.projectDetails?.toolsSoftware || []).join(', ') || 'N/A'}</p>
-                        <p><strong>Functional Goals:</strong> ${project.projectDetails?.functionalGoals || 'N/A'}</p>
-                    `;
-                    detailsContainer.style.display = 'block';
+                    const techDesc = project.projectDetails?.technicalDescription;
+                    const tools = project.projectDetails?.toolsSoftware;
+                    const goals = project.projectDetails?.functionalGoals;
+                    if (techDesc || (tools && tools.length > 0) || goals) {
+                         detailsContent = `
+                            <h3 class="section-title">Technical Details</h3>
+                            ${techDesc ? `<p><strong>Technical Description:</strong><br> <span class="content-text">${techDesc}</span></p>` : ''}
+                            ${(tools && tools.length > 0) ? `<p><strong>Tools/Software:</strong> <span class="content-text">${tools.join(', ')}</span></p>` : ''}
+                            ${goals ? `<p><strong>Functional Goals:</strong><br> <span class="content-text">${goals}</span></p>` : ''}
+                        `;
+                        detailsContainer.style.display = 'block';
+                    } else {
+                        detailsContainer.style.display = 'none';
+                    }
+                // Art Details
                 } else if (project.projectType === 'Art') {
-                    detailsContainer.innerHTML = `
-                        <h3 class="section-title">Art Details</h3>
-                        <p><strong>Medium/Technique:</strong> ${project.projectDetails?.mediumTechnique || 'N/A'}</p>
-                        <p><strong>Artist Statement:</strong> ${project.projectDetails?.artistStatement || 'N/A'}</p>
-                    `;
-                    detailsContainer.style.display = 'block';
+                    const medium = project.projectDetails?.mediumTechnique;
+                    const statement = project.projectDetails?.artistStatement;
+                    if (medium || statement) {
+                        detailsContent = `
+                            <h3 class="section-title">Artist Details</h3>
+                            ${medium ? `<p><strong>Medium/Technique:</strong> <span class="content-text">${medium}</span></p>` : ''}
+                            ${statement ? `<p><strong>Artist Statement:</strong><br> <span class="content-text">${statement}</span></p>` : ''}
+                        `;
+                        detailsContainer.style.display = 'block';
+                    } else {
+                        detailsContainer.style.display = 'none';
+                    }
                 } else {
                     detailsContainer.style.display = 'none';
                 }
+                detailsContainer.innerHTML = detailsContent;
 
-                // Like Button
+                // 5. Conditional Info Block (Tags/Contributors/Resources)
+                const tags = project.tags || [];
+                const collaborators = project.collaborators || [];
+                const otherContributors = project.otherContributors || '';
+                const resources = project.resources || [];
+                
+                const hasContributors = collaborators.length > 0 || otherContributors;
+                const hasResources = resources.length > 0;
+                const hasTags = tags.length > 0;
+                
+                // Show/Hide Tags separately, located above other auxiliary info
+                document.getElementById('projectTagsContainer').style.display = hasTags ? 'block' : 'none';
+                document.getElementById('projectTags').innerHTML = tags
+                    .map(tag => `<span class="tag badge bg-info me-1">${tag}</span>`).join('') || '';
+
+                // Show/Hide Contributors/Resources section
+                document.getElementById('collaboratorInfoContainer').style.display = hasContributors || hasResources ? 'block' : 'none';
+
+                // Render Contributors
+                document.getElementById('collaboratorListContainer').style.display = collaborators.length > 0 ? 'block' : 'none';
+                document.getElementById('collaboratorList').innerHTML = collaborators
+                    .map(c => `<a href="/profile.html?id=${c._id}" class="text-decoration-none">${c.name}</a>`).join(', ') || '';
+                    
+                document.getElementById('otherContributorsContainer').style.display = otherContributors ? 'block' : 'none';
+                document.getElementById('otherContributors').textContent = otherContributors;
+
+                // Render Resources
+                document.getElementById('resourcesContainer').style.display = hasResources ? 'block' : 'none';
+                document.getElementById('projectResources').innerHTML = resources
+                    .map(r => `<a href="${r}" target="_blank" class="text-decoration-none small">${r.replace(/(^\w+:|^)\/\//, '').split('/').shift()}...</a>`).join(', ') || '';
+
+
+                // 6. Like Button (Visible only if logged in)
                 const likeBtn = document.getElementById('likeButton');
                 const isLiked = project.likedBy?.includes(userId);
-                likeBtn.innerHTML = isLiked 
-                    ? '<i class="fas fa-heart me-2"></i> Liked' // Show solid heart when liked
-                    : '<i class="fas fa-heart me-2"></i> Like'; // Show outline heart (or the default HTML) when unliked
-                likeBtn.className = isLiked ? 'btn btn-primary mb-2 w-100' : 'btn btn-outline-primary mb-2 w-100';
-                likeBtn.onclick = () => toggleLike(project.id, userId, () => loadProject(userId));
-                // Info Block
-                document.getElementById('projectTags').innerHTML = (project.tags || [])
-                    .map(tag => `<span class="tag badge bg-info me-1">${tag}</span>`).join('') || '<span class="text-muted">No tags</span>';
-                document.getElementById('collaboratorList').innerHTML = (project.collaborators || [])
-                    .map(c => `<a href="/profile/${c._id}" class="text-decoration-none">${c.name}</a>`).join(', ') || 'None';
-                document.getElementById('otherContributors').innerHTML = Array.isArray(project.otherContributors)
-                    ? project.otherContributors.join(', ') : (project.otherContributors || 'None');
-                document.getElementById('projectResources').innerHTML = (project.resources || [])
-                    .map(r => `<a href="${r}" target="_blank" class="text-decoration-none small">${r.split('/').pop()}...</a>`).join(', ') || 'None';
+                
+                if (userId) {
+                    likeBtn.style.display = 'block';
+                    likeBtn.innerHTML = isLiked 
+                        ? '<i class="fas fa-heart me-2"></i> Liked'
+                        : '<i class="fas fa-heart me-2"></i> Like';
+                    likeBtn.className = isLiked ? 'btn btn-primary' : 'btn btn-outline-primary';
+                    // Assuming toggleLike is available globally
+                    likeBtn.onclick = () => toggleLike(project.id, userId, () => loadProject(userId));
+                } else {
+                    likeBtn.style.display = 'none';
+                }
 
-                // Comments
+                // 7. Comments
                 renderComments(project, userId, project.userId);
                 bindCommentForm(project.id, userId);
 
@@ -339,7 +423,7 @@
             }
         }
 
-        // Render Comments
+        // Render Comments (Function remains mostly the same, ensuring delete works)
         function renderComments(project, currentUserId, projectAuthorId) {
             const container = document.getElementById('commentsList');
             const countDisplay = document.getElementById('commentCountDisplay');
@@ -352,25 +436,53 @@
             }
 
             container.innerHTML = comments.map(comment => {
+                // Can delete if: Logged in AND (comment owner OR project owner)
                 const canDelete = currentUserId && (comment.userId === currentUserId || projectAuthorId === currentUserId);
                 return `
                     <div class="comment-item-custom d-flex justify-content-between align-items-start">
                         <div class="d-flex align-items-start flex-grow-1">
                             <img src="${comment.userProfilePic}" alt="${comment.userName}" class="rounded-circle me-3" style="width: 36px; height: 36px; object-fit: cover;">
                             <div class="author-info">
-                                <strong><a href="/profile/${comment.userId}" class="text-decoration-none">${comment.userName}</a></strong>
+                                <strong><a href="/profile.html?id=${comment.userId}" class="text-decoration-none">${comment.userName}</a></strong>
                                 <small class="text-muted ms-2">${new Date(comment.timestamp).toLocaleString()}</small>
                                 <p class="mb-0 comment-text-body">${comment.text}</p>
                             </div>
                         </div>
                         ${canDelete ? `
-                            <button class="btn btn-link text-danger btn-sm p-0 ms-auto" onclick="deleteComment('${project.id}', '${comment._id}')" title="Delete">
+                            <button class="btn btn-link text-danger btn-sm" onclick="deleteComment('${project.id}', '${comment._id}')" title="Delete">
                                 <i class="fas fa-trash-alt fa-xs"></i>
                             </button>
                         ` : ''}
                     </div>
                 `;
             }).join('');
+        }
+        
+        // Delete Comment Function (Exposed globally)
+        async function deleteComment(projectId, commentId) {
+            if (!confirm('Are you sure you want to delete this comment?')) return;
+            const userId = window.currentLoggedInUserId;
+            if (!userId) {
+                Toastify({ text: 'You must be logged in to perform this action.', style: { background: '#ef4444' } }).showToast();
+                return;
+            }
+
+            try {
+                const res = await fetch(`/projects/project/${projectId}/comment/${commentId}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+
+                if (res.ok) {
+                    Toastify({ text: 'Comment deleted.', style: { background: '#22c55e' } }).showToast();
+                    loadProject(userId); // Reload to update comments list
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    Toastify({ text: err.message || 'Failed to delete comment.', style: { background: '#ef4444' } }).showToast();
+                }
+            } catch (err) {
+                Toastify({ text: 'Network error.', style: { background: '#ef4444' } }).showToast();
+            }
         }
 
         // Bind Comment Form (once)
