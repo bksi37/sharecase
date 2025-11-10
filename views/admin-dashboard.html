@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShareCase - Admin Dashboard</title>
+    <title>ShareCase - Internal Platform Management</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -17,7 +17,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
     <style>
-        /* Shared Dashboard CSS from original prompt */
+        /* Shared Dashboard CSS (Retained for visual consistency) */
         :root {
             --primary: #00bfff;
             --primary-dark: #009fd9;
@@ -30,12 +30,13 @@
         }
         .dashboard-container { max-width: 1400px; margin: 0 auto; padding: 2rem 1rem; }
         .page-header { text-align: center; margin-bottom: 3rem; padding: 2rem 0; }
-        .page-title { font-size: 2.5rem; font-weight: 700; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 0.5rem; }
+        /* Professional Title Style */
+        .page-title { font-size: 2.5rem; font-weight: 700; color: var(--dark); margin-bottom: 0.5rem; }
         .page-subtitle { color: #6b7280; font-size: 1.1rem; font-weight: 400; }
         .stats-grid { margin-bottom: 3rem; }
-        .stat-card { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border-radius: 20px; padding: 2rem; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 8px 32px rgba(0,0,0,0.1); transition: all 0.3s ease; height: 100%; position: relative; overflow: hidden; }
-        .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, var(--primary), var(--primary-dark)); }
-        .stat-card:hover { transform: translateY(-8px); box-shadow: 0 20px 40px rgba(0,0,0,0.15); }
+        /* Card styles kept sharp */
+        .stat-card { background: #fff; border-radius: 12px; padding: 2rem; border: 1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.05); transition: all 0.3s ease; height: 100%; position: relative; overflow: hidden; }
+        .stat-card:hover { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
         .stat-icon { width: 64px; height: 64px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 1rem; }
         .stat-primary .stat-icon { background: rgba(0, 191, 255, 0.1); color: var(--primary); }
         .stat-warning .stat-icon { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
@@ -43,29 +44,18 @@
         .stat-success .stat-icon { background: rgba(16, 185, 129, 0.1); color: var(--success); }
         .stat-number { font-size: 2.5rem; font-weight: 700; margin-bottom: 0.25rem; line-height: 1; }
         .stat-label { font-size: 0.95rem; color: #6b7280; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
-        .analytics-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-radius: 20px; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 8px 32px rgba(0,0,0,0.1); overflow: hidden; height: 100%; }
+        .analytics-card { background: #fff; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.05); overflow: hidden; height: 100%; }
         .analytics-header { padding: 1.5rem 2rem; font-weight: 600; font-size: 1.1rem; border-bottom: 1px solid var(--border); }
-        .analytics-primary .analytics-header { background: rgba(0, 191, 255, 0.08); color: var(--primary); border-bottom-color: rgba(0, 191, 255, 0.2); }
-        .analytics-success .analytics-header { background: rgba(16, 185, 129, 0.08); color: var(--success); border-bottom-color: rgba(16, 185, 129, 0.2); }
-        .analytics-info .analytics-header { background: rgba(59, 130, 246, 0.08); color: #3b82f6; border-bottom-color: rgba(59, 130, 246, 0.2); }
-        .analytics-secondary .analytics-header { background: rgba(100, 116, 139, 0.08); color: #64748b; border-bottom-color: rgba(100, 116, 139, 0.2); }
         .analytics-body { padding: 2rem; min-height: 350px; }
         .admin-actions-grid { margin-bottom: 3rem; }
-        .admin-action-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-radius: 20px; padding: 2.5rem; border: 2px solid var(--border); transition: all 0.3s ease; height: 100%; }
-        .admin-action-card:hover { border-color: var(--primary); box-shadow: 0 20px 40px rgba(0,0,0,0.15); }
-        .admin-action-icon { width: 80px; height: 80px; border-radius: 20px; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); display: flex; align-items: center; justify-content: center; color: white; font-size: 1.8rem; margin: 0 auto 1.5rem; }
+        .admin-action-card { border: 1px solid var(--primary); border-radius: 12px; padding: 2.5rem; transition: all 0.3s ease; height: 100%; }
+        .admin-action-card:hover { box-shadow: 0 10px 20px rgba(0, 191, 255, 0.15); }
+        .admin-action-icon { width: 80px; height: 80px; border-radius: 12px; background: var(--primary); display: flex; align-items: center; justify-content: center; color: white; font-size: 1.8rem; margin: 0 auto 1.5rem; }
         .admin-action-title { font-size: 1.3rem; font-weight: 600; margin-bottom: 1rem; color: var(--dark); }
-        .form-control-admin { border: 2px solid var(--border); border-radius: 12px; padding: 0.875rem 1.25rem; transition: all 0.2s ease; background: rgba(255,255,255,0.8); }
-        .form-control-admin:focus { border-color: var(--primary); box-shadow: 0 0 0 0.25rem rgba(0, 191, 255, 0.15); background: white; }
-        .btn-admin { padding: 0.875rem 2rem; border-radius: 12px; font-weight: 600; border: none; transition: all 0.3s ease; }
-        .btn-primary-admin { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; }
-        .btn-primary-admin:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0, 191, 255, 0.3); }
-        .btn-warning-admin { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; }
-        .btn-warning-admin:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(245, 158, 11, 0.3); }
-        .chart-container { position: relative; height: 300px; margin-top: 1rem; }
-        @media (max-width: 768px) { .dashboard-container { padding: 1rem 0.5rem; } .page-title { font-size: 2rem; } .stat-card, .admin-action-card { padding: 1.5rem; } }
-        .loading-skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: loading 1.5s infinite; border-radius: 20px; height: 200px; }
-        @keyframes loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        .form-control-admin { border-radius: 8px; padding: 0.875rem 1.25rem; }
+        .btn-primary-admin { background: var(--primary); border-color: var(--primary); color: white; }
+        .btn-primary-admin:hover { background: var(--primary-dark); border-color: var(--primary-dark); }
+        .explanation-dropdown { text-align: center; margin-bottom: 2rem; }
     </style>
 </head>
 <body>
@@ -87,6 +77,7 @@
                     <a href="/settings.html" class="dropdown-item">Settings</a>
                     <a href="/upload-project.html" class="dropdown-item">Upload Project</a>
                     <a id="adminDashboardLink" href="/admin/dashboard.html" class="dropdown-item">Admin Dashboard</a>
+                    <a id="careerCenterDashboardLink" href="/admin/career-center-dashboard.html" class="dropdown-item" style="display: none;">Career Center Dashboard</a>
                     <a id="logoutLink" href="/logout" class="dropdown-item">Logout</a>
                     <a href="/about.html" class="dropdown-item">About</a>
                     <div class="dropdown-item-text text-muted small mt-2"> Role: <span id="userRoleDisplay"></span><br> Points: <span id="userPointsDisplay"></span> </div>
@@ -102,38 +93,56 @@
     <main>
         <div class="dashboard-container">
             <div class="page-header">
-                <h1 class="page-title"> <i class="fas fa-user-shield me-3"></i> ShareCase Admin Dashboard </h1>
-                <p class="page-subtitle">Platform Management and Internal Analytics</p>
+                <h1 class="page-title"> <i class="fas fa-server me-3"></i> Platform Operations Portal </h1>
+                <p class="page-subtitle">Core Management and System Health Monitoring for ShareCase Internal Team</p>
             </div>
 
-            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-5 g-4 stats-grid" id="summaryMetrics">
+            <div class="explanation-dropdown">
+                <button class="btn btn-outline-info btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#explanationCollapse" aria-expanded="false" aria-controls="explanationCollapse">
+                    <i class="fas fa-wrench me-2"></i> Understand Metrics & Actions
+                </button>
+                <div class="collapse mt-3 text-start" id="explanationCollapse" style="max-width: 800px; margin: 0 auto;">
+                    <div class="card card-body bg-light small">
+                        <p class="fw-bold mb-1 text-dark">Data Definitions:</p>
+                        <ul class="list-unstyled mb-2">
+                            <li><span class="fw-bold text-primary">Internal Metrics (Top Points):</span> A gamification score used for internal evaluation/rewards, not for external reporting.</li>
+                            <li><span class="fw-bold text-success">Total Comments/Likes:</span> Measures overall user engagement on content.</li>
+                            <li><span class="fw-bold text-warning">Total Projects:</span> Count of all published projects on the platform.</li>
+                        </ul>
+                        <p class="fw-bold mb-1 text-dark">Management Tools:</p>
+                        <ul class="list-unstyled mb-0">
+                            <li><span class="fw-bold text-primary">Point Allocation:</span> Manually granting platform points to users, typically for winning contests or special recognition.</li>
+                            <li><span class="fw-bold text-warning">Send Notification:</span> Direct messaging tool for specific user accounts (e.g., system updates, alerts).</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row row-cols-1 row-cols-md-3 row-cols-lg-5 g-4 stats-grid" id="summaryMetrics">
                 <div class="loading-skeleton col"></div>
                 <div class="loading-skeleton col"></div>
                 <div class="loading-skeleton col"></div>
                 <div class="loading-skeleton col"></div>
-                <div class="loading-skeleton col d-none d-lg-block"></div> </div>
+                <div class="loading-skeleton col"></div>
+            </div>
 
             <div class="row g-4 mb-5">
                 <div class="col-lg-8">
                     <div class="analytics-card analytics-primary h-100">
                         <div class="analytics-header">
-                            <i class="fas fa-chart-line me-2"></i> Project & Engagement Analytics
+                            <i class="fas fa-chart-bar me-2"></i> Content & Platform Usage Overview
                         </div>
                         <div class="analytics-body" id="projectAnalytics">
                             </div>
                     </div>
                 </div>
                 <div class="col-lg-4">
-                    <div class="analytics-card analytics-success h-100">
+                    <div class="analytics-card analytics-info h-100">
                         <div class="analytics-header">
-                            <i class="fas fa-bolt me-2"></i> Platform Impact (Views/Engagement)
+                            <i class="fas fa-users-cog me-2"></i> User Segmentation
                         </div>
                         <div class="analytics-body">
-                            <div class="chart-container"> <canvas id="impactChart"></canvas> </div>
-                            <div class="mt-4 text-center">
-                                <h4 class="text-success mb-1 fw-bold" id="overallImpactScore">Loading...</h4>
-                                <small class="text-muted">Overall Impact Score</small>
-                            </div>
+                            <div class="chart-container"> <canvas id="userRoleChart"></canvas> </div>
                         </div>
                     </div>
                 </div>
@@ -143,7 +152,7 @@
                  <div class="col-lg-6">
                     <div class="analytics-card analytics-secondary h-100">
                         <div class="analytics-header">
-                            <i class="fas fa-trophy me-2"></i> Internal Metrics (Top Points)
+                            <i class="fas fa-trophy me-2"></i> Internal Metrics: Top Ranked Projects (Points)
                         </div>
                         <div class="analytics-body">
                             <ul class="list-group list-group-flush border-0" id="topPointsList">
@@ -153,49 +162,50 @@
                     </div>
                 </div>
                 <div class="col-lg-6">
-                    <div class="analytics-card analytics-info h-100">
+                    <div class="analytics-card analytics-success h-100">
                         <div class="analytics-header">
-                            <i class="fas fa-users me-2"></i> User Segmentation
+                            <i class="fas fa-tags me-2"></i> Top Content Tag Trends
                         </div>
                         <div class="analytics-body">
-                            <div class="chart-container"> <canvas id="userRoleChart"></canvas> </div>
+                            <div class="chart-container"> <canvas id="topTagsChart"></canvas> </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <h2 class="text-center mb-4 text-primary fw-bold">Management Tools</h2>
+            <h2 class="text-center mb-4 text-primary fw-bold">System Management Actions</h2>
             <div class="row admin-actions-grid">
                 <div class="col-lg-6">
                     <div class="admin-action-card">
                         <div class="admin-action-icon"> <i class="fas fa-coins"></i> </div>
-                        <h3 class="admin-action-title">Point Allocation</h3>
+                        <h3 class="admin-action-title">Manual Point Allocation</h3>
                         <form id="pointAllocationForm">
                             <div class="mb-3">
                                 <label for="userId" class="form-label fw-semibold">User ID</label>
-                                <input type="text" class="form-control form-control-admin" id="userId" name="userId" placeholder="e.g., 64f8a2b1c9d3e4f5g6h7i8j9">
-                                <div class="form-text">Find user ID on their profile page</div>
+                                <input type="text" class="form-control form-control-admin" id="userId" name="userId" placeholder="64f8a2b1c9d3e4f5g6h7i8j9">
+                                <div class="form-text">Target User's unique MongoDB ID</div>
                             </div>
                             <div class="mb-4">
-                                <label for="points" class="form-label fw-semibold">Points</label>
-                                <input type="number" class="form-control form-control-admin" id="points" name="points" placeholder="e.g., 100" min="0">
+                                <label for="points" class="form-label fw-semibold">Points to Allocate</label>
+                                <input type="number" class="form-control form-control-admin" id="points" name="points" placeholder="e.g., 100" min="1">
                             </div>
-                            <button type="submit" class="btn btn-primary-admin w-100"> <i class="fas fa-plus-circle me-2"></i> Allocate Points </button>
+                            <button type="submit" class="btn btn-primary-admin w-100"> <i class="fas fa-plus-circle me-2"></i> Execute Allocation </button>
                         </form>
                     </div>
                 </div>
                 <div class="col-lg-6">
                     <div class="admin-action-card">
                         <div class="admin-action-icon"> <i class="fas fa-bell"></i> </div>
-                        <h3 class="admin-action-title">Send Notification</h3>
+                        <h3 class="admin-action-title">System Notification Dispatch</h3>
                         <form id="notificationForm">
                             <div class="mb-3">
-                                <label for="targetUserId" class="form-label fw-semibold">Recipient ID</label>
-                                <input type="text" class="form-control form-control-admin" id="targetUserId" name="targetUserId" placeholder="e.g., 64f8a2b1c9d3e4f5g6h7i8j9">
+                                <label for="targetUserId" class="form-label fw-semibold">Recipient User ID</label>
+                                <input type="text" class="form-control form-control-admin" id="targetUserId" name="targetUserId" placeholder="64f8a2b1c9d3e4f5g6h7i8j9">
+                                <div class="form-text">User who will receive the message in their notification feed.</div>
                             </div>
                             <div class="mb-4">
-                                <label for="notificationMessage" class="form-label fw-semibold">Message</label>
-                                <textarea class="form-control form-control-admin" id="notificationMessage" name="message" rows="3" placeholder="Congratulations! Your project was featured..."></textarea>
+                                <label for="notificationMessage" class="form-label fw-semibold">Message Content</label>
+                                <textarea class="form-control form-control-admin" id="notificationMessage" name="message" rows="3" placeholder="System Alert: Maintenance starts at 8 PM..."></textarea>
                             </div>
                             <button type="submit" class="btn btn-warning-admin w-100"> <i class="fas fa-paper-plane me-2"></i> Send Notification </button>
                         </form>
@@ -216,7 +226,7 @@
             const canvas = document.getElementById(canvasId);
             if (!canvas) return null;
             
-            charts.forEach(chart => { if(chart.canvas.id === canvasId) chart.destroy(); }); // Destroy existing chart if present
+            charts.forEach(chart => { if(chart.canvas.id === canvasId) chart.destroy(); });
 
             const ctx = canvas.getContext('2d');
             const chart = new Chart(ctx, {
@@ -244,21 +254,20 @@
                 const list = document.getElementById('topPointsList');
                 if (data.topProjectsByPoints && data.topProjectsByPoints.length > 0) {
                     list.innerHTML = data.topProjectsByPoints.map(project => `
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <li class="list-group-item d-flex justify-content-between align-items-center bg-transparent border-0">
                             <a href="/project.html?id=${project._id}" class="text-decoration-none fw-medium text-dark">${project.title}</a>
                             <span class="badge bg-primary rounded-pill">${project.points} pts</span>
                         </li>
                     `).join('');
                 } else {
-                    list.innerHTML = '<li class="list-group-item text-muted">No point data available.</li>';
+                    list.innerHTML = '<li class="list-group-item text-muted bg-transparent border-0">No point data available.</li>';
                 }
 
             } catch (error) {
                 console.error('Error loading internal metrics:', error);
-                document.getElementById('topPointsList').innerHTML = '<li class="list-group-item text-danger">Error loading points data.</li>';
+                document.getElementById('topPointsList').innerHTML = '<li class="list-group-item text-danger bg-transparent border-0">Error loading points data.</li>';
             }
         }
-
 
         async function loadAnalytics() {
             const summaryMetrics = document.getElementById('summaryMetrics');
@@ -269,9 +278,9 @@
                 charts = [];
 
                 const [coreResponse, projectResponse, userResponse] = await Promise.all([
-                    fetch('/admin/dashboard-data', { credentials: 'include' }), // Shared metrics
-                    fetch('/admin/analytics/projects', { credentials: 'include' }), // Shared analytics
-                    fetch('/admin/users-analytics', { credentials: 'include' }) // Shared user/viewer analytics
+                    fetch('/admin/dashboard-data', { credentials: 'include' }), // Core Metrics (Users, Projects, Likes, Comments, External Viewers)
+                    fetch('/admin/analytics/projects', { credentials: 'include' }), // Project Analytics (Type, Views, Tags)
+                    fetch('/admin/users-analytics', { credentials: 'include' }) // User/Viewer Analytics (Roles, Majors)
                 ]);
 
                 const [coreData, projectData, userData] = await Promise.all([
@@ -297,7 +306,7 @@
                         <div class="stat-card stat-warning text-center">
                             <div class="stat-icon"><i class="fas fa-layer-group"></i></div>
                             <div class="stat-number">${coreData.totalPublishedProjects.toLocaleString()}</div>
-                            <div class="stat-label">Total Projects</div>
+                            <div class="stat-label">Published Projects</div>
                         </div>
                     </div>
                     <div class="col">
@@ -314,11 +323,11 @@
                             <div class="stat-label">Total Comments</div>
                         </div>
                     </div>
-                     <div class="col d-none d-lg-block">
+                    <div class="col">
                         <div class="stat-card stat-info text-center">
                             <div class="stat-icon"><i class="fas fa-briefcase"></i></div>
                             <div class="stat-number">${(coreData.totalExternalViewers || 0).toLocaleString()}</div>
-                            <div class="stat-label">External Viewers (Rec/Fac/Al)</div>
+                            <div class="stat-label">External Viewer Engagement</div>
                         </div>
                     </div>
                 `;
@@ -330,7 +339,7 @@
                             <h6 class="fw-semibold text-primary mb-3">Projects by Type</h6>
                             <div class="list-group list-group-flush border-0">
                                 ${projectData.projectsByType.map(item => `
-                                    <div class="list-group-item px-0 py-2">
+                                    <div class="list-group-item px-0 py-2 bg-transparent border-0">
                                         <div class="d-flex justify-content-between">
                                             <span>${item._id || 'Other'}</span>
                                             <span class="badge bg-primary rounded-pill">${item.count}</span>
@@ -343,7 +352,7 @@
                             <h6 class="fw-semibold text-primary mb-3">Top Projects by Views</h6>
                             <ol class="list-group list-group-numbered list-group-flush border-0">
                                 ${projectData.topProjectsByViews.slice(0,5).map(project => `
-                                    <li class="list-group-item px-0 py-2">
+                                    <li class="list-group-item px-0 py-2 bg-transparent">
                                         <div class="d-flex justify-content-between">
                                             <a href="/project.html?id=${project._id}" class="text-decoration-none fw-medium">${project.title}</a>
                                             <span class="badge bg-secondary">${project.views} views</span>
@@ -361,22 +370,18 @@
                     datasets: [{ data: userData.usersByRole.map(u => u.count), backgroundColor: ['#00bfff', '#10b981', '#f59e0b', '#ef4444', '#64748b'], borderWidth: 0 }]
                 });
 
-                renderChart('impactChart', 'line', {
-                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                renderChart('topTagsChart', 'bar', {
+                    labels: projectData.projectsByTag.slice(0, 8).map(t => t._id),
                     datasets: [{
-                        label: 'Impact Score',
-                        data: [65, 72, 68, 85, 92, 88],
-                        borderColor: '#10b981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                        tension: 0.4,
-                        fill: true
+                        label: 'Projects',
+                        data: projectData.projectsByTag.slice(0, 8).map(t => t.count),
+                        backgroundColor: '#10b981',
+                        borderRadius: 8
                     }]
                 });
 
                 // Load internal metrics (Top points)
                 loadInternalMetrics();
-
-                document.getElementById('overallImpactScore').textContent = '92';
 
             } catch (error) {
                 console.error('Analytics error:', error);

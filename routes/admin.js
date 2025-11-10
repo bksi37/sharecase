@@ -40,12 +40,12 @@ router.get('/analytics/projects', isAuthenticated, authorizeStaffAnalytics, asyn
             { $group: { _id: "$projectType", count: { $sum: 1 } } }
         ]);
         
-        // Top 10 tags (Word Cloud/List)
         const projectsByTag = await Project.aggregate([
             { $match: { isPublished: true } },
             { $unwind: "$tags" },
             { $group: { _id: "$tags", count: { $sum: 1 } } },
-            { $sort: { count: { $meta: "textScore" } } }, // Changed to sort by textScore for relevance if possible, otherwise use original count sort
+            // 🛑 FIX: Use standard sorting by count (-1 for descending)
+            { $sort: { count: -1 } }, 
             { $limit: 10 } 
         ]);
         

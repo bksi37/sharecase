@@ -68,6 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const response = await fetch('/logout', { credentials: 'include' });
                 const data = await response.json();
                 if (data.success && data.redirect) {
+                    //sessionStorage.removeItem('session_data_collected');
                     currentLoggedInUserId = null;
                     currentLoggedInUserRole = null;
                     currentLoggedInUserFollowing = [];
@@ -94,47 +95,60 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // public/js/scripts.js (REVISED fetchNotifications)
-
-async function fetchNotifications() {
+async function fetchNotifications(isInitialLoad = false) {
     const notificationList = document.getElementById('notificationList');
     const notificationCount = document.getElementById('notificationCount');
-
-    if (notificationList) {
-        notificationList.innerHTML = '<div class="dropdown-item-text text-muted">Fetching...</div>';
-    } else {
-        return; 
+    
+    // Only attempt fetch if the user is logged in
+    if (!window.currentLoggedInUserId) {
+         if (!isInitialLoad && notificationList) {
+             notificationList.innerHTML = '<div class="dropdown-item-text">Please log in to view notifications.</div>';
+         }
+         if (notificationCount) notificationCount.style.display = 'none';
+         return;
+    }
+    
+    // If it's not the initial load, show "Fetching..." only in the list area
+    if (!isInitialLoad && notificationList) {
+         notificationList.innerHTML = '<div class="dropdown-item-text text-muted">Fetching...</div>';
     }
 
     try {
         const response = await fetch('/notifications', { credentials: 'include' });
         
-        if (response.status === 401) {
-            throw new Error('Unauthorized: Please log in.');
-        }
         if (!response.ok) {
+            // Handle error status (401 is handled above, other errors throw)
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         
         const notifications = await response.json();
-        
-        notificationList.innerHTML = notifications.length > 0
-            ? notifications.map(n => `<div class="dropdown-item-text">${n.message}</div>`).join('')
-            : '<div class="dropdown-item-text">No new notifications</div>';
-            
+        const unreadCount = notifications.filter(n => !n.read).length;
+
+        // 1. Update the Count Indicator (Badge) immediately
         if (notificationCount) {
-            notificationCount.textContent = notifications.filter(n => !n.read).length; 
-            notificationCount.style.display = notifications.filter(n => !n.read).length > 0 ? 'inline' : 'none';
+            notificationCount.textContent = unreadCount; 
+            notificationCount.style.display = unreadCount > 0 ? 'inline' : 'none';
+        }
+        
+        // 2. Only update the LIST content if the dropdown is open (i.e., not an initial load)
+        if (!isInitialLoad && notificationList) {
+            notificationList.innerHTML = notifications.length > 0
+                ? notifications.map(n => `<div class="notification-item ${n.read ? '' : 'unread'}" data-id="${n._id}">
+                                            <span class="message">${n.message}</span>
+                                            <button class="btn btn-link btn-sm text-danger p-0" onclick="deleteNotification('${n._id}')" aria-label="Remove notification">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                          </div>`).join('')
+                : '<div class="dropdown-item-text">No new notifications</div>';
         }
 
     } catch (error) {
         console.error('Error fetching notifications:', error);
-        notificationList.innerHTML = '<div class="dropdown-item-text text-danger">Error loading notifications</div>';
+        // Only show error message in the dropdown if it's open
+        if (!isInitialLoad && notificationList) {
+            notificationList.innerHTML = '<div class="dropdown-item-text text-danger">Error loading notifications</div>';
+        }
         if (notificationCount) notificationCount.style.display = 'none';
-        Toastify({
-            text: error.message || 'Error loading notifications.',
-            duration: 5000,
-            style: { background: '#e74c3c' },
-        }).showToast();
     }
 }
 
@@ -208,6 +222,9 @@ function updateHeaderUI(user) {
     const userPointsDisplay = document.getElementById('userPointsDisplay');
     const adminDashboardLink = document.getElementById('adminDashboardLink');
     const notificationButton = document.getElementById('notificationButton');
+    
+    // 1. Get the new Career Center link element
+    const careerCenterDashboardLink = document.getElementById('careerCenterDashboardLink'); 
 
     if (user) {
         if (authControls) authControls.style.display = 'none';
@@ -216,13 +233,25 @@ function updateHeaderUI(user) {
         if (userProfilePic) userProfilePic.src = user.profilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg';
         if (userRoleDisplay) userRoleDisplay.textContent = user.role || 'external';
         if (userPointsDisplay) userPointsDisplay.textContent = `${user.totalPoints || 0} pts`;
-        if (adminDashboardLink) adminDashboardLink.style.display = user.role === 'admin' ? 'block' : 'none';
         if (notificationButton) notificationButton.style.display = 'inline-block';
+
+        // 2. Logic for Admin Dashboard (ShareCase Internal - admin role only)
+        if (adminDashboardLink) {
+            adminDashboardLink.style.display = user.role === 'admin' ? 'block' : 'none';
+        }
+        
+        // 3. Logic for Career Center Dashboard (Shared Access - admin or faculty role)
+        if (careerCenterDashboardLink) {
+            const hasCareerCenterAccess = user.role === 'admin' || user.role === 'faculty';
+            careerCenterDashboardLink.style.display = hasCareerCenterAccess ? 'block' : 'none';
+        }
+
     } else {
         if (authControls) authControls.style.display = 'flex';
         if (loggedInUserContainer) loggedInUserContainer.style.display = 'none';
         if (adminDashboardLink) adminDashboardLink.style.display = 'none';
-        if (notificationButton) notificationButton.style.display = 'none'; // Hide for guests
+        if (careerCenterDashboardLink) careerCenterDashboardLink.style.display = 'none'; // Hide for guests
+        if (notificationButton) notificationButton.style.display = 'none'; 
     }
 }
 
@@ -324,9 +353,9 @@ function renderProjectCard(project) {
         `;
     }
 
-    const clickAction = currentLoggedInUserId
-        ? `window.location.href='/project.html?id=${projectId}'`
-        : `window.location.href='/login.html?redirectedFrom=/project.html?id=${projectId}'`;
+    // 🛑 FIX: ALWAYS use direct navigation to project.html, as the page is now public.
+    // The previous logic was: ? `window.location.href='/project.html?id=${projectId}'` : `window.location.href='/login.html?...'`;
+    const clickAction = `window.location.href='/project.html?id=${projectId}'`;
 
     const thumbnailURL = project.image
         ? project.image.replace('/upload/', '/upload/w_500,h_500,c_fill/')
@@ -334,23 +363,23 @@ function renderProjectCard(project) {
 
     return `
         <div class="col">
-                     <div class="card h-100" style="cursor: pointer;" onclick="${clickAction}">
-                        <img src="${thumbnailURL}" class="card-img-top project-image w-100" alt="${project.title || 'Project'}" 
-                        onerror="this.src='https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'">
-                    <div class="card-body">
-                        <h5 class="card-title">${project.title || 'Untitled'}</h5>
-                        <p class="card-text">${project.description ? project.description.substring(0, 100) + '...' : 'No description'}</p>
-                        <div class="project-meta">
-                            <span class="project-author">By <a href="/profile/${project.userId}">${project.userName || 'Unknown'}</a></span>
-                            <span class="project-views"><i class="fas fa-eye"></i> ${project.views || 0}</span>
-                            <span class="project-likes"><i class="fas fa-heart"></i> ${project.likes || 0}</span>
-                        </div>
-                        <div class="project-tags">
-                            ${(project.tags || []).map(tag => `<span class="tag">${tag}</span>`).join('')}
-                        </div>
+            <div class="card h-100" style="cursor: pointer;" onclick="${clickAction}">
+                <img src="${thumbnailURL}" class="card-img-top project-image w-100" alt="${project.title || 'Project'}" 
+                onerror="this.src='https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'">
+                <div class="card-body">
+                    <h5 class="card-title">${project.title || 'Untitled'}</h5>
+                    <p class="card-text">${project.description ? project.description.substring(0, 100) + '...' : 'No description'}</p>
+                    <div class="project-meta">
+                        <span class="project-author">By <a href="/profile/${project.userId}">${project.userName || 'Unknown'}</a></span>
+                        <span class="project-views"><i class="fas fa-eye"></i> ${project.views || 0}</span>
+                        <span class="project-likes"><i class="fas fa-heart"></i> ${project.likes || 0}</span>
+                    </div>
+                    <div class="project-tags">
+                        ${(project.tags || []).map(tag => `<span class="tag">${tag}</span>`).join('')}
                     </div>
                 </div>
             </div>
+        </div>
     `;
 }
 

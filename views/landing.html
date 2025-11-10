@@ -3,241 +3,130 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShareCase - Showcase Student Innovation</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
-
+    <title>ShareCase | Showcase Your Future</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" integrity="sha512-Fo3rlrZj/k7ujTnHg4CGR2D7kSs0v4LLanw2qksYuRlEzO+tcaEPQogQ0KaoGN26/zrn20ImR1DfuLWnOo7aBA==" crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="/css/_base.css">
+    <link rel="stylesheet" href="/css/_header.css">
+    <link rel="stylesheet" href="/css/landing.css">
     <style>
-        /* Base Styles */
-        body {
-            font-family: 'Roboto', sans-serif;
-            background: #f0f4f8;
-            color: #212529;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            margin: 0;
-            overflow-x: hidden;
-        }
-
-        .container {
-            max-width: 1140px;
-            margin: 0 auto;
-            padding: 0 15px;
-        }
-
-        /* Header */
-        header {
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-            background: rgba(255, 255, 255, 0.98);
-            backdrop-filter: blur(8px);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-            padding: 15px 30px;
-            text-align: center;
-        }
-
-        .header-logo-img {
-            height: 60px; /* Clean, prominent size */
-            transition: transform 0.3s ease;
-            filter: drop-shadow(0 0 6px rgba(0, 191, 255, 0.3));
-        }
-
-        .header-logo-img:hover {
-            transform: scale(1.05);
-        }
-
-        nav {
-            margin-top: 15px;
-        }
-
-        nav a {
-            margin: 0 10px;
-            text-decoration: none;
-        }
-
-        /* Hero Section */
-        .hero-section {
-            background: linear-gradient(180deg, #e0f0ff 0%, #f0f4f8 100%);
-            padding: 80px 0;
-            color: #1e3a8a;
-            text-align: center;
-        }
-
-        .hero-title {
-            font-family: 'Poppins', sans-serif;
-            font-size: 2.8rem;
-            font-weight: 700;
-            margin-bottom: 15px;
-            line-height: 1.2;
-        }
-
-        .hero-subtitle {
-            font-size: 1.1rem;
-            max-width: 650px;
-            margin: 0 auto 30px;
-            color: #4b5e9b;
-        }
-
-        /* Buttons */
-        .btn-cta-primary {
-            background: #00bfff;
-            border: none;
-            color: white;
-            padding: 12px 28px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            border-radius: 25px;
-            transition: all 0.3s ease;
-        }
-
-        .btn-cta-primary:hover {
-            background: #00aaff;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 191, 255, 0.2);
-        }
-
-        .btn-cta-secondary {
-            background: transparent;
-            border: 2px solid #4b5e9b;
-            color: #4b5e9b;
-            padding: 10px 26px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            border-radius: 25px;
-            transition: all 0.3s ease;
-        }
-
-        .btn-cta-secondary:hover {
-            background: #4b5e9b;
-            color: white;
-        }
-
-        /* Preview Box */
-        .preview-box {
-            background: #ffffff;
-            border-radius: 10px;
-            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
-            padding: 15px 25px;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            color: #1e3a8a;
-            display: inline-block;
-            margin-top: 30px;
-        }
-
-        .preview-box:hover {
-            box-shadow: 0 5px 15px rgba(0, 191, 255, 0.15);
-        }
-
-        /* Feature Section */
-        .why-sharecase {
-            padding: 60px 0;
-            background: #ffffff;
-        }
-
-        .feature-card {
-            background: #f8fafc;
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
-            text-align: center;
-            transition: all 0.3s ease;
-        }
-
-        .feature-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 191, 255, 0.1);
-        }
-
-        .feature-icon {
-            font-size: 2.5rem;
-            color: #00bfff;
-            margin-bottom: 15px;
-        }
-
-        /* Footer */
-        footer {
-            background: #1e3a8a;
-            color: white;
-            padding: 15px 0;
-            text-align: center;
-            margin-top: auto;
+        /* Temporarily boosting logo size here for safety until fixed in CSS */
+        .logo img {
+            height: 120px; 
         }
     </style>
 </head>
 <body>
-    <header>
+    <header class="d-flex justify-content-between align-items-center bg-white shadow-sm">
         <div class="logo">
-            <a href="/index.html">
-                <img src="https://res.cloudinary.com/dphfedhek/image/upload/v1754618730/sharecase-logo.png" alt="ShareCase Logo" class="header-logo-img">
+            <a href="/">
+                <img src="https://res.cloudinary.com/dphfedhek/image/upload/sharecase-logo.png" alt="ShareCase Logo" style="height: 120px;">
             </a>
         </div>
-        <nav>
-            <a href="/index.html" class="btn btn-cta-secondary">Browse Projects</a>
-            <a href="/signup.html" class="btn btn-cta-primary">Get Started</a>
-            <a href="/login.html" class="btn btn-cta-secondary">Log In</a>
-        </nav>
+        <div id="authControls" class="d-flex align-items-center">
+            <a href="/login.html" class="btn btn-primary btn-lg me-3">Log In</a>
+            <a href="/signup.html" class="btn btn-outline-primary btn-lg">Join ShareCase</a>
+        </div>
     </header>
-    
+
     <main>
-        <section class="hero-section">
+        <section class="hero-section text-center py-5">
             <div class="container">
-                <h1 class="hero-title">Elevate Your Academic Portfolio</h1>
-                <p class="hero-subtitle">
-                    Showcase your innovative projects—3D models, papers, or art—with ShareCase for faculty, peers, and employers.
-                </p>
-                <div class="d-flex justify-content-center gap-3">
-                    <a href="/signup.html" class="btn btn-cta-primary">
-                        <i class="fas fa-rocket me-2"></i> Create Portfolio
-                    </a>
-                    <a href="/login.html" class="btn btn-cta-secondary">Log In</a>
-                </div>
-                <a href="/index.html" class="preview-box">
-                    <div class="d-flex justify-content-center align-items-center">
-                        <i class="fas fa-search me-2"></i>
-                        <span class="fs-5 fw-medium">Explore Projects (No Account Needed)</span>
+                <div class="row align-items-center">
+                    <div class="col-lg-7 mx-auto">
+                        <h1 class="display-3 fw-bold mb-4">
+                            Go Beyond the GPA. <span class="text-primary">Show Your Impact.</span>
+                        </h1>
+                        <p class="lead mb-4">
+                            <strong>ShareCase</strong> is the digital portfolio platform for showcasing your <strong>technical projects, artistic brilliance, and real-world skills</strong> to top employers and faculty.
+                        </p>
+                        <a href="/signup.html" class="btn btn-success btn-xl me-3 mb-2 animate__animated animate__pulse">
+                            Get Started - It's Free! <i class="fas fa-arrow-right ms-2"></i>
+                        </a>
+                        <a href="/index.html" class="btn btn-outline-dark btn-lg mb-2">
+                            Explore Projects <i class="fas fa-search ms-2"></i>
+                        </a>
                     </div>
-                </a>
+                </div>
+            </div>
+        </section>
+        
+        <hr class="my-5">
+
+        <section class="how-it-works-section py-5 bg-white">
+            <div class="container">
+                <h2 class="text-center fw-bold mb-5 text-dark">How It Works: Showcase Your Abilities</h2>
+                <div class="row text-center">
+                    <div class="col-md-4 mb-4">
+                        <div class="icon-lg bg-primary text-white mx-auto mb-3"><i class="fas fa-upload"></i></div>
+                        <h4 class="fw-semibold">1. Upload Your Projects</h4>
+                        <p class="text-muted">Create project pages for your best work. Easily include images, videos, and <strong>interactive 3D models</strong> (for Engineering projects).</p>
+                    </div>
+                    <div class="col-md-4 mb-4">
+                        <div class="icon-lg bg-success text-white mx-auto mb-3"><i class="fas fa-share-alt"></i></div>
+                        <h4 class="fw-semibold">2. Get Your Public Profile Link</h4>
+                        <p class="text-muted">Once your projects are live, we generate a permanent link to your <strong>verified ShareCase profile</strong>.</p>
+                    </div>
+                    <div class="col-md-4 mb-4">
+                        <div class="icon-lg bg-warning text-white mx-auto mb-3"><i class="fab fa-linkedin-in"></i></div>
+                        <h4 class="fw-semibold">3. Link to Key Career Sites</h4>
+                        <p class="text-muted">Add your ShareCase link directly to your LinkedIn profile, Handshake account, or job applications to instantly validate your skills.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <hr class="my-5">
+
+        <section class="value-section py-5 bg-light">
+            <div class="container">
+                <h2 class="text-center fw-bold mb-5 text-dark">Why ShareCase? Your Abilities, Amplified.</h2>
+                <div class="row text-center">
+                    <div class="col-md-4 mb-4">
+                        <div class="icon-circle bg-white shadow-sm p-4 mx-auto mb-3">
+                            <i class="fas fa-cubes fa-2x text-primary"></i>
+                        </div>
+                        <h4 class="fw-semibold">Interactive Showcases</h4>
+                        <p class="text-muted">Upload interactive media that static resumes can't capture. Prove your hands-on ability.</p>
+                    </div>
+                    <div class="col-md-4 mb-4">
+                        <div class="icon-circle bg-white shadow-sm p-4 mx-auto mb-3">
+                            <i class="fas fa-chart-line fa-2x text-success"></i>
+                        </div>
+                        <h4 class="fw-semibold">Recruiter Visibility</h4>
+                        <p class="text-muted">Our platform attracts employers looking for proven talent. Get seen for your <strong>actual work</strong>, not just your transcript keywords.</p>
+                    </div>
+                    <div class="col-md-4 mb-4">
+                        <div class="icon-circle bg-white shadow-sm p-4 mx-auto mb-3">
+                            <i class="fas fa-file-pdf fa-2x text-warning"></i>
+                        </div>
+                        <h4 class="fw-semibold">Career Ready Portfolio</h4>
+                        <p class="text-muted">Generate a clean, professional PDF portfolio with custom options—ready for your </strong>internship and job applications.<strong></p>
+                    </div>
+                </div>
             </div>
         </section>
 
-        <section class="why-sharecase">
+        <hr class="my-5">
+
+        <section class="cta-section text-center py-5">
             <div class="container">
-                <h2 class="text-center mb-4 fw-bold">Why ShareCase?</h2>
-                <div class="row g-4">
-                    <div class="col-md-4">
-                        <div class="feature-card">
-                            <i class="fas fa-file-invoice feature-icon"></i>
-                            <h3>Professional PDFs</h3>
-                            <p class="text-muted">Generate customizable, print-ready portfolios for job applications or grad school.</p>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="feature-card">
-                            <i class="fas fa-cubes feature-icon"></i>
-                            <h3>Visualize Work</h3>
-                            <p class="text-muted">Support for 3D files, art, and code demos to showcase your projects fully.</p>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="feature-card">
-                            <i class="fas fa-chart-line feature-icon"></i>
-                            <h3>Faculty Analytics</h3>
-                            <p class="text-muted">Track project impact and engagement with the Admin Dashboard.</p>
-                        </div>
-                    </div>
-                </div>
+                <h2 class="fw-bolder mb-3">Stop Telling. Start Showing.</h2>
+                <p class="lead mb-4">Your next opportunity starts here. Join thousands of students standing out today.</p>
+                <a href="/signup.html" class="btn btn-primary btn-xl">
+                    Create Your Free Portfolio <i class="fas fa-user-plus ms-2"></i>
+                </a>
             </div>
         </section>
     </main>
     
     <footer>
-        <p class="py-2 mb-0">© 2025 ShareCase. Empowering Innovation.</p>
+        <p>© 2025 ShareCase. All rights reserved.</p>
     </footer>
-    
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/scripts.js"></script>
 </body>
 </html>

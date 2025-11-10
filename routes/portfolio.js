@@ -1,4 +1,4 @@
-// routes/portfolio.js (Phase 1 Update)
+// routes/portfolio.js
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
@@ -6,6 +6,7 @@ const Project = require('../models/Project');
 const { isAuthenticated } = require('../middleware/auth');
 const PDFDocument = require('pdfkit');
 const https = require('https');
+const mongoose = require('mongoose'); // Import mongoose for ID validation
 
 // Helper function to fetch image from URL and return a buffer
 const fetchImageAsBuffer = (url) => {
@@ -41,6 +42,7 @@ async function generatePortfolio(user, projects, settings, res) {
 
     try {
         console.log('Registering fonts');
+        // NOTE: Ensure these font files exist in the specified path
         doc.registerFont('Roboto', 'public/fonts/Roboto-Regular.ttf');
         doc.registerFont('Roboto-Bold', 'public/fonts/Roboto-Bold.ttf');
     } catch (error) {
@@ -77,7 +79,7 @@ async function generatePortfolio(user, projects, settings, res) {
     doc.moveDown(0.5);
 
     if (projects.length === 0) {
-        doc.font('Roboto').fontSize(12).text('No published projects available to display.', { align: 'center' });
+        doc.font('Roboto').fontSize(12).text('No selected projects available to display.', { align: 'center' });
     } else {
         for (const [index, p] of projects.entries()) {
             console.log(`Adding project ${index + 1}: ${p.title}`);
@@ -175,7 +177,8 @@ async function generatePortfolio(user, projects, settings, res) {
 
 router.post('/generate', isAuthenticated, async (req, res) => {
     try {
-        const { format, primaryColor, accentColor, contentToggles } = req.body;
+        // Capture new parameter: selectedProjectIds
+        const { format, primaryColor, accentColor, contentToggles, selectedProjectIds } = req.body; 
         const userId = req.session.userId;
         
         if (!userId) {
@@ -185,12 +188,30 @@ router.post('/generate', isAuthenticated, async (req, res) => {
             return res.status(400).json({ success: false, error: 'Invalid or unsupported portfolio format.' });
         }
         
+        // 🛑 FIX: Validate and filter the selectedProjectIds array
+        let validProjectIds = [];
+        if (Array.isArray(selectedProjectIds)) {
+            // Filter out non-string/empty/invalid ObjectId formats to prevent CastError
+            validProjectIds = selectedProjectIds.filter(id => 
+                id && typeof id === 'string' && mongoose.Types.ObjectId.isValid(id)
+            );
+        }
+        
+        if (validProjectIds.length === 0) {
+             return res.status(400).json({ success: false, error: 'No valid published projects were selected for generation.' });
+        }
+        
         const user = await User.findById(userId).select('name email linkedin profilePic');
         if (!user) {
             return res.status(404).json({ success: false, error: 'User not found.' });
         }
         
-        const projects = await Project.find({ userId: userId, isPublished: true })
+        // 🛑 QUERY: Filter projects based on the validated IDs array
+        const projects = await Project.find({ 
+                userId: userId, 
+                isPublished: true,
+                _id: { $in: validProjectIds } // Use the filtered array
+            })
             .populate('collaborators', 'name')
             .lean();
 
@@ -199,6 +220,7 @@ router.post('/generate', isAuthenticated, async (req, res) => {
         
     } catch (error) {
         console.error('Portfolio generation API error:', error);
+        // The CastError should be handled by the filter above, but if another error occurs:
         res.status(500).json({ success: false, error: error.message || 'Internal server error.' });
     }
 });

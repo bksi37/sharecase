@@ -126,6 +126,7 @@
                     <a href="/settings.html" class="dropdown-item">Settings</a>
                     <a href="/upload-project.html" class="dropdown-item">Upload Project</a>
                     <a id="adminDashboardLink" href="/admin/dashboard.html" class="dropdown-item" style="display: none;">Admin Dashboard</a>
+                    <a id="careerCenterDashboardLink" href="/admin/career-center-dashboard.html" class="dropdown-item" style="display: none;">Career Center Dashboard</a>
                     <a id="logoutLink" href="/logout" class="dropdown-item">Logout</a>
                     <a href="/about.html" class="dropdown-item">About</a>
                     <div class="dropdown-item-text text-muted small mt-2">
@@ -233,295 +234,322 @@
             </div>
         </div>
     </main>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+<script src="/js/scripts.js"></script>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
-    <script src="/js/scripts.js"></script>
+<script>
+    // Expose for scripts.js
+    window.currentLoggedInUserId = null;
+    window.deleteComment = deleteComment; // Expose globally for inline use
 
-    <script>
-        // Expose for scripts.js
-        window.currentLoggedInUserId = null;
-        window.deleteComment = deleteComment; // Expose globally for inline use
-
-        document.addEventListener('DOMContentLoaded', async () => {
-            // Load user profile first (handles visibility of auth/user-menu)
-            await window.loadUserProfileInHeader(); 
-            const userId = window.currentLoggedInUserId; 
-            
-            // Load project
-            loadProject(userId);
-
-            // Load filters (if defined elsewhere)
-            if (typeof loadDynamicFilterOptions === 'function') {
-                loadDynamicFilterOptions();
-            }
-        });
-
-        // Toggle comment form
-        document.getElementById('toggleCommentFormBtn')?.addEventListener('click', () => {
-            const container = document.getElementById('commentFormContainer');
-            const userId = window.currentLoggedInUserId;
-            
-            if (!userId) {
-                // If not logged in, show prompt and hide form controls
-                document.getElementById('commentLoginPrompt').style.display = 'block';
-                document.getElementById('commentText').style.display = 'none';
-                container.querySelector('button[type="submit"]').style.display = 'none';
-                container.style.display = container.style.display === 'none' ? 'block' : 'none';
-            } else {
-                // Logged in user: show form
-                document.getElementById('commentLoginPrompt').style.display = 'none';
-                document.getElementById('commentText').style.display = 'block';
-                container.querySelector('button[type="submit"]').style.display = 'block';
-                container.style.display = container.style.display === 'none' ? 'block' : 'none';
-                if (container.style.display === 'block') {
-                    document.getElementById('commentText').focus();
-                }
-            }
-        });
+    document.addEventListener('DOMContentLoaded', async () => {
+        // Load user profile first (handles visibility of auth/user-menu)
+        await window.loadUserProfileInHeader(); 
+        const userId = window.currentLoggedInUserId; 
         
-        // --- Core Project Load Logic ---
-        async function loadProject(userId) {
-            const urlParams = new URLSearchParams(window.location.search);
-            const projectId = urlParams.get('id');
-            if (!projectId) {
-                document.getElementById('projectTitle').textContent = 'Invalid Project';
-                return;
+        // Load project
+        loadProject(userId);
+
+        // Load filters (if defined elsewhere)
+        if (typeof loadDynamicFilterOptions === 'function') {
+            loadDynamicFilterOptions();
+        }
+    });
+
+    // Toggle comment form
+    document.getElementById('toggleCommentFormBtn')?.addEventListener('click', () => {
+        const container = document.getElementById('commentFormContainer');
+        const userId = window.currentLoggedInUserId;
+        
+        if (!userId) {
+            // If not logged in, show prompt and hide form controls
+            document.getElementById('commentLoginPrompt').style.display = 'block';
+            document.getElementById('commentText').style.display = 'none';
+            container.querySelector('button[type="submit"]').style.display = 'none';
+            container.style.display = container.style.display === 'none' ? 'block' : 'none';
+        } else {
+            // Logged in user: show form
+            document.getElementById('commentLoginPrompt').style.display = 'none';
+            document.getElementById('commentText').style.display = 'block';
+            container.querySelector('button[type="submit"]').style.display = 'block';
+            container.style.display = container.style.display === 'none' ? 'block' : 'none';
+            if (container.style.display === 'block') {
+                document.getElementById('commentText').focus();
+            }
+        }
+    });
+    
+    // --- Core Project Load Logic (FIXED LINKS) ---
+    async function loadProject(userId) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const projectId = urlParams.get('id');
+        if (!projectId) {
+            document.getElementById('projectTitle').textContent = 'Invalid Project';
+            return;
+        }
+
+        try {
+            // Backend route is now public, credentials 'include' handles logged-in state
+            const response = await fetch(`/projects/project/${projectId}`, { credentials: 'include' });
+            if (!response.ok) throw new Error('Failed to fetch project');
+            const project = await response.json();
+
+            // 1. Core Info
+            document.getElementById('projectTitle').textContent = project.title;
+            
+            // 🛑 FIX: Project Author Link 🛑
+            document.getElementById('projectAuthor').innerHTML = `<a href="/profile/${project.userId}" class="text-decoration-none text-dark">${project.userName}</a>`;
+
+            document.getElementById('projectViews').textContent = project.views || 0;
+            document.getElementById('projectLikes').textContent = project.likes || 0;
+            
+            // 2. Conditional Description & Problem Statement
+            const desc = project.description || '';
+            const problem = project.problemStatement || '';
+
+            document.getElementById('projectDescription').textContent = desc || 'No description provided.';
+            
+            document.getElementById('problemStatementContainer').style.display = problem ? 'block' : 'none';
+            document.getElementById('problemStatement').textContent = problem;
+
+
+            // 3. Media (Retained Dual Media Logic for Engineering)
+            const mediaContainer = document.getElementById('dynamicMediaContainer');
+            let mediaHtml = '';
+            let cadFileLink = project.projectDetails?.CADFileLink;
+            let mainImageUrl = project.image || 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg';
+            let isDefaultImage = mainImageUrl.includes('default-project.jpg');
+
+            if (project.projectType === 'Engineering') {
+                if (cadFileLink) {
+                    mediaHtml += `
+                        <h3 class="section-title">3D Model Viewer</h3>
+                        <model-viewer src="${cadFileLink}" camera-controls auto-rotate shadow-intensity="1" style="width:100%; height:500px; border-radius:12px; margin-bottom: 25px;"></model-viewer>
+                    `;
+                    if (!isDefaultImage) {
+                        mediaHtml += `
+                            <h3 class="section-title">Project Card Image</h3>
+                            <img src="${mainImageUrl}" alt="${project.title} Image" class="img-fluid rounded" style="width:100%; max-height: 80vh; object-fit:contain; border-radius:12px;">
+                        `;
+                    }
+                } else if (!isDefaultImage) {
+                    mediaHtml = `
+                        <img src="${mainImageUrl}" alt="${project.title} Image" class="img-fluid rounded" style="width:100%; max-height: 80vh; object-fit:contain; border-radius:12px;">
+                    `;
+                } else {
+                    mediaHtml = `<div class="text-muted text-center py-5">No media provided for this project.</div>`;
+                }
+            } else if (project.projectType === 'Art' && project.projectDetails?.artworkImage) {
+                mediaHtml = `
+                    <img src="${project.projectDetails.artworkImage}" alt="${project.title} Artwork" class="img-fluid rounded" style="width:100%; max-height: 80vh; object-fit:contain; border-radius:12px;">
+                `;
+            } else {
+                mediaHtml = `
+                    <img src="${mainImageUrl}" alt="${project.title} Image" class="img-fluid rounded" style="width:100%; max-height: 80vh; object-fit:contain; border-radius:12px;">
+                `;
             }
 
-            try {
-                // Backend route is now public, credentials 'include' handles logged-in state
-                const response = await fetch(`/projects/project/${projectId}`, { credentials: 'include' });
-                if (!response.ok) throw new Error('Failed to fetch project');
-                const project = await response.json();
+            mediaContainer.innerHTML = mediaHtml;
 
-                // 1. Core Info
-                document.getElementById('projectTitle').textContent = project.title;
-                document.getElementById('projectAuthor').innerHTML = `<a href="/profile.html?id=${project.userId}" class="text-decoration-none text-dark">${project.userName}</a>`;
-                document.getElementById('projectViews').textContent = project.views || 0;
-                document.getElementById('projectLikes').textContent = project.likes || 0;
-                
-                // 2. Conditional Description & Problem Statement
-                const desc = project.description || '';
-                const problem = project.problemStatement || '';
+            // 4. Conditional Dynamic Details
+            const detailsContainer = document.getElementById('projectDetailsContainer');
+            let detailsContent = '';
 
-                document.getElementById('projectDescription').textContent = desc || 'No description provided.';
-                
-                document.getElementById('problemStatementContainer').style.display = problem ? 'block' : 'none';
-                document.getElementById('problemStatement').textContent = problem;
-
-
-                // 3. Media
-                const mediaContainer = document.getElementById('dynamicMediaContainer');
-                let mediaHtml = '';
-
-                if (project.projectType === 'Engineering' && project.projectDetails?.CADFileLink) {
-                    mediaHtml = `<model-viewer src="${project.projectDetails.CADFileLink}" camera-controls auto-rotate shadow-intensity="1" style="width:100%; height:500px; border-radius:12px;"></model-viewer>`;
-                } else if (project.projectType === 'Art' && project.projectDetails?.artworkImage) {
-                    // Use object-fit: contain to ensure full image visibility without cropping
-                    mediaHtml = `<img src="${project.projectDetails.artworkImage}" alt="${project.title}" class="img-fluid rounded" style="width:100%; max-height: 80vh; object-fit:contain; border-radius:12px;">`;
-                } else {
-                    // Fallback to main project image
-                    mediaHtml = `<img src="${project.image || 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg'}" alt="${project.title}" class="img-fluid rounded" style="width:100%; max-height: 80vh; object-fit:contain; border-radius:12px;">`;
-                }
-                mediaContainer.innerHTML = mediaHtml;
-
-                // 4. Conditional Dynamic Details
-                const detailsContainer = document.getElementById('projectDetailsContainer');
-                let detailsContent = '';
-
-                // Engineering Details
-                if (project.projectType === 'Engineering') {
-                    const techDesc = project.projectDetails?.technicalDescription;
-                    const tools = project.projectDetails?.toolsSoftware;
-                    const goals = project.projectDetails?.functionalGoals;
-                    if (techDesc || (tools && tools.length > 0) || goals) {
-                         detailsContent = `
+            // Engineering Details
+            if (project.projectType === 'Engineering') {
+                const techDesc = project.projectDetails?.technicalDescription;
+                const tools = project.projectDetails?.toolsSoftware;
+                const goals = project.projectDetails?.functionalGoals;
+                if (techDesc || (tools && tools.length > 0) || goals) {
+                        detailsContent = `
                             <h3 class="section-title">Technical Details</h3>
                             ${techDesc ? `<p><strong>Technical Description:</strong><br> <span class="content-text">${techDesc}</span></p>` : ''}
                             ${(tools && tools.length > 0) ? `<p><strong>Tools/Software:</strong> <span class="content-text">${tools.join(', ')}</span></p>` : ''}
                             ${goals ? `<p><strong>Functional Goals:</strong><br> <span class="content-text">${goals}</span></p>` : ''}
                         `;
                         detailsContainer.style.display = 'block';
-                    } else {
-                        detailsContainer.style.display = 'none';
-                    }
-                // Art Details
-                } else if (project.projectType === 'Art') {
-                    const medium = project.projectDetails?.mediumTechnique;
-                    const statement = project.projectDetails?.artistStatement;
-                    if (medium || statement) {
-                        detailsContent = `
-                            <h3 class="section-title">Artist Details</h3>
-                            ${medium ? `<p><strong>Medium/Technique:</strong> <span class="content-text">${medium}</span></p>` : ''}
-                            ${statement ? `<p><strong>Artist Statement:</strong><br> <span class="content-text">${statement}</span></p>` : ''}
-                        `;
-                        detailsContainer.style.display = 'block';
-                    } else {
-                        detailsContainer.style.display = 'none';
-                    }
                 } else {
                     detailsContainer.style.display = 'none';
                 }
-                detailsContainer.innerHTML = detailsContent;
-
-                // 5. Conditional Info Block (Tags/Contributors/Resources)
-                const tags = project.tags || [];
-                const collaborators = project.collaborators || [];
-                const otherContributors = project.otherContributors || '';
-                const resources = project.resources || [];
-                
-                const hasContributors = collaborators.length > 0 || otherContributors;
-                const hasResources = resources.length > 0;
-                const hasTags = tags.length > 0;
-                
-                // Show/Hide Tags separately, located above other auxiliary info
-                document.getElementById('projectTagsContainer').style.display = hasTags ? 'block' : 'none';
-                document.getElementById('projectTags').innerHTML = tags
-                    .map(tag => `<span class="tag badge bg-info me-1">${tag}</span>`).join('') || '';
-
-                // Show/Hide Contributors/Resources section
-                document.getElementById('collaboratorInfoContainer').style.display = hasContributors || hasResources ? 'block' : 'none';
-
-                // Render Contributors
-                document.getElementById('collaboratorListContainer').style.display = collaborators.length > 0 ? 'block' : 'none';
-                document.getElementById('collaboratorList').innerHTML = collaborators
-                    .map(c => `<a href="/profile.html?id=${c._id}" class="text-decoration-none">${c.name}</a>`).join(', ') || '';
-                    
-                document.getElementById('otherContributorsContainer').style.display = otherContributors ? 'block' : 'none';
-                document.getElementById('otherContributors').textContent = otherContributors;
-
-                // Render Resources
-                document.getElementById('resourcesContainer').style.display = hasResources ? 'block' : 'none';
-                document.getElementById('projectResources').innerHTML = resources
-                    .map(r => `<a href="${r}" target="_blank" class="text-decoration-none small">${r.replace(/(^\w+:|^)\/\//, '').split('/').shift()}...</a>`).join(', ') || '';
-
-
-                // 6. Like Button (Visible only if logged in)
-                const likeBtn = document.getElementById('likeButton');
-                const isLiked = project.likedBy?.includes(userId);
-                
-                if (userId) {
-                    likeBtn.style.display = 'block';
-                    likeBtn.innerHTML = isLiked 
-                        ? '<i class="fas fa-heart me-2"></i> Liked'
-                        : '<i class="fas fa-heart me-2"></i> Like';
-                    likeBtn.className = isLiked ? 'btn btn-primary' : 'btn btn-outline-primary';
-                    // Assuming toggleLike is available globally
-                    likeBtn.onclick = () => toggleLike(project.id, userId, () => loadProject(userId));
+            // Art Details
+            } else if (project.projectType === 'Art') {
+                const medium = project.projectDetails?.mediumTechnique;
+                const statement = project.projectDetails?.artistStatement;
+                if (medium || statement) {
+                    detailsContent = `
+                        <h3 class="section-title">Artist Details</h3>
+                        ${medium ? `<p><strong>Medium/Technique:</strong> <span class="content-text">${medium}</span></p>` : ''}
+                        ${statement ? `<p><strong>Artist Statement:</strong><br> <span class="content-text">${statement}</span></p>` : ''}
+                    `;
+                    detailsContainer.style.display = 'block';
                 } else {
-                    likeBtn.style.display = 'none';
+                    detailsContainer.style.display = 'none';
                 }
-
-                // 7. Comments
-                renderComments(project, userId, project.userId);
-                bindCommentForm(project.id, userId);
-
-            } catch (error) {
-                console.error('Error loading project:', error);
-                document.getElementById('projectTitle').textContent = 'Error Loading Project';
+            } else {
+                detailsContainer.style.display = 'none';
             }
+            detailsContainer.innerHTML = detailsContent;
+
+            // 5. Conditional Info Block (Tags/Contributors/Resources)
+            const tags = project.tags || [];
+            const collaborators = project.collaborators || [];
+            const otherContributors = project.otherContributors || '';
+            const resources = project.resources || [];
+            
+            const hasContributors = collaborators.length > 0 || otherContributors;
+            const hasResources = resources.length > 0;
+            const hasTags = tags.length > 0;
+            
+            // Show/Hide Tags separately, located above other auxiliary info
+            document.getElementById('projectTagsContainer').style.display = hasTags ? 'block' : 'none';
+            document.getElementById('projectTags').innerHTML = tags
+                .map(tag => `<span class="tag badge bg-info me-1">${tag}</span>`).join('') || '';
+
+            // Show/Hide Contributors/Resources section
+            document.getElementById('collaboratorInfoContainer').style.display = hasContributors || hasResources ? 'block' : 'none';
+
+            // Render Contributors
+            document.getElementById('collaboratorListContainer').style.display = collaborators.length > 0 ? 'block' : 'none';
+            
+            // 🛑 FIX: Collaborator Links 🛑
+            document.getElementById('collaboratorList').innerHTML = collaborators
+                .map(c => `<a href="/profile/${c._id || c.id}" class="text-decoration-none">${c.name}</a>`).join(', ') || '';
+                
+            document.getElementById('otherContributorsContainer').style.display = otherContributors ? 'block' : 'none';
+            document.getElementById('otherContributors').textContent = otherContributors;
+
+            // Render Resources
+            document.getElementById('resourcesContainer').style.display = hasResources ? 'block' : 'none';
+            document.getElementById('projectResources').innerHTML = resources
+                .map(r => `<a href="${r}" target="_blank" class="text-decoration-none small">${r.replace(/(^\w+:|^)\/\//, '').split('/').shift()}...</a>`).join(', ') || '';
+
+
+            // 6. Like Button (Visible only if logged in)
+            const likeBtn = document.getElementById('likeButton');
+            const isLiked = project.likedBy?.includes(userId);
+            
+            if (userId) {
+                likeBtn.style.display = 'block';
+                likeBtn.innerHTML = isLiked 
+                    ? '<i class="fas fa-heart me-2"></i> Liked'
+                    : '<i class="fas fa-heart me-2"></i> Like';
+                likeBtn.className = isLiked ? 'btn btn-primary' : 'btn btn-outline-primary';
+                // Assuming toggleLike is available globally
+                likeBtn.onclick = () => toggleLike(project.id, userId, () => loadProject(userId));
+            } else {
+                likeBtn.style.display = 'none';
+            }
+
+            // 7. Comments
+            renderComments(project, userId, project.userId);
+            bindCommentForm(project.id, userId);
+
+        } catch (error) {
+            console.error('Error loading project:', error);
+            document.getElementById('projectTitle').textContent = 'Error Loading Project';
+        }
+    }
+
+    // Render Comments (Function remains mostly the same, ensuring delete works)
+    function renderComments(project, currentUserId, projectAuthorId) {
+        const container = document.getElementById('commentsList');
+        const countDisplay = document.getElementById('commentCountDisplay');
+        const comments = project.comments || [];
+
+        countDisplay.textContent = comments.length;
+        if (comments.length === 0) {
+            container.innerHTML = `<p class="text-muted text-center py-3">No comments yet. Be the first!</p>`;
+            return;
         }
 
-        // Render Comments (Function remains mostly the same, ensuring delete works)
-        function renderComments(project, currentUserId, projectAuthorId) {
-            const container = document.getElementById('commentsList');
-            const countDisplay = document.getElementById('commentCountDisplay');
-            const comments = project.comments || [];
-
-            countDisplay.textContent = comments.length;
-            if (comments.length === 0) {
-                container.innerHTML = `<p class="text-muted text-center py-3">No comments yet. Be the first!</p>`;
-                return;
-            }
-
-            container.innerHTML = comments.map(comment => {
-                // Can delete if: Logged in AND (comment owner OR project owner)
-                const canDelete = currentUserId && (comment.userId === currentUserId || projectAuthorId === currentUserId);
-                return `
-                    <div class="comment-item-custom d-flex justify-content-between align-items-start">
-                        <div class="d-flex align-items-start flex-grow-1">
-                            <img src="${comment.userProfilePic}" alt="${comment.userName}" class="rounded-circle me-3" style="width: 36px; height: 36px; object-fit: cover;">
-                            <div class="author-info">
-                                <strong><a href="/profile.html?id=${comment.userId}" class="text-decoration-none">${comment.userName}</a></strong>
-                                <small class="text-muted ms-2">${new Date(comment.timestamp).toLocaleString()}</small>
-                                <p class="mb-0 comment-text-body">${comment.text}</p>
-                            </div>
+        container.innerHTML = comments.map(comment => {
+            // Can delete if: Logged in AND (comment owner OR project owner)
+            const canDelete = currentUserId && (comment.userId === currentUserId || projectAuthorId === currentUserId);
+            return `
+                <div class="comment-item-custom d-flex justify-content-between align-items-start">
+                    <div class="d-flex align-items-start flex-grow-1">
+                        <img src="${comment.userProfilePic}" alt="${comment.userName}" class="rounded-circle me-3" style="width: 36px; height: 36px; object-fit: cover;">
+                        <div class="author-info">
+                            <strong><a href="/profile/${comment.userId}" class="text-decoration-none">${comment.userName}</a></strong>
+                            <small class="text-muted ms-2">${new Date(comment.timestamp).toLocaleString()}</small>
+                            <p class="mb-0 comment-text-body">${comment.text}</p>
                         </div>
-                        ${canDelete ? `
-                            <button class="btn btn-link text-danger btn-sm" onclick="deleteComment('${project.id}', '${comment._id}')" title="Delete">
-                                <i class="fas fa-trash-alt fa-xs"></i>
-                            </button>
-                        ` : ''}
                     </div>
-                `;
-            }).join('');
-        }
-        
-        // Delete Comment Function (Exposed globally)
-        async function deleteComment(projectId, commentId) {
-            if (!confirm('Are you sure you want to delete this comment?')) return;
-            const userId = window.currentLoggedInUserId;
-            if (!userId) {
-                Toastify({ text: 'You must be logged in to perform this action.', style: { background: '#ef4444' } }).showToast();
-                return;
-            }
-
-            try {
-                const res = await fetch(`/projects/project/${projectId}/comment/${commentId}`, {
-                    method: 'DELETE',
-                    credentials: 'include'
-                });
-
-                if (res.ok) {
-                    Toastify({ text: 'Comment deleted.', style: { background: '#22c55e' } }).showToast();
-                    loadProject(userId); // Reload to update comments list
-                } else {
-                    const err = await res.json().catch(() => ({}));
-                    Toastify({ text: err.message || 'Failed to delete comment.', style: { background: '#ef4444' } }).showToast();
-                }
-            } catch (err) {
-                Toastify({ text: 'Network error.', style: { background: '#ef4444' } }).showToast();
-            }
+                    ${canDelete ? `
+                        <button class="btn btn-link text-danger btn-sm" onclick="deleteComment('${project.id}', '${comment._id}')" title="Delete">
+                            <i class="fas fa-trash-alt fa-xs"></i>
+                        </button>
+                    ` : ''}
+                </div>
+            `;
+        }).join('');
+    }
+    
+    // Delete Comment Function (Exposed globally)
+    async function deleteComment(projectId, commentId) {
+        if (!confirm('Are you sure you want to delete this comment?')) return;
+        const userId = window.currentLoggedInUserId;
+        if (!userId) {
+            Toastify({ text: 'You must be logged in to perform this action.', style: { background: '#ef4444' } }).showToast();
+            return;
         }
 
-        // Bind Comment Form (once)
-        function bindCommentForm(projectId, userId) {
-            const form = document.getElementById('commentForm');
-            if (!form) return;
-            form.onsubmit = (e) => submitComment(e, projectId, userId);
-        }
+        try {
+            const res = await fetch(`/projects/project/${projectId}/comment/${commentId}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
 
-        // Submit Comment
-        async function submitComment(e, projectId, userId) {
-            e.preventDefault();
-            if (!userId) {
-                Toastify({ text: 'Please log in to comment', style: { background: '#ef4444' } }).showToast();
-                return;
+            if (res.ok) {
+                Toastify({ text: 'Comment deleted.', style: { background: '#22c55e' } }).showToast();
+                loadProject(userId); // Reload to update comments list
+            } else {
+                const err = await res.json().catch(() => ({}));
+                Toastify({ text: err.message || 'Failed to delete comment.', style: { background: '#ef4444' } }).showToast();
             }
-            const text = document.getElementById('commentText').value.trim();
-            if (!text) return;
-
-            try {
-                const res = await fetch(`/projects/project/${projectId}/comment`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ text })
-                });
-
-                if (res.ok) {
-                    document.getElementById('commentText').value = '';
-                    document.getElementById('commentFormContainer').style.display = 'none';
-                    loadProject(userId);
-                } else {
-                    const err = await res.json().catch(() => ({}));
-                    Toastify({ text: err.message || 'Failed to post comment', style: { background: '#ef4444' } }).showToast();
-                }
-            } catch (err) {
-                Toastify({ text: 'Network error', style: { background: '#ef4444' } }).showToast();
-            }
+        } catch (err) {
+            Toastify({ text: 'Network error.', style: { background: '#ef4444' } }).showToast();
         }
-    </script>
+    }
+
+    // Bind Comment Form (once)
+    function bindCommentForm(projectId, userId) {
+        const form = document.getElementById('commentForm');
+        if (!form) return;
+        form.onsubmit = (e) => submitComment(e, projectId, userId);
+    }
+
+    // Submit Comment
+    async function submitComment(e, projectId, userId) {
+        e.preventDefault();
+        if (!userId) {
+            Toastify({ text: 'Please log in to comment', style: { background: '#ef4444' } }).showToast();
+            return;
+        }
+        const text = document.getElementById('commentText').value.trim();
+        if (!text) return;
+
+        try {
+            const res = await fetch(`/projects/project/${projectId}/comment`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ text })
+            });
+
+            if (res.ok) {
+                document.getElementById('commentText').value = '';
+                document.getElementById('commentFormContainer').style.display = 'none';
+                loadProject(userId);
+            } else {
+                const err = await res.json().catch(() => ({}));
+                Toastify({ text: err.message || 'Failed to post comment', style: { background: '#ef4444' } }).showToast();
+            }
+        } catch (err) {
+            Toastify({ text: 'Network error', style: { background: '#ef4444' } }).showToast();
+        }
+    }
+</script>
 </body>
 </html>

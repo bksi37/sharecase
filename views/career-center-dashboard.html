@@ -17,7 +17,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
     <style>
-        /* CSS is identical to admin-dashboard.html for visual consistency */
+        /* Shared Dashboard CSS from original prompt (kept for consistency) */
         :root {
             --primary: #00bfff;
             --primary-dark: #009fd9;
@@ -30,30 +30,21 @@
         }
         .dashboard-container { max-width: 1400px; margin: 0 auto; padding: 2rem 1rem; }
         .page-header { text-align: center; margin-bottom: 3rem; padding: 2rem 0; }
-        .page-title { font-size: 2.5rem; font-weight: 700; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 0.5rem; }
+        /* Professional Title Style */
+        .page-title { font-size: 2.5rem; font-weight: 700; color: #1e293b; margin-bottom: 0.5rem; }
         .page-subtitle { color: #6b7280; font-size: 1.1rem; font-weight: 400; }
         .stats-grid { margin-bottom: 3rem; }
-        .stat-card { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border-radius: 20px; padding: 2rem; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 8px 32px rgba(0,0,0,0.1); transition: all 0.3s ease; height: 100%; position: relative; overflow: hidden; }
-        .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, var(--primary), var(--primary-dark)); }
-        .stat-card:hover { transform: translateY(-8px); box-shadow: 0 20px 40px rgba(0,0,0,0.15); }
+        /* Card styles remain the same for color coding */
+        .stat-card { background: #fff; border-radius: 12px; padding: 2rem; border: 1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.05); transition: all 0.3s ease; height: 100%; position: relative; overflow: hidden; }
+        .stat-card:hover { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
         .stat-icon { width: 64px; height: 64px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 1rem; }
-        .stat-primary .stat-icon { background: rgba(0, 191, 255, 0.1); color: var(--primary); }
-        .stat-warning .stat-icon { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
-        .stat-danger .stat-icon { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
-        .stat-success .stat-icon { background: rgba(16, 185, 129, 0.1); color: var(--success); }
         .stat-number { font-size: 2.5rem; font-weight: 700; margin-bottom: 0.25rem; line-height: 1; }
         .stat-label { font-size: 0.95rem; color: #6b7280; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
-        .analytics-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-radius: 20px; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 8px 32px rgba(0,0,0,0.1); overflow: hidden; height: 100%; }
+        .analytics-card { background: #fff; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.05); overflow: hidden; height: 100%; }
         .analytics-header { padding: 1.5rem 2rem; font-weight: 600; font-size: 1.1rem; border-bottom: 1px solid var(--border); }
-        .analytics-primary .analytics-header { background: rgba(0, 191, 255, 0.08); color: var(--primary); border-bottom-color: rgba(0, 191, 255, 0.2); }
-        .analytics-success .analytics-header { background: rgba(16, 185, 129, 0.08); color: var(--success); border-bottom-color: rgba(16, 185, 129, 0.2); }
-        .analytics-info .analytics-header { background: rgba(59, 130, 246, 0.08); color: #3b82f6; border-bottom-color: rgba(59, 130, 246, 0.2); }
-        .analytics-secondary .analytics-header { background: rgba(100, 116, 139, 0.08); color: #64748b; border-bottom-color: rgba(100, 116, 139, 0.2); }
         .analytics-body { padding: 2rem; min-height: 350px; }
         .chart-container { position: relative; height: 300px; margin-top: 1rem; }
-        @media (max-width: 768px) { .dashboard-container { padding: 1rem 0.5rem; } .page-title { font-size: 2rem; } }
-        .loading-skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: loading 1.5s infinite; border-radius: 20px; height: 200px; }
-        @keyframes loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        .explanation-dropdown { text-align: center; margin-bottom: 2rem; }
     </style>
 </head>
 <body>
@@ -75,6 +66,7 @@
                     <a href="/settings.html" class="dropdown-item">Settings</a>
                     <a href="/upload-project.html" class="dropdown-item">Upload Project</a>
                     <a id="adminDashboardLink" href="/admin/dashboard.html" class="dropdown-item">Admin Dashboard</a>
+                    <a id="careerCenterDashboardLink" href="/admin/career-center-dashboard.html" class="dropdown-item" style="display: none;">Career Center Dashboard</a>
                     <a id="logoutLink" href="/logout" class="dropdown-item">Logout</a>
                     <a href="/about.html" class="dropdown-item">About</a>
                     <div class="dropdown-item-text text-muted small mt-2"> Role: <span id="userRoleDisplay"></span><br> Points: <span id="userPointsDisplay"></span> </div>
@@ -90,60 +82,57 @@
     <main>
         <div class="dashboard-container">
             <div class="page-header">
-                <h1 class="page-title"> <i class="fas fa-handshake me-3"></i> Career Center Analytics </h1>
-                <p class="page-subtitle">Platform impact metrics and student career data for funding justification</p>
+                <h1 class="page-title">Career Center Data Portal</h1>
+                <p class="page-subtitle">Strategic Metrics for Student Career Readiness and Employer Engagement</p>
+            </div>
+
+            <div class="explanation-dropdown">
+                <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#explanationCollapse" aria-expanded="false" aria-controls="explanationCollapse">
+                    <i class="fas fa-info-circle me-2"></i> Understand These Metrics
+                </button>
+                <div class="collapse mt-3 text-start" id="explanationCollapse" style="max-width: 800px; margin: 0 auto;">
+                    <div class="card card-body bg-light small">
+                        <p class="fw-bold mb-1 text-primary">Data Integrity Note:</p>
+                        <ul class="list-unstyled mb-0">
+                            <li><span class="fw-bold">External Viewers:</span> Count of site visitors (Recruiters, Faculty, Alumni) who explicitly identified their role via a non-intrusive survey on the landing page. This demonstrates employer interest.</li>
+                            <li><span class="fw-bold">Internship Status:</span> Directly from a voluntary, anonymous poll for verified student users. High value for assessing immediate student needs.</li>
+                            <li><span class="fw-bold">Project & Engagement:</span> Standard metrics used to justify platform activity (ROI).</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
 
             <div class="row row-cols-1 row-cols-md-2 row-cols-lg-5 g-4 stats-grid" id="summaryMetrics">
-                <div class="loading-skeleton col"></div>
-                <div class="loading-skeleton col"></div>
-                <div class="loading-skeleton col"></div>
-                <div class="loading-skeleton col"></div>
-                <div class="loading-skeleton col d-none d-lg-block"></div>
-            </div>
-
-            <div class="row g-4 mb-5">
-                <div class="col-lg-8">
-                    <div class="analytics-card analytics-primary h-100">
-                        <div class="analytics-header">
-                            <i class="fas fa-chart-line me-2"></i> Project & Engagement Analytics
-                        </div>
-                        <div class="analytics-body" id="projectAnalytics">
-                            </div>
-                    </div>
                 </div>
-                <div class="col-lg-4">
-                    <div class="analytics-card analytics-success h-100">
-                        <div class="analytics-header">
-                            <i class="fas fa-bolt me-2"></i> Platform Impact (Views/Engagement)
-                        </div>
-                        <div class="analytics-body">
-                            <div class="chart-container"> <canvas id="impactChart"></canvas> </div>
-                            <div class="mt-4 text-center">
-                                <h4 class="text-success mb-1 fw-bold" id="overallImpactScore">Loading...</h4>
-                                <small class="text-muted">Overall Impact Score</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             <div class="row g-4 mb-5">
                  <div class="col-lg-6">
                     <div class="analytics-card analytics-secondary h-100">
                         <div class="analytics-header">
-                            <i class="fas fa-search me-2"></i> Viewer Interest & Internship Status
+                            <i class="fas fa-chart-pie me-2"></i> Student Internship Status
                         </div>
-                        <div class="analytics-body" id="viewerDataAnalytics">
+                        <div class="analytics-body" id="internshipDataAnalytics">
                             <div class="chart-container mb-3">
                                 <canvas id="internshipStatusChart"></canvas> 
                             </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="analytics-card analytics-primary h-100">
+                        <div class="analytics-header">
+                            <i class="fas fa-briefcase me-2"></i> External Viewer Interest Breakdown
+                        </div>
+                        <div class="analytics-body" id="externalViewerDataAnalytics">
                             <div class="chart-container">
                                 <canvas id="externalViewerChart"></canvas> 
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
+            
+            <div class="row g-4 mb-5">
                 <div class="col-lg-6">
                     <div class="analytics-card analytics-info h-100">
                         <div class="analytics-header">
@@ -160,9 +149,17 @@
                         </div>
                     </div>
                 </div>
+                <div class="col-lg-6">
+                    <div class="analytics-card analytics-warning h-100">
+                        <div class="analytics-header">
+                            <i class="fas fa-chart-bar me-2"></i> Project Content Summary
+                        </div>
+                        <div class="analytics-body" id="projectAnalytics">
+                            </div>
+                    </div>
+                </div>
             </div>
-            
-            </div>
+        </div>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -176,7 +173,7 @@
             const canvas = document.getElementById(canvasId);
             if (!canvas) return null;
             
-            charts.forEach(chart => { if(chart.canvas.id === canvasId) chart.destroy(); }); // Destroy existing chart if present
+            charts.forEach(chart => { if(chart.canvas.id === canvasId) chart.destroy(); });
 
             const ctx = canvas.getContext('2d');
             const chart = new Chart(ctx, {
@@ -216,8 +213,15 @@
                     throw new Error('Failed to load analytics');
                 }
 
-                // Stats Cards
+                // 1. Stats Cards (Focus on ROI)
                 summaryMetrics.innerHTML = `
+                    <div class="col">
+                        <div class="stat-card stat-info text-center">
+                            <div class="stat-icon"><i class="fas fa-briefcase"></i></div>
+                            <div class="stat-number">${(coreData.totalExternalViewers || 0).toLocaleString()}</div>
+                            <div class="stat-label">External Viewers (Rec/Fac/Al)</div>
+                        </div>
+                    </div>
                     <div class="col">
                         <div class="stat-card stat-primary text-center">
                             <div class="stat-icon"><i class="fas fa-layer-group"></i></div>
@@ -226,54 +230,47 @@
                         </div>
                     </div>
                     <div class="col">
-                        <div class="stat-card stat-danger text-center">
-                            <div class="stat-icon"><i class="fas fa-heart"></i></div>
-                            <div class="stat-number">${coreData.totalLikes.toLocaleString()}</div>
-                            <div class="stat-label">Total Likes</div>
-                        </div>
-                    </div>
-                    <div class="col">
                         <div class="stat-card stat-success text-center">
-                            <div class="stat-icon"><i class="fas fa-comment"></i></div>
-                            <div class="stat-number">${coreData.totalComments.toLocaleString()}</div>
-                            <div class="stat-label">Total Comments</div>
-                        </div>
-                    </div>
-                    <div class="col">
-                        <div class="stat-card stat-warning text-center">
                             <div class="stat-icon"><i class="fas fa-users"></i></div>
                             <div class="stat-number">${coreData.totalUsers.toLocaleString()}</div>
                             <div class="stat-label">Total Users</div>
                         </div>
                     </div>
+                    <div class="col">
+                        <div class="stat-card stat-warning text-center">
+                            <div class="stat-icon"><i class="fas fa-heart"></i></div>
+                            <div class="stat-number">${coreData.totalLikes.toLocaleString()}</div>
+                            <div class="stat-label">Total Likes</div>
+                        </div>
+                    </div>
                     <div class="col d-none d-lg-block">
-                        <div class="stat-card stat-info text-center">
-                            <div class="stat-icon"><i class="fas fa-briefcase"></i></div>
-                            <div class="stat-number">${(coreData.totalExternalViewers || 0).toLocaleString()}</div>
-                            <div class="stat-label">External Viewers (Rec/Fac/Al)</div>
+                        <div class="stat-card stat-danger text-center">
+                            <div class="stat-icon"><i class="fas fa-comment"></i></div>
+                            <div class="stat-number">${coreData.totalComments.toLocaleString()}</div>
+                            <div class="stat-label">Total Comments</div>
                         </div>
                     </div>
                 `;
 
-                // Project Analytics (Project Types & Top Views)
+                // 2. Project Content Summary
                 const projectAnalytics = document.getElementById('projectAnalytics');
-                 projectAnalytics.innerHTML = `
+                projectAnalytics.innerHTML = `
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <h6 class="fw-semibold text-primary mb-3">Projects by Type</h6>
+                            <h6 class="fw-semibold text-warning mb-3">Projects by Type</h6>
                             <div class="list-group list-group-flush border-0">
                                 ${projectData.projectsByType.map(item => `
                                     <div class="list-group-item px-0 py-2">
                                         <div class="d-flex justify-content-between">
                                             <span>${item._id || 'Other'}</span>
-                                            <span class="badge bg-primary rounded-pill">${item.count}</span>
+                                            <span class="badge bg-warning text-dark rounded-pill">${item.count}</span>
                                         </div>
                                     </div>
                                 `).join('')}
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <h6 class="fw-semibold text-primary mb-3">Top Projects by Views</h6>
+                            <h6 class="fw-semibold text-warning mb-3">Top Projects by Views (Industry Interest)</h6>
                             <ol class="list-group list-group-numbered list-group-flush border-0">
                                 ${projectData.topProjectsByViews.slice(0,5).map(project => `
                                     <li class="list-group-item px-0 py-2">
@@ -288,13 +285,13 @@
                     </div>
                 `;
 
-                // User Distribution Chart (Shared)
+                // 3. User Distribution Chart 
                 renderChart('userRoleChart', 'doughnut', {
                     labels: userData.usersByRole.map(u => u._id),
                     datasets: [{ data: userData.usersByRole.map(u => u.count), backgroundColor: ['#00bfff', '#10b981', '#f59e0b', '#ef4444', '#64748b'], borderWidth: 0 }]
                 });
 
-                // Top Majors List (High value for Career Center)
+                // Top Majors List 
                 document.getElementById('topMajorsList').innerHTML = userData.usersByMajor.slice(0, 5).map(m => `
                     <li class="list-group-item px-0 py-1 d-flex justify-content-between">
                         <span>${m._id}</span>
@@ -303,7 +300,7 @@
                 `).join('');
 
 
-                // Viewer Data Charts (New Career Center specific data)
+                // 4. Viewer Data Charts 
                 const viewerLabels = userData.viewerDataByRole.map(v => v._id);
                 const viewerCounts = userData.viewerDataByRole.map(v => v.count);
                 
@@ -325,33 +322,17 @@
                     labels: internshipLabels,
                     datasets: [{
                         data: internshipCounts,
-                        backgroundColor: ['#198754', '#dc3545', '#adb5bd'], // Green, Red, Gray
+                        backgroundColor: ['#198754', '#dc3545', '#adb5bd'], 
                         borderWidth: 0
                     }]
                 });
-
-
-                // Impact Chart (Shared)
-                renderChart('impactChart', 'line', {
-                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-                    datasets: [{
-                        label: 'Impact Score',
-                        data: [65, 72, 68, 85, 92, 88],
-                        borderColor: '#10b981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }]
-                });
-
-                document.getElementById('overallImpactScore').textContent = '92';
 
             } catch (error) {
                 console.error('Analytics error:', error);
                 summaryMetrics.innerHTML = `
                     <div class="col-12">
-                        <div class="alert alert-warning text-center">
-                            <i class="fas fa-exclamation-triangle me-2"></i> Unable to load analytics data (Authentication failed or Server Error).
+                        <div class="alert alert-danger text-center">
+                            <i class="fas fa-exclamation-triangle me-2"></i> Error loading analytics data. Please verify your role and check server logs for DB connection/query errors.
                         </div>
                     </div>
                 `;

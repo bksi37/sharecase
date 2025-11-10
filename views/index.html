@@ -85,6 +85,7 @@
                     <a href="/settings.html" class="dropdown-item">Settings</a>
                     <a href="/upload-project.html" class="dropdown-item">Upload Project</a>
                     <a id="adminDashboardLink" href="/admin/dashboard.html" class="dropdown-item" style="display: none;">Admin Dashboard</a>
+                    <a id="careerCenterDashboardLink" href="/admin/career-center-dashboard.html" class="dropdown-item" style="display: none;">Career Center Dashboard</a>
                     <a id="logoutLink" href="/logout" class="dropdown-item">Logout</a>
                     <a href="/about.html" class="dropdown-item">About</a>
                     <div class="dropdown-item-text text-muted small mt-2">
@@ -200,25 +201,50 @@
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="/js/scripts.js"></script>
     <script>
-        // Global functions for Notifications (Need to remain or be moved to scripts.js)
-        async function deleteNotification(notificationId) {
-            // ... (Notification deletion logic from your original index.html) ...
-        }
-        async function fetchNotifications() {
-            // ... (Notification fetching logic from your original index.html) ...
-        }
+        // NOTE: fetchNotifications, deleteNotification, loadUserProfileInHeader, etc.
+        // are assumed to be defined and exposed globally via /js/scripts.js or locally.
         
-        // --- NEW DATA COLLECTION LOGIC ---
+        // Global functions for Notifications (Required for consistency)
+        async function deleteNotification(notificationId) {
+             if (!confirm('Remove this notification?')) return;
+            
+            try {
+                const response = await fetch(`/notifications/${notificationId}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    Toastify({ text: 'Notification removed.', duration: 2000, style: { background: '#ff5858' } }).showToast();
+                    // Assuming fetchNotifications is global or available via scripts.js
+                    if (typeof fetchNotifications === 'function') {
+                        await fetchNotifications(true); 
+                    }
+                } else {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Failed to remove notification.');
+                }
+            } catch (error) {
+                console.error('Error deleting notification:', error);
+                Toastify({ text: error.message, duration: 3000, style: { background: '#e74c3c' } }).showToast();
+            }
+        }
+        window.deleteNotification = deleteNotification;
 
-        // Helper to close modals and set the local storage flag
+        // --- NEW DATA COLLECTION LOGIC WITH 24-HOUR LOCAL STORAGE ---
+
+        // Helper to close modals and set the permanent local storage flag with a timestamp
         function closeModal(modalId) {
             const modalElement = document.getElementById(modalId);
             if (modalElement) {
                 const modal = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
                 modal.hide();
             }
-            // Set flag to prevent showing the popup again this session
-            sessionStorage.setItem('session_data_collected', 'true');
+            
+            // 🛑 FIX: Set flag with a timestamp that expires after 24 hours 🛑
+            // Using localStorage ensures persistence across restarts/logouts
+            const expiryTime = new Date().getTime() + (24 * 60 * 60 * 1000); // 24 hours from now
+            localStorage.setItem('analytics_collected_timestamp', expiryTime);
         }
 
         // Submits data to the backend
@@ -228,12 +254,11 @@
             // Build payload
             const payload = {
                 userId: userId || null,
-                viewerType: viewerType || role, // Use submitted viewerType for public, or logged-in role
+                viewerType: viewerType || role,
                 hasInternship: hasInternship || null,
             };
 
             try {
-                // Call the new UNPROTECTED backend route in admin.js
                 await fetch('/admin/log-public-data', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -241,7 +266,6 @@
                 });
                 
             } catch (error) {
-                // Fail silently to prevent user friction
                 console.warn('Failed to submit viewer data:', error);
             } finally {
                 closeModal(modalId);
@@ -250,12 +274,17 @@
 
         // Trigger logic on page load
         function triggerAnalyticsPopup() {
-            // 1. Check if user already answered this session
-            if (sessionStorage.getItem('session_data_collected') === 'true') {
+            
+            // 🛑 NEW CHECK: Check if the timestamp has expired 🛑
+            const lastCollectedTimestamp = localStorage.getItem('analytics_collected_timestamp');
+            const currentTime = new Date().getTime();
+            
+            if (lastCollectedTimestamp && currentTime < parseInt(lastCollectedTimestamp)) {
+                // Pop-up suppressed because less than 24 hours passed since last action/dismissal
                 return;
             }
 
-            // Ensure window.currentUserRole is populated by loadUserProfileInHeader
+            // Proceed only if timestamp is expired or missing.
             const role = window.currentUserRole;
             let modalToDisplay = null;
 
@@ -277,26 +306,30 @@
             }
         }
         
-        // --- REVISED DOMContentLoaded LOGIC ---
+        // --- DOMContentLoaded LOGIC ---
         document.addEventListener('DOMContentLoaded', async () => {
             // 1. Load header user profile immediately (MUST run first)
             await window.loadUserProfileInHeader();
             
-            // 2. Trigger the appropriate popup after the user role is loaded
+            // 2. Notification Check: Fetch count immediately after user profile is loaded
+            if (window.currentLoggedInUserId && typeof fetchNotifications === 'function') {
+                await fetchNotifications(true); 
+            }
+            
+            // 3. Trigger the appropriate popup after the user role is loaded
             triggerAnalyticsPopup();
 
-            // 3. Initialize notification dropdown and global functions
+            // 4. Initialize notification dropdown and global functions
             const notificationButton = document.getElementById('notificationButton');
             const notificationDropdown = document.getElementById('notificationDropdown');
             
-            if (notificationButton && notificationDropdown) {
+            if (notificationButton && notificationDropdown && typeof fetchNotifications === 'function') {
                 notificationButton.addEventListener('shown.bs.dropdown', () => {
-                    fetchNotifications(); 
+                    fetchNotifications(false); // Fetch list content when dropdown opens
                 });
-                window.deleteNotification = deleteNotification;
             } 
 
-            // 4. Existing search and filter logic
+            // 5. Existing search and filter logic
             if (typeof window.loadDynamicFilterOptions === 'function') {
                 window.loadDynamicFilterOptions();
             }
@@ -339,7 +372,7 @@
                 }
             });
 
-            // 🛑 5. INITIATE PROJECT LOAD (Runs directly on DOMContentLoaded)
+            // 6. INITIATE PROJECT LOAD (Runs directly on DOMContentLoaded)
             const urlParams = new URLSearchParams(window.location.search);
             const hasQueryParams = Array.from(urlParams.keys()).some(key => key !== 'q');
             const initialQuery = urlParams.get('q');

@@ -12,6 +12,22 @@
     <link rel="stylesheet" href="/css/_forms.css">
     <link rel="stylesheet" href="/css/_utilities.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <style>
+        /* Custom styling for the project list */
+        #projectSelectionList {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+        }
+        #projectSelectionList .list-group-item {
+            cursor: pointer;
+            padding: 10px 15px;
+        }
+        #projectSelectionList .list-group-item:hover {
+            background-color: #f8f9fa;
+        }
+    </style>
 </head>
 <body>
     <header class="d-flex justify-content-between align-items-center">
@@ -38,6 +54,7 @@
                     <a href="/settings.html" class="dropdown-item">Settings</a>
                     <a href="/upload-project.html" class="dropdown-item">Upload Project</a>
                     <a id="adminDashboardLink" href="/admin/dashboard.html" class="dropdown-item" style="display: none;">Admin Dashboard</a>
+                    <a id="careerCenterDashboardLink" href="/admin/career-center-dashboard.html" class="dropdown-item" style="display: none;">Career Center Dashboard</a>
                     <a id="logoutLink" href="/logout" class="dropdown-item">Logout</a>
                     <a href="/about.html" class="dropdown-item">About</a>
                     <div class="dropdown-item-text text-muted small mt-2">
@@ -57,11 +74,11 @@
         <div class="row justify-content-center">
             <div class="col-md-8">
                 <h2 class="mb-4 text-center">Generate Your Portfolio</h2>
-                <p class="lead text-muted text-center">Select your template, colors, and content before generating a professional PDF.</p>
+                <p class="lead text-muted text-center">Select your template, colors, and the specific projects you want to include.</p>
                 
                 <form id="portfolioGenerationForm" class="card p-4 shadow-sm mt-4">
                     
-                    <h4 class="mb-3">1. Select Template</h4>
+                    <h4 class="mb-3"><i class="fas fa-file-alt me-2"></i> 1. Select Template</h4>
                     <div class="btn-group mb-4 w-100" role="group" aria-label="Template selector">
                         <input type="radio" class="btn-check" name="format" id="templateClassic" value="classic" checked>
                         <label class="btn btn-outline-primary" for="templateClassic">Classic (Minimal)</label>
@@ -70,7 +87,7 @@
                         <label class="btn btn-outline-primary disabled" for="templateModern">Modern (Coming Soon)</label>
                     </div>
 
-                    <h4 class="mb-3">2. Color Customization</h4>
+                    <h4 class="mb-3"><i class="fas fa-palette me-2"></i> 2. Color Customization</h4>
                     <div class="row mb-4">
                         <div class="col-md-6">
                             <label for="primaryColor" class="form-label">Primary Color (Headings & Borders)</label>
@@ -82,8 +99,8 @@
                         </div>
                     </div>
 
-                    <h4 class="mb-3">3. Content Selection</h4>
-                    <div class="row">
+                    <h4 class="mb-3"><i class="fas fa-list-ul me-2"></i> 3. Project Content Toggles</h4>
+                    <div class="row mb-4">
                         <div class="col-md-6">
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" value="true" id="includeProblemStatement" checked>
@@ -106,7 +123,13 @@
                         </div>
                     </div>
                     
-                    <button type="submit" class="btn btn-success btn-lg mt-5 w-100" id="generatePortfolioBtn">
+                    <h4 class="mb-3"><i class="fas fa-check-square me-2"></i> 4. Select Projects to Include</h4>
+                    <p class="text-muted small">Only published projects are shown below. Select the projects you want in your PDF.</p>
+                    <div id="projectSelectionList" class="list-group mb-4">
+                        <div class="text-center text-muted py-3">Loading projects...</div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-success btn-lg mt-3 w-100" id="generatePortfolioBtn">
                         <i class="fas fa-file-pdf me-2"></i> Generate PDF Portfolio
                     </button>
                 </form>
@@ -123,50 +146,128 @@
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="/js/scripts.js"></script>
     <script>
+        let publishedProjectsData = [];
+
+        async function loadUserPublishedProjects() {
+            try {
+                // Fetch projects from the user's dedicated route (assuming isAuthenticated check is applied there)
+                const response = await fetch('/profile/my-projects', { 
+                    headers: { 'Accept': 'application/json' }, 
+                    credentials: 'include' 
+                });
+                if (!response.ok) {
+                    if (response.status === 401 || response.status === 403) {
+                        document.getElementById('projectSelectionList').innerHTML = '<div class="alert alert-danger mb-0">Please log in and complete your profile to view your projects.</div>';
+                        document.getElementById('generatePortfolioBtn').disabled = true;
+                        return;
+                    }
+                    throw new Error('Failed to fetch user projects.');
+                }
+                
+                const projects = await response.json();
+                
+                // 🛑 CRITICAL UPDATE: Filter to only show published projects AND ensure they have an ID
+                publishedProjectsData = projects.filter(p => p.isPublished && (p._id || p.id));
+                // Assuming p._id is the correct ID property from the backend
+                
+                const listContainer = document.getElementById('projectSelectionList');
+                const generateBtn = document.getElementById('generatePortfolioBtn');
+                
+                if (publishedProjectsData.length === 0) {
+                    listContainer.innerHTML = '<div class="alert alert-info mb-0">You have no published projects to include in your portfolio.</div>';
+                    generateBtn.disabled = true;
+                    return;
+                }
+
+                // 🛑 CRITICAL UPDATE: Render projects as checkable list items, checked by default
+                listContainer.innerHTML = publishedProjectsData.map(p => {
+                    const projectId = p._id || p.id; // Use the primary ID property
+                    if (!projectId) return ''; // Skip rendering if ID is invalid
+
+                    return `
+                        <div class="list-group-item d-flex align-items-center">
+                            <input class="form-check-input me-3" type="checkbox" value="${projectId}" id="project-${projectId}" data-project-id="${projectId}" checked>
+                            <label class="form-check-label flex-grow-1" for="project-${projectId}">
+                                <span class="fw-bold">${p.title}</span> - <span class="small text-muted">${p.projectType}</span>
+                            </label>
+                            <span class="badge bg-secondary">${p.year || 'N/A'}</span>
+                        </div>
+                    `;
+                }).join('');
+
+                generateBtn.disabled = false;
+
+            } catch (error) {
+                console.error('Error loading projects for portfolio:', error);
+                document.getElementById('projectSelectionList').innerHTML = `<div class="alert alert-danger mb-0">Error loading projects: ${error.message}</div>`;
+                document.getElementById('generatePortfolioBtn').disabled = true;
+            }
+        }
+
+
+        const generatePortfolio = async (settings) => {
+            const { format, primaryColor, accentColor, contentToggles, selectedProjectIds } = settings; // Added selectedProjectIds
+            
+            try {
+                Toastify({ text: `Generating ${format} portfolio... Please wait.`, duration: 5000, style: { background: '#3498db' } }).showToast();
+                document.getElementById('generatePortfolioBtn').disabled = true;
+
+                const response = await fetch('/portfolio/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    // 🛑 Sending all parameters, including selectedProjectIds
+                    body: JSON.stringify({ format, primaryColor, accentColor, contentToggles, selectedProjectIds }),
+                    credentials: 'include',
+                });
+
+                if (!response.ok) {
+                    const data = await response.json().catch(() => ({ error: 'Server response error.' }));
+                    throw new Error(data.error || 'Failed to generate portfolio.');
+                }
+                
+                // Handling PDF stream for download
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `sharecase_portfolio_${format}.pdf`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+
+                Toastify({ text: 'Portfolio generated successfully! Downloading...', duration: 3000, style: { background: '#28a745' } }).showToast();
+
+            } catch (error) {
+                console.error('Portfolio generation error:', error);
+                Toastify({ text: error.message || 'An error occurred during portfolio generation.', duration: 5000, style: { background: '#e74c3c' } }).showToast();
+            } finally {
+                 document.getElementById('generatePortfolioBtn').disabled = false;
+            }
+        };
+
         document.addEventListener('DOMContentLoaded', () => {
-            loadUserProfileInHeader();
+            window.loadUserProfileInHeader();
+            loadUserPublishedProjects(); // Call the function to load projects
 
             const portfolioForm = document.getElementById('portfolioGenerationForm');
-
-            const generatePortfolio = async (settings) => {
-                const { format, primaryColor, accentColor, contentToggles } = settings;
-                
-                try {
-                    Toastify({ text: `Generating ${format} portfolio... Please wait.`, duration: 5000, style: { background: '#3498db' } }).showToast();
-                    
-                    const response = await fetch('/portfolio/generate', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ format, primaryColor, accentColor, contentToggles }),
-                        credentials: 'include',
-                    });
-
-                    if (!response.ok) {
-                        const data = await response.json();
-                        throw new Error(data.error || 'Failed to generate portfolio.');
-                    }
-                    
-                    // The backend streams the PDF, so we handle the Blob response for download
-                    const blob = await response.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.download = `sharecase_portfolio_${format}.pdf`;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    window.URL.revokeObjectURL(url);
-
-                    Toastify({ text: 'Portfolio generated successfully! Downloading...', duration: 3000, style: { background: '#28a745' } }).showToast();
-                } catch (error) {
-                    console.error('Portfolio generation error:', error);
-                    Toastify({ text: error.message || 'An error occurred during portfolio generation.', duration: 5000, style: { background: '#e74c3c' } }).showToast();
-                }
-            };
-
+            
             portfolioForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 
+                // 1. Get selected project IDs and FILTER out only empty/null values
+                const selectedIds = Array.from(portfolioForm.querySelectorAll('input[data-project-id]:checked'))
+                    .map(checkbox => checkbox.value)
+                    .filter(id => id); // 🛑 FIX: Filter out empty/null strings
+                    
+                console.log("IDs SENT TO SERVER (filtered):", selectedIds); // 🛑 Diagnostic log
+                // This filter relies on the backend to validate the ObjectId format.
+                    
+                if (selectedIds.length === 0) {
+                    Toastify({ text: 'Please select at least one project.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
+                    return;
+                }
+
                 const format = document.querySelector('input[name="format"]:checked').value;
                 const primaryColor = document.getElementById('primaryColor').value;
                 const accentColor = document.getElementById('accentColor').value;
@@ -178,7 +279,8 @@
                     includeOtherContributors: document.getElementById('includeOtherContributors').checked,
                 };
                 
-                generatePortfolio({ format, primaryColor, accentColor, contentToggles });
+                // 2. Call generator with selected IDs
+                generatePortfolio({ format, primaryColor, accentColor, contentToggles, selectedProjectIds: selectedIds });
             });
         });
     </script>
