@@ -99,7 +99,31 @@
                         </div>
                     </div>
 
-                    <h4 class="mb-3"><i class="fas fa-list-ul me-2"></i> 3. Project Content Toggles</h4>
+                    <h4 class="mb-3"><i class="fas fa-ruler-combined me-2"></i> 3. Layout & Pacing</h4>
+                    <div class="row mb-4">
+                        <div class="col-md-4 mb-3">
+                            <label for="projectsPerPage" class="form-label">Projects per Page</label>
+                            <select class="form-select" id="projectsPerPage">
+                                <option value="1">1 Project per Page (Recommended)</option>
+                                <option value="2">2 Projects per Page (Compact)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="imageLayout" class="form-label">Image Size</label>
+                            <select class="form-select" id="imageLayout">
+                                <option value="Standard/300px">Standard (Best Readability)</option>
+                                <option value="Full-Width/450px">Full-Width (Visual Impact)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="contentFontSize" class="form-label">Content Font Size</label>
+                            <select class="form-select" id="contentFontSize">
+                                <option value="Standard/10pt">Standard (10pt)</option>
+                                <option value="Small/9pt">Small (9pt - for longer content)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <h4 class="mb-3"><i class="fas fa-list-ul me-2"></i> 4. Project Content Toggles</h4>
                     <div class="row mb-4">
                         <div class="col-md-6">
                             <div class="form-check">
@@ -109,6 +133,14 @@
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" value="true" id="includeTags" checked>
                                 <label class="form-check-label" for="includeTags">Include Project Tags</label>
+                            </div>
+                            <div class="form-check mt-3">
+                                <input class="form-check-input" type="checkbox" value="true" id="includeTechnicalDetails" checked>
+                                <label class="form-check-label" for="includeTechnicalDetails">Technical Description</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="true" id="includeTools" checked>
+                                <label class="form-check-label" for="includeTools">Tools/Software List</label>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -120,10 +152,14 @@
                                 <input class="form-check-input" type="checkbox" value="true" id="includeOtherContributors" checked>
                                 <label class="form-check-label" for="includeOtherContributors">Include Other Contributors</label>
                             </div>
+                            <div class="form-check mt-3">
+                                <input class="form-check-input" type="checkbox" value="true" id="includeFunctionalGoals" checked>
+                                <label class="form-check-label" for="includeFunctionalGoals">Functional Goals</label>
+                            </div>
                         </div>
                     </div>
                     
-                    <h4 class="mb-3"><i class="fas fa-check-square me-2"></i> 4. Select Projects to Include</h4>
+                    <h4 class="mb-3"><i class="fas fa-check-square me-2"></i> 5. Select Projects to Include</h4>
                     <p class="text-muted small">Only published projects are shown below. Select the projects you want in your PDF.</p>
                     <div id="projectSelectionList" class="list-group mb-4">
                         <div class="text-center text-muted py-3">Loading projects...</div>
@@ -150,7 +186,6 @@
 
         async function loadUserPublishedProjects() {
             try {
-                // Fetch projects from the user's dedicated route (assuming isAuthenticated check is applied there)
                 const response = await fetch('/profile/my-projects', { 
                     headers: { 'Accept': 'application/json' }, 
                     credentials: 'include' 
@@ -165,10 +200,7 @@
                 }
                 
                 const projects = await response.json();
-                
-                // 🛑 CRITICAL UPDATE: Filter to only show published projects AND ensure they have an ID
                 publishedProjectsData = projects.filter(p => p.isPublished && (p._id || p.id));
-                // Assuming p._id is the correct ID property from the backend
                 
                 const listContainer = document.getElementById('projectSelectionList');
                 const generateBtn = document.getElementById('generatePortfolioBtn');
@@ -179,10 +211,9 @@
                     return;
                 }
 
-                // 🛑 CRITICAL UPDATE: Render projects as checkable list items, checked by default
                 listContainer.innerHTML = publishedProjectsData.map(p => {
-                    const projectId = p._id || p.id; // Use the primary ID property
-                    if (!projectId) return ''; // Skip rendering if ID is invalid
+                    const projectId = p._id || p.id;
+                    if (!projectId) return '';
 
                     return `
                         <div class="list-group-item d-flex align-items-center">
@@ -206,7 +237,7 @@
 
 
         const generatePortfolio = async (settings) => {
-            const { format, primaryColor, accentColor, contentToggles, selectedProjectIds } = settings; // Added selectedProjectIds
+            const { format, primaryColor, accentColor, contentToggles, layoutOptions, selectedProjectIds } = settings; 
             
             try {
                 Toastify({ text: `Generating ${format} portfolio... Please wait.`, duration: 5000, style: { background: '#3498db' } }).showToast();
@@ -215,8 +246,8 @@
                 const response = await fetch('/portfolio/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    // 🛑 Sending all parameters, including selectedProjectIds
-                    body: JSON.stringify({ format, primaryColor, accentColor, contentToggles, selectedProjectIds }),
+                    // Send ALL settings, including the new layout options
+                    body: JSON.stringify({ format, primaryColor, accentColor, contentToggles, layoutOptions, selectedProjectIds }),
                     credentials: 'include',
                 });
 
@@ -248,20 +279,16 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             window.loadUserProfileInHeader();
-            loadUserPublishedProjects(); // Call the function to load projects
+            loadUserPublishedProjects();
 
             const portfolioForm = document.getElementById('portfolioGenerationForm');
             
             portfolioForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 
-                // 1. Get selected project IDs and FILTER out only empty/null values
                 const selectedIds = Array.from(portfolioForm.querySelectorAll('input[data-project-id]:checked'))
                     .map(checkbox => checkbox.value)
-                    .filter(id => id); // 🛑 FIX: Filter out empty/null strings
-                    
-                console.log("IDs SENT TO SERVER (filtered):", selectedIds); // 🛑 Diagnostic log
-                // This filter relies on the backend to validate the ObjectId format.
+                    .filter(id => id);
                     
                 if (selectedIds.length === 0) {
                     Toastify({ text: 'Please select at least one project.', duration: 3000, style: { background: '#e74c3c' } }).showToast();
@@ -272,15 +299,25 @@
                 const primaryColor = document.getElementById('primaryColor').value;
                 const accentColor = document.getElementById('accentColor').value;
                 
+                // 🛑 Capture Layout Options 🛑
+                const layoutOptions = {
+                    projectsPerPage: document.getElementById('projectsPerPage').value,
+                    imageLayout: document.getElementById('imageLayout').value,
+                    contentFontSize: document.getElementById('contentFontSize').value,
+                };
+
+                // 🛑 Capture all Content Toggles 🛑
                 const contentToggles = {
                     includeProblemStatement: document.getElementById('includeProblemStatement').checked,
                     includeTags: document.getElementById('includeTags').checked,
                     includeCollaborators: document.getElementById('includeCollaborators').checked,
                     includeOtherContributors: document.getElementById('includeOtherContributors').checked,
+                    includeTechnicalDetails: document.getElementById('includeTechnicalDetails').checked,
+                    includeTools: document.getElementById('includeTools').checked,
+                    includeFunctionalGoals: document.getElementById('includeFunctionalGoals').checked,
                 };
                 
-                // 2. Call generator with selected IDs
-                generatePortfolio({ format, primaryColor, accentColor, contentToggles, selectedProjectIds: selectedIds });
+                generatePortfolio({ format, primaryColor, accentColor, contentToggles, layoutOptions, selectedProjectIds: selectedIds });
             });
         });
     </script>

@@ -6,22 +6,19 @@ const Project = require('../models/Project');
 const { isAuthenticated } = require('../middleware/auth');
 const PDFDocument = require('pdfkit');
 const https = require('https');
-const mongoose = require('mongoose'); // Import mongoose for ID validation
+const mongoose = require('mongoose'); 
 
-// Helper function to fetch image from URL and return a buffer
+// Helper function to fetch image from URL and return a buffer (remains the same)
 const fetchImageAsBuffer = (url) => {
-    console.log('Fetching image:', url);
     return new Promise((resolve, reject) => {
         https.get(url, (response) => {
             if (response.statusCode < 200 || response.statusCode >= 300) {
-                console.error(`Failed to fetch image ${url}: Status ${response.statusCode}`);
                 return reject(new Error(`HTTP Error: ${response.statusCode} for ${url}`));
             }
             const chunks = [];
             response.on('data', (chunk) => chunks.push(chunk));
             response.on('end', () => resolve(Buffer.concat(chunks)));
         }).on('error', (err) => {
-            console.error(`Error fetching image ${url}:`, err);
             reject(err);
         });
     });
@@ -29,35 +26,30 @@ const fetchImageAsBuffer = (url) => {
 
 // Helper function to generate PDF and stream to client
 async function generatePortfolio(user, projects, settings, res) {
-    const { format, primaryColor, accentColor, contentToggles } = settings;
-    console.log('Starting PDF generation for user:', user.name, 'format:', format);
+    const { format, primaryColor, accentColor, contentToggles, layoutOptions } = settings;
+    
+    // Layout Settings (Used for Polished Feel)
+    const projectsPerPageIndex = parseInt(layoutOptions?.projectsPerPage) || 1;
+    const imageWidth = layoutOptions?.imageLayout === 'Full-Width/450px' ? 450 : 300; 
+    const baseFontSize = layoutOptions?.contentFontSize === 'Small/9pt' ? 9 : 10;
+    const headerFontSize = baseFontSize + 2; 
+
     const doc = new PDFDocument({ size: 'A4', margin: 40 });
 
-    // Set response headers for PDF download
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename=sharecase_portfolio_${format}.pdf`);
-
-    // Pipe PDF directly to response
     doc.pipe(res);
 
     try {
-        console.log('Registering fonts');
-        // NOTE: Ensure these font files exist in the specified path
         doc.registerFont('Roboto', 'public/fonts/Roboto-Regular.ttf');
         doc.registerFont('Roboto-Bold', 'public/fonts/Roboto-Bold.ttf');
     } catch (error) {
-        console.error('Font registration error:', error);
         doc.font('Helvetica');
     }
 
     // --- Header Section ---
-    console.log('Adding header');
-    
-    // Use selected primary color for main name
     doc.fillColor(primaryColor).font('Roboto-Bold').fontSize(28).text(user.name || 'Anonymous', { align: 'center' });
     doc.moveDown(0.2);
-    
-    // Use selected accent color for email/links
     doc.fillColor(accentColor).font('Roboto').fontSize(12).text(user.email || '', { align: 'center' });
     
     if (user.linkedin) {
@@ -74,18 +66,21 @@ async function generatePortfolio(user, projects, settings, res) {
     doc.moveDown(1);
 
     // --- Projects Section ---
-    console.log('Adding projects section');
     doc.fillColor(primaryColor).font('Roboto-Bold').fontSize(22).text('My Projects', { align: 'left' });
     doc.moveDown(0.5);
 
     if (projects.length === 0) {
-        doc.font('Roboto').fontSize(12).text('No selected projects available to display.', { align: 'center' });
+        doc.font('Roboto').fontSize(baseFontSize).text('No selected projects available to display.', { align: 'center' });
     } else {
         for (const [index, p] of projects.entries()) {
-            console.log(`Adding project ${index + 1}: ${p.title}`);
-            if (index > 0) doc.addPage();
             
-            doc.fillColor(primaryColor).font('Roboto-Bold').fontSize(18).text(p.title || 'Untitled Project', { align: 'left' });
+            // 🛑 Layout Control: Project Pacing 🛑
+            const isNewProject = index > 0;
+            const isNewPageRequired = (projectsPerPageIndex === 1 && isNewProject) || (projectsPerPageIndex === 2 && isNewProject && (index % 2 === 0));
+
+            if (isNewPageRequired) doc.addPage();
+            
+            doc.fillColor(primaryColor).font('Roboto-Bold').fontSize(headerFontSize + 8).text(p.title || 'Untitled Project', { align: 'left' });
             doc.moveDown(0.5);
             
             // Image/Media Handling
@@ -96,51 +91,74 @@ async function generatePortfolio(user, projects, settings, res) {
             if (mediaUrl && !mediaUrl.includes('default-project.jpg')) {
                 try {
                     const imageBuffer = await fetchImageAsBuffer(mediaUrl); 
-                    doc.image(imageBuffer, { width: 350, align: 'center', valign: 'center' });
+                    // 🛑 Layout Control: Dynamic Image Width 🛑
+                    doc.image(imageBuffer, { width: imageWidth, align: 'center', valign: 'center' });
                     doc.moveDown(0.5);
                 } catch (error) {
-                    doc.fontSize(10).fillColor('#e74c3c').text('Image not available or failed to download', { align: 'left' });
+                    doc.fontSize(baseFontSize).fillColor('#e74c3c').text('Image not available or failed to download', { align: 'left' });
                     doc.moveDown(0.5);
                 }
             }
             
             // General Details
-            doc.fillColor(primaryColor).font('Roboto-Bold').fontSize(12).text('Project Type:', { align: 'left' });
-            doc.font('Roboto').fontSize(10).text(p.projectType || 'Other', { align: 'left', indent: 10 });
+            doc.fillColor(primaryColor).font('Roboto-Bold').fontSize(headerFontSize).text('Project Type:', { align: 'left' });
+            doc.font('Roboto').fontSize(baseFontSize).text(p.projectType || 'Other', { align: 'left', indent: 10 });
             doc.moveDown(0.5);
 
             // Conditional Content: Problem Statement
             if (contentToggles.includeProblemStatement) {
-                doc.fillColor(accentColor).font('Roboto-Bold').fontSize(12).text('Problem Statement:', { align: 'left' });
-                doc.font('Roboto').fontSize(10).text(p.problemStatement || 'Not provided', { align: 'left', indent: 10 });
+                doc.fillColor(accentColor).font('Roboto-Bold').fontSize(headerFontSize).text('Problem Statement:', { align: 'left' });
+                doc.font('Roboto').fontSize(baseFontSize).text(p.problemStatement || 'Not provided', { align: 'left', indent: 10 });
                 doc.moveDown(0.5);
             }
             
-            doc.font('Roboto-Bold').fontSize(12).text('Description:', { align: 'left' });
-            doc.font('Roboto').fontSize(10).text(p.description || 'Not provided', { align: 'left', indent: 10 });
+            doc.font('Roboto-Bold').fontSize(headerFontSize).text('Description:', { align: 'left' });
+            doc.font('Roboto').fontSize(baseFontSize).text(p.description || 'Not provided', { align: 'left', indent: 10 });
             doc.moveDown(0.5);
             
-            // --- Specific Details Section (based on projectType) ---
+            // --- Specific Details Section (Engineering Technical Details) ---
             if (p.projectType === 'Engineering') {
-                doc.font('Roboto-Bold').fontSize(14).text('Technical Details:', { align: 'left' });
-                doc.moveDown(0.2);
-                doc.font('Roboto-Bold').fontSize(10).text('Technical Description:', { align: 'left', indent: 10 });
-                doc.font('Roboto').fontSize(10).text(p.projectDetails?.technicalDescription || 'N/A', { align: 'left', indent: 20 });
-                doc.font('Roboto-Bold').fontSize(10).text('Tools/Software:', { align: 'left', indent: 10 });
-                doc.font('Roboto').fontSize(10).text(p.projectDetails?.toolsSoftware?.join(', ') || 'N/A', { align: 'left', indent: 20 });
-                doc.font('Roboto-Bold').fontSize(10).text('Functional Goals:', { align: 'left', indent: 10 });
-                doc.font('Roboto').fontSize(10).text(p.projectDetails?.functionalGoals || 'N/A', { align: 'left', indent: 20 });
-                doc.moveDown(0.5);
+                
+                // Only show heading if at least one technical section is toggled ON
+                if (contentToggles.includeTechnicalDetails || contentToggles.includeTools || contentToggles.includeFunctionalGoals) {
+                    doc.fillColor(primaryColor).font('Roboto-Bold').fontSize(headerFontSize + 2).text('Technical Details:', { align: 'left' });
+                    doc.moveDown(0.2);
+                }
+
+                // 🛑 NEW TOGGLE: Technical Description
+                if (contentToggles.includeTechnicalDetails) {
+                    doc.font('Roboto-Bold').fontSize(baseFontSize).text('Technical Description:', { align: 'left', indent: 10 });
+                    doc.font('Roboto').fontSize(baseFontSize).text(p.projectDetails?.technicalDescription || 'N/A', { align: 'left', indent: 20 });
+                    doc.moveDown(0.2);
+                }
+                
+                // 🛑 NEW TOGGLE: Tools/Software
+                if (contentToggles.includeTools) {
+                    doc.font('Roboto-Bold').fontSize(baseFontSize).text('Tools/Software:', { align: 'left', indent: 10 });
+                    doc.font('Roboto').fontSize(baseFontSize).text(p.projectDetails?.toolsSoftware?.join(', ') || 'N/A', { align: 'left', indent: 20 });
+                    doc.moveDown(0.2);
+                }
+                
+                // 🛑 NEW TOGGLE: Functional Goals
+                if (contentToggles.includeFunctionalGoals) {
+                    doc.font('Roboto-Bold').fontSize(baseFontSize).text('Functional Goals:', { align: 'left', indent: 10 });
+                    doc.font('Roboto').fontSize(baseFontSize).text(p.projectDetails?.functionalGoals || 'N/A', { align: 'left', indent: 20 });
+                    doc.moveDown(0.2);
+                }
+                
+                doc.moveDown(0.3);
+                
             } else if (p.projectType === 'Art') {
-                 doc.font('Roboto-Bold').fontSize(14).text('Art Details:', { align: 'left' });
-                 doc.moveDown(0.2);
-                 doc.font('Roboto-Bold').fontSize(10).text('Medium/Technique:', { align: 'left', indent: 10 });
-                 doc.font('Roboto').fontSize(10).text(p.projectDetails?.mediumTechnique || 'N/A', { align: 'left', indent: 20 });
-                 doc.font('Roboto-Bold').fontSize(10).text('Artist Statement:', { align: 'left', indent: 10 });
-                 doc.font('Roboto').fontSize(10).text(p.projectDetails?.artistStatement || 'N/A', { align: 'left', indent: 20 });
-                 doc.font('Roboto-Bold').fontSize(10).text('Exhibition History:', { align: 'left', indent: 10 });
-                 doc.font('Roboto').fontSize(10).text(p.projectDetails?.exhibitionHistory || 'N/A', { align: 'left', indent: 20 });
-                 doc.moveDown(0.5);
+                // Art Details (remains the same, using dynamic font size)
+                doc.font('Roboto-Bold').fontSize(headerFontSize + 2).text('Art Details:', { align: 'left' });
+                doc.moveDown(0.2);
+                doc.font('Roboto-Bold').fontSize(baseFontSize).text('Medium/Technique:', { align: 'left', indent: 10 });
+                doc.font('Roboto').fontSize(baseFontSize).text(p.projectDetails?.mediumTechnique || 'N/A', { align: 'left', indent: 20 });
+                doc.font('Roboto-Bold').fontSize(baseFontSize).text('Artist Statement:', { align: 'left', indent: 10 });
+                doc.font('Roboto').fontSize(baseFontSize).text(p.projectDetails?.artistStatement || 'N/A', { align: 'left', indent: 20 });
+                doc.font('Roboto-Bold').fontSize(baseFontSize).text('Exhibition History:', { align: 'left', indent: 10 });
+                doc.font('Roboto').fontSize(baseFontSize).text(p.projectDetails?.exhibitionHistory || 'N/A', { align: 'left', indent: 20 });
+                doc.moveDown(0.5);
             }
             
             // Conditional Content: Collaborators
@@ -148,37 +166,37 @@ async function generatePortfolio(user, projects, settings, res) {
                 const collaboratorNames = p.collaborators && p.collaborators.length > 0
                     ? p.collaborators.map(collab => collab.name).filter(Boolean).join(', ')
                     : 'None';
-                doc.font('Roboto-Bold').fontSize(12).text('Collaborators:', { align: 'left' });
-                doc.font('Roboto').fontSize(10).text(collaboratorNames, { align: 'left', indent: 10 });
+                doc.font('Roboto-Bold').fontSize(headerFontSize).text('Collaborators:', { align: 'left' });
+                doc.font('Roboto').fontSize(baseFontSize).text(collaboratorNames, { align: 'left', indent: 10 });
                 doc.moveDown(0.5);
             }
 
             // Conditional Content: Other Contributors
             if (contentToggles.includeOtherContributors) {
                 const otherContributorNames = p.otherContributors || 'None';
-                doc.font('Roboto-Bold').fontSize(12).text('Other Contributors:', { align: 'left' });
-                doc.font('Roboto').fontSize(10).text(otherContributorNames, { align: 'left', indent: 10 });
+                doc.font('Roboto-Bold').fontSize(headerFontSize).text('Other Contributors:', { align: 'left' });
+                doc.font('Roboto').fontSize(baseFontSize).text(otherContributorNames, { align: 'left', indent: 10 });
                 doc.moveDown(0.5);
             }
             
             // Conditional Content: Tags
             if (contentToggles.includeTags) {
-                doc.font('Roboto-Bold').fontSize(12).text('Tags:', { align: 'left' });
-                doc.font('Roboto').fontSize(10).text(p.tags && p.tags.length ? p.tags.join(', ') : 'None', { align: 'left', indent: 10 });
+                doc.font('Roboto-Bold').fontSize(headerFontSize).text('Tags:', { align: 'left' });
+                doc.font('Roboto').fontSize(baseFontSize).text(p.tags && p.tags.length ? p.tags.join(', ') : 'None', { align: 'left', indent: 10 });
                 doc.moveDown(1);
             }
         }
     }
 
     // --- Footer ---
-    doc.fontSize(10).fillColor('#666666').text('Generated by ShareCase © 2025', 40, doc.page.height - 60, { align: 'center' });
+    doc.fontSize(baseFontSize - 1).fillColor('#666666').text('Generated by ShareCase © 2025', 40, doc.page.height - 60, { align: 'center' });
     doc.end();
 }
 
 router.post('/generate', isAuthenticated, async (req, res) => {
     try {
-        // Capture new parameter: selectedProjectIds
-        const { format, primaryColor, accentColor, contentToggles, selectedProjectIds } = req.body; 
+        // 🛑 NEW: Capture layoutOptions from the request body
+        const { format, primaryColor, accentColor, contentToggles, layoutOptions, selectedProjectIds } = req.body; 
         const userId = req.session.userId;
         
         if (!userId) {
@@ -188,10 +206,8 @@ router.post('/generate', isAuthenticated, async (req, res) => {
             return res.status(400).json({ success: false, error: 'Invalid or unsupported portfolio format.' });
         }
         
-        // 🛑 FIX: Validate and filter the selectedProjectIds array
         let validProjectIds = [];
         if (Array.isArray(selectedProjectIds)) {
-            // Filter out non-string/empty/invalid ObjectId formats to prevent CastError
             validProjectIds = selectedProjectIds.filter(id => 
                 id && typeof id === 'string' && mongoose.Types.ObjectId.isValid(id)
             );
@@ -206,21 +222,19 @@ router.post('/generate', isAuthenticated, async (req, res) => {
             return res.status(404).json({ success: false, error: 'User not found.' });
         }
         
-        // 🛑 QUERY: Filter projects based on the validated IDs array
         const projects = await Project.find({ 
                 userId: userId, 
                 isPublished: true,
-                _id: { $in: validProjectIds } // Use the filtered array
+                _id: { $in: validProjectIds } 
             })
             .populate('collaborators', 'name')
             .lean();
 
-        // Pass all customization settings to the generator function
-        await generatePortfolio(user, projects, { format, primaryColor, accentColor, contentToggles }, res);
+        // Pass ALL settings to the generator function
+        await generatePortfolio(user, projects, { format, primaryColor, accentColor, contentToggles, layoutOptions }, res);
         
     } catch (error) {
         console.error('Portfolio generation API error:', error);
-        // The CastError should be handled by the filter above, but if another error occurs:
         res.status(500).json({ success: false, error: error.message || 'Internal server error.' });
     }
 });

@@ -84,27 +84,37 @@
         .comment-item-custom:hover .btn-link {
             opacity: 1;
         }
+        /* Style for the Popups/Modals */
+        .analytics-modal .modal-header {
+             background-color: #20c997;
+             color: white;
+             border-bottom: none;
+        }
+        /* User Card Popup Styling (Placeholder/Minimal) */
+        .user-card-popup {
+            position: absolute;
+            z-index: 1050;
+            padding: 15px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            width: 250px;
+        }
     </style>
 </head>
-<body>
-    <header class="d-flex justify-content-between align-items-center">
+<header class="d-flex justify-content-between align-items-center">
         <div class="logo">
             <a href="/index.html">
                 <img src="https://res.cloudinary.com/dphfedhek/image/upload/sharecase-logo.png" alt="ShareCase Logo" style="height: 90px;">
             </a>
         </div>
-        <div class="search-bar-container position-relative">
-            <div class="input-group">
-                <input type="text" class="form-control" id="searchInput" placeholder="Search projects, users...">
-                <button class="btn btn-outline-secondary" id="filterBtn" data-bs-toggle="modal" data-bs-target="#filterModal" type="button">
-                    <i class="fas fa-filter"></i>
-                </button>
-            </div>
-            <div id="autocompleteSuggestions" class="autocomplete-suggestions"></div>
-        </div>
-        <div class="user-menu">
+        <div class="user-menu d-flex align-items-center">
+            <a href="/store-placeholder.html" class="btn btn-outline-dark me-3" id="storeButton" aria-label="Store" title="Store Placeholder">
+                <i class="fas fa-store"></i>
+            </a>
             <div class="dropdown">
-                <button class="btn btn-outline-dark me-2" id="notificationButton" aria-label="Notifications" title="Notifications" data-bs-toggle="dropdown">
+                <button class="btn btn-outline-dark me-2" id="notificationButton" aria-label="Notifications" title="Notifications" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="fas fa-bell"></i>
                     <span class="badge bg-danger" id="notificationCount" style="display: none;">0</span>
                 </button>
@@ -115,12 +125,9 @@
                     </div>
                 </div>
             </div>
-            <a href="/store-placeholder.html" class="btn btn-outline-dark me-3" id="storeButton" aria-label="Store" title="Store">
-                <i class="fas fa-store"></i>
-            </a>
-            <div class="profile-menu" id="userMenuToggle" style="display: none;">
-                <img id="headerProfilePic" src="https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg" alt="Profile Picture" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover;">
-                <span id="headerProfileName" class="ms-2">Guest</span>
+            <div class="profile-container" id="userMenuToggle" style="display: none;">
+                <img id="headerProfilePic" src="https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg" alt="Profile Picture">
+                <span id="headerProfileName">Guest</span>
                 <div class="dropdown-menu" id="userDropdown">
                     <a href="/profile.html" class="dropdown-item">Profile</a>
                     <a href="/settings.html" class="dropdown-item">Settings</a>
@@ -142,6 +149,8 @@
         </div>
     </header>
     
+    <div id="userCardPopup" class="user-card-popup" style="display: none;"></div>
+
     <main class="container-fluid py-4">
         <div class="row justify-content-center">
             <div class="col-lg-10 col-md-11">
@@ -153,7 +162,15 @@
 
                     <div class="project-meta-bar mb-4">
                         <div class="d-flex align-items-center">
-                            <span class="text-muted me-3">By: <span id="projectAuthor" class="fw-bold">Loading...</span></span>
+                            <div class="d-flex align-items-center me-3">
+                                <span class="text-muted me-1">By:</span>
+                                <span id="projectAuthorContainer" class="fw-bold user-card-trigger" 
+                                        data-user-id="" 
+                                        data-user-name=""
+                                        data-profile-pic="">
+                                    <a id="projectAuthor" class="text-decoration-none text-dark">Loading...</a>
+                                </span>
+                            </div>
                             
                             <div class="project-engagement-icons d-flex gap-3 text-muted small">
                                 <span><i class="fas fa-eye me-1"></i> <span id="projectViews">0</span></span>
@@ -187,7 +204,7 @@
                         </div>
 
                         <div id="projectDetailsContainer" style="display: none;">
-                            </div>
+                        </div>
 
                         <div id="collaboratorInfoContainer" style="display: none;" class="mt-4">
                             <h3 class="section-title">Contributors & Resources</h3>
@@ -234,6 +251,52 @@
             </div>
         </div>
     </main>
+
+    <div class="modal fade analytics-modal" id="studentModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="studentModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="studentModalLabel"><i class="fas fa-graduation-cap me-2"></i> Quick Student Poll</h5>
+                </div>
+                <div class="modal-body">
+                    <p>Help us improve career support by providing quick, anonymous feedback.</p>
+                    <h6 class="fw-bold mt-3">Do you currently have an internship lined up for the upcoming term?</h6>
+                    <div class="d-flex gap-3 mt-3">
+                        <button type="button" class="btn btn-success flex-fill" onclick="submitViewerData('student', 'Yes', null, 'studentModal')">Yes</button>
+                        <button type="button" class="btn btn-secondary flex-fill" onclick="submitViewerData('student', 'No', null, 'studentModal')">No</button>
+                        <button type="button" class="btn btn-outline-dark flex-fill" onclick="closeModal('studentModal')">Prefer not to say</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade analytics-modal" id="externalModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="externalModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="externalModalLabel"><i class="fas fa-briefcase me-2"></i> Who is viewing ShareCase?</h5>
+                </div>
+                <div class="modal-body">
+                    <p>To help us secure funding, please tell us who you are. This is anonymous.</p>
+                    <div class="d-grid gap-2 mt-3">
+                        <button type="button" class="btn btn-primary" onclick="submitViewerData(null, null, 'Recruiter', 'externalModal')">Recruiter / Employer</button>
+                        <button type="button" class="btn btn-info text-white" onclick="submitViewerData(null, null, 'Faculty', 'externalModal')">Faculty / Staff</button>
+                        <button type="button" class="btn btn-warning text-dark" onclick="submitViewerData(null, null, 'Alumni', 'externalModal')">Alumni</button>
+                        <button type="button" class="btn btn-outline-dark" onclick="submitViewerData(null, null, 'Other', 'externalModal')">Other / General Public</button>
+                        <button type="button" class="btn btn-link text-muted" onclick="closeModal('externalModal')">Skip for now</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
+    </div>
+
+    <footer>
+        <p>© 2025 ShareCase. All rights reserved.</p>
+    </footer>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 <script src="/js/scripts.js"></script>
@@ -243,15 +306,108 @@
     window.currentLoggedInUserId = null;
     window.deleteComment = deleteComment; // Expose globally for inline use
 
+    // 🛑 ANALYTICS FUNCTIONS (INCORPORATED) 🛑
+    
+    // Helper to close modals and set the permanent local storage flag with a timestamp
+    function closeModal(modalId) {
+        const modalElement = document.getElementById(modalId);
+        if (modalElement) {
+            const modal = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
+            modal.hide();
+        }
+        
+        // Set flag with a timestamp that expires after 24 hours
+        const expiryTime = new Date().getTime() + (24 * 60 * 60 * 1000); // 24 hours from now
+        localStorage.setItem('analytics_collected_timestamp', expiryTime);
+    }
+
+    // Submits data to the backend
+    async function submitViewerData(role, hasInternship, viewerType, modalId) {
+        const userId = window.currentLoggedInUserId;
+        
+        const payload = {
+            userId: userId || null,
+            viewerType: viewerType || role,
+            hasInternship: hasInternship || null,
+        };
+
+        try {
+            await fetch('/admin/log-public-data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+        } catch (error) {
+            console.warn('Failed to submit viewer data:', error);
+        } finally {
+            closeModal(modalId);
+        }
+    }
+
+    // Trigger logic on page load
+    function triggerAnalyticsPopup() {
+        
+        const lastCollectedTimestamp = localStorage.getItem('analytics_collected_timestamp');
+        const currentTime = new Date().getTime();
+        
+        if (lastCollectedTimestamp && currentTime < parseInt(lastCollectedTimestamp)) {
+            return;
+        }
+
+        const role = window.currentUserRole;
+        let modalToDisplay = null;
+
+        if (role === 'student') {
+            modalToDisplay = 'studentModal';
+        } else if (!window.currentLoggedInUserId || role === 'external' || role === 'alumni' || role === 'faculty') {
+            modalToDisplay = 'externalModal';
+        }
+
+        if (modalToDisplay) {
+            const modalElement = document.getElementById(modalToDisplay);
+            if (modalElement) {
+                const modal = new bootstrap.Modal(modalElement, {
+                    backdrop: 'static',
+                    keyboard: false
+                });
+                modal.show();
+            }
+        }
+    }
+    
+    // 🛑 END ANALYTICS FUNCTIONS 🛑
+    
+    // --- Post-Render Setup for User Card Data ---
+    function setupPageInteractions(project) {
+        const authorContainer = document.getElementById('projectAuthorContainer');
+        if (authorContainer) {
+            authorContainer.setAttribute('data-user-id', project.userId);
+            authorContainer.setAttribute('data-user-name', project.userName);
+            authorContainer.setAttribute('data-profile-pic', project.userProfilePic);
+
+            // The link is set in loadProject, this just sets the user card data
+            // document.getElementById('projectAuthor').innerHTML = project.userName;
+        }
+
+        // Run User Card listeners (and any other element listeners defined in scripts.js)
+        if (typeof window.setupUserCardListeners === 'function') {
+            window.setupUserCardListeners();
+        }
+    }
+
+
     document.addEventListener('DOMContentLoaded', async () => {
-        // Load user profile first (handles visibility of auth/user-menu)
+        // 1. Load user profile first (sets window.currentLoggedInUserId and window.currentUserRole)
         await window.loadUserProfileInHeader(); 
         const userId = window.currentLoggedInUserId; 
         
-        // Load project
+        // 2. Trigger the analytics popup immediately after user role is determined
+        triggerAnalyticsPopup();
+
+        // 3. Load project data
         loadProject(userId);
 
-        // Load filters (if defined elsewhere)
         if (typeof loadDynamicFilterOptions === 'function') {
             loadDynamicFilterOptions();
         }
@@ -298,8 +454,9 @@
             // 1. Core Info
             document.getElementById('projectTitle').textContent = project.title;
             
-            // 🛑 FIX: Project Author Link 🛑
-            document.getElementById('projectAuthor').innerHTML = `<a href="/profile/${project.userId}" class="text-decoration-none text-dark">${project.userName}</a>`;
+            // 🛑 FIX: Project Author Link and HTML Structure Update 🛑
+            // Ensure the anchor is inside the user-card-trigger span.
+            document.getElementById('projectAuthor').innerHTML = `<a href="/profile.html?id=${project.userId}" class="text-decoration-none text-dark">${project.userName}</a>`;
 
             document.getElementById('projectViews').textContent = project.views || 0;
             document.getElementById('projectLikes').textContent = project.likes || 0;
@@ -412,9 +569,14 @@
             // Render Contributors
             document.getElementById('collaboratorListContainer').style.display = collaborators.length > 0 ? 'block' : 'none';
             
-            // 🛑 FIX: Collaborator Links 🛑
+            // 🛑 FIX: Collaborator Links (using /profile.html?id=... for standard URL behavior) 🛑
             document.getElementById('collaboratorList').innerHTML = collaborators
-                .map(c => `<a href="/profile/${c._id || c.id}" class="text-decoration-none">${c.name}</a>`).join(', ') || '';
+                .map(c => 
+                    // This uses the user-card-trigger class/data attributes for the popup functionality
+                    `<span class="user-card-trigger" data-user-id="${c._id || c.id}" data-user-name="${c.name}">
+                        <a href="/profile.html?id=${c._id || c.id}" class="text-decoration-none">${c.name}</a>
+                    </span>`
+                ).join(', ') || '';
                 
             document.getElementById('otherContributorsContainer').style.display = otherContributors ? 'block' : 'none';
             document.getElementById('otherContributors').textContent = otherContributors;
@@ -445,6 +607,9 @@
             renderComments(project, userId, project.userId);
             bindCommentForm(project.id, userId);
 
+            // 🛑 FINAL STEP: Set up data for the main author and run listeners 🛑
+            setupPageInteractions(project);
+
         } catch (error) {
             console.error('Error loading project:', error);
             document.getElementById('projectTitle').textContent = 'Error Loading Project';
@@ -471,7 +636,11 @@
                     <div class="d-flex align-items-start flex-grow-1">
                         <img src="${comment.userProfilePic}" alt="${comment.userName}" class="rounded-circle me-3" style="width: 36px; height: 36px; object-fit: cover;">
                         <div class="author-info">
-                            <strong><a href="/profile/${comment.userId}" class="text-decoration-none">${comment.userName}</a></strong>
+                            <strong>
+                                <span class="user-card-trigger" data-user-id="${comment.userId}" data-user-name="${comment.userName}" data-profile-pic="${comment.userProfilePic}">
+                                    <a href="/profile.html?id=${comment.userId}" class="text-decoration-none">${comment.userName}</a>
+                                </span>
+                            </strong>
                             <small class="text-muted ms-2">${new Date(comment.timestamp).toLocaleString()}</small>
                             <p class="mb-0 comment-text-body">${comment.text}</p>
                         </div>
@@ -484,6 +653,11 @@
                 </div>
             `;
         }).join('');
+        
+        // 🛑 Re-run listeners after comments load 🛑
+        if (typeof window.setupUserCardListeners === 'function') {
+            window.setupUserCardListeners();
+        }
     }
     
     // Delete Comment Function (Exposed globally)
