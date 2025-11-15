@@ -121,7 +121,7 @@
                     <div class="d-flex gap-3 mt-3">
                         <button type="button" class="btn btn-success flex-fill" onclick="submitViewerData('student', 'Yes', null, 'studentModal')">Yes</button>
                         <button type="button" class="btn btn-secondary flex-fill" onclick="submitViewerData('student', 'No', null, 'studentModal')">No</button>
-                        <button type="button" class="btn btn-outline-dark flex-fill" onclick="closeModal('studentModal')">Prefer not to say</button>
+                        <button type="button" class="btn btn-outline-dark flex-fill" onclick="closeModal('studentModal', false)">Prefer not to say</button>
                     </div>
                 </div>
             </div>
@@ -141,7 +141,7 @@
                         <button type="button" class="btn btn-info text-white" onclick="submitViewerData(null, null, 'Faculty', 'externalModal')">Faculty / Staff</button>
                         <button type="button" class="btn btn-warning text-dark" onclick="submitViewerData(null, null, 'Alumni', 'externalModal')">Alumni</button>
                         <button type="button" class="btn btn-outline-dark" onclick="submitViewerData(null, null, 'Other', 'externalModal')">Other / General Public</button>
-                        <button type="button" class="btn btn-link text-muted" onclick="closeModal('externalModal')">Skip for now</button>
+                        <button type="button" class="btn btn-link text-muted" onclick="closeModal('externalModal', false)">Skip for now</button>
                     </div>
                 </div>
             </div>
@@ -206,188 +206,233 @@
         
         // Global functions for Notifications (Required for consistency)
         async function deleteNotification(notificationId) {
-             if (!confirm('Remove this notification?')) return;
-            
-            try {
-                const response = await fetch(`/notifications/${notificationId}`, {
-                    method: 'DELETE',
-                    credentials: 'include'
-                });
+                if (!confirm('Remove this notification?')) return;
                 
-                if (response.ok) {
-                    Toastify({ text: 'Notification removed.', duration: 2000, style: { background: '#ff5858' } }).showToast();
-                    // Assuming fetchNotifications is global or available via scripts.js
-                    if (typeof fetchNotifications === 'function') {
-                        await fetchNotifications(true); 
-                    }
-                } else {
-                    const data = await response.json();
-                    throw new Error(data.error || 'Failed to remove notification.');
-                }
-            } catch (error) {
-                console.error('Error deleting notification:', error);
-                Toastify({ text: error.message, duration: 3000, style: { background: '#e74c3c' } }).showToast();
-            }
-        }
-        window.deleteNotification = deleteNotification;
-
-        // --- NEW DATA COLLECTION LOGIC WITH 24-HOUR LOCAL STORAGE ---
-
-        // Helper to close modals and set the permanent local storage flag with a timestamp
-        function closeModal(modalId) {
-            const modalElement = document.getElementById(modalId);
-            if (modalElement) {
-                const modal = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
-                modal.hide();
-            }
-            
-            // 🛑 FIX: Set flag with a timestamp that expires after 24 hours 🛑
-            // Using localStorage ensures persistence across restarts/logouts
-            const expiryTime = new Date().getTime() + (24 * 60 * 60 * 1000); // 24 hours from now
-            localStorage.setItem('analytics_collected_timestamp', expiryTime);
-        }
-
-        // Submits data to the backend
-        async function submitViewerData(role, hasInternship, viewerType, modalId) {
-            const userId = window.currentLoggedInUserId;
-            
-            // Build payload
-            const payload = {
-                userId: userId || null,
-                viewerType: viewerType || role,
-                hasInternship: hasInternship || null,
-            };
-
-            try {
-                await fetch('/admin/log-public-data', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                
-            } catch (error) {
-                console.warn('Failed to submit viewer data:', error);
-            } finally {
-                closeModal(modalId);
-            }
-        }
-
-        // Trigger logic on page load
-        function triggerAnalyticsPopup() {
-            
-            // 🛑 NEW CHECK: Check if the timestamp has expired 🛑
-            const lastCollectedTimestamp = localStorage.getItem('analytics_collected_timestamp');
-            const currentTime = new Date().getTime();
-            
-            if (lastCollectedTimestamp && currentTime < parseInt(lastCollectedTimestamp)) {
-                // Pop-up suppressed because less than 24 hours passed since last action/dismissal
-                return;
-            }
-
-            // Proceed only if timestamp is expired or missing.
-            const role = window.currentUserRole;
-            let modalToDisplay = null;
-
-            if (role === 'student') {
-                modalToDisplay = 'studentModal';
-            } else if (!window.currentLoggedInUserId || role === 'external' || role === 'alumni' || role === 'faculty') {
-                modalToDisplay = 'externalModal';
-            }
-
-            if (modalToDisplay) {
-                const modalElement = document.getElementById(modalToDisplay);
-                if (modalElement) {
-                    const modal = new bootstrap.Modal(modalElement, {
-                        backdrop: 'static',
-                        keyboard: false
+                try {
+                    const response = await fetch(`/notifications/${notificationId}`, {
+                        method: 'DELETE',
+                        credentials: 'include'
                     });
-                    modal.show();
+                    
+                    if (response.ok) {
+                        Toastify({ text: 'Notification removed.', duration: 2000, style: { background: '#ff5858' } }).showToast();
+                        // Assuming fetchNotifications is global or available via scripts.js
+                        if (typeof fetchNotifications === 'function') {
+                            await fetchNotifications(true); 
+                        }
+                    } else {
+                        const data = await response.json();
+                        throw new Error(data.error || 'Failed to remove notification.');
+                    }
+                } catch (error) {
+                    console.error('Error deleting notification:', error);
+                    Toastify({ text: error.message, duration: 3000, style: { background: '#e74c3c' } }).showToast();
                 }
             }
-        }
-        
-        // --- DOMContentLoaded LOGIC ---
-        document.addEventListener('DOMContentLoaded', async () => {
-            // 1. Load header user profile immediately (MUST run first)
-            await window.loadUserProfileInHeader();
-            
-            // 2. Notification Check: Fetch count immediately after user profile is loaded
-            if (window.currentLoggedInUserId && typeof fetchNotifications === 'function') {
-                await fetchNotifications(true); 
-            }
-            
-            // 3. Trigger the appropriate popup after the user role is loaded
-            triggerAnalyticsPopup();
+            window.deleteNotification = deleteNotification;
 
-            // 4. Initialize notification dropdown and global functions
-            const notificationButton = document.getElementById('notificationButton');
-            const notificationDropdown = document.getElementById('notificationDropdown');
-            
-            if (notificationButton && notificationDropdown && typeof fetchNotifications === 'function') {
-                notificationButton.addEventListener('shown.bs.dropdown', () => {
-                    fetchNotifications(false); // Fetch list content when dropdown opens
-                });
-            } 
+            // --- ANALYTICS DATA COLLECTION LOGIC ---
 
-            // 5. Existing search and filter logic
-            if (typeof window.loadDynamicFilterOptions === 'function') {
-                window.loadDynamicFilterOptions();
-            }
-
-            const searchInput = document.getElementById('searchInput');
-            const autocompleteSuggestions = document.getElementById('autocompleteSuggestions');
-            
-            if (searchInput && autocompleteSuggestions) {
-                // Search Debounce Logic
-                searchInput.addEventListener('input', () => {
-                    clearTimeout(window.searchTimeout);
-                    window.searchTimeout = setTimeout(window.performGlobalSearch, window.DEBOUNCE_DELAY || 300);
-                });
+            /**
+             * Helper to close modals and set the appropriate local storage flag for suppression.
+             * @param {string} modalId - The ID of the modal to close.
+             * @param {boolean} submitted - True if data was successfully submitted (triggers 6 month cooldown for users).
+             */
+            function closeModal(modalId, submitted) {
+                const modalElement = document.getElementById(modalId);
+                if (modalElement) {
+                    const modal = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
+                    modal.hide();
+                }
                 
-                // Autocomplete visibility logic
-                searchInput.addEventListener('focus', () => {
-                    const query = searchInput.value.trim();
-                    if (query && autocompleteSuggestions.children.length > 0) {
-                        autocompleteSuggestions.style.display = 'block';
+                const userId = window.currentLoggedInUserId;
+                
+                if (submitted && userId) {
+                    // 🛑 LOGGED-IN SUBMITTED: Set flag for ~6 months 🛑
+                    const expiryTime = new Date().getTime() + (6 * 30 * 24 * 60 * 60 * 1000); 
+                    localStorage.setItem('analytics_user_submitted', expiryTime);
+                    localStorage.removeItem('analytics_collected_timestamp'); // Clear short-term stamp
+                } else {
+                    // 🛑 EXTERNAL/LOGGED-IN SKIP: Set 24-hour suppression 🛑
+                    const expiryTime = new Date().getTime() + (24 * 60 * 60 * 1000); // 24 hours from now
+                    localStorage.setItem('analytics_collected_timestamp', expiryTime);
+                }
+            }
+
+            // Submits data to the backend
+            async function submitViewerData(role, hasInternship, viewerType, modalId) {
+                const userId = window.currentLoggedInUserId;
+                
+                // Build payload
+                const payload = {
+                    userId: userId || null,
+                    viewerType: viewerType || role,
+                    hasInternship: hasInternship || null,
+                };
+
+                try {
+                    const response = await fetch('/admin/log-public-data', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (!response.ok) {
+                        // Even if the submission fails, we still suppress the popup for 24 hours to prevent spamming the user/server
+                        console.warn('Backend failed to log viewer data, suppressing popup for 24h.');
+                        closeModal(modalId, false);
+                        return;
+                    }
+
+                } catch (error) {
+                    console.warn('Failed to submit viewer data:', error);
+                    closeModal(modalId, false); // Suppress on network error
+                    return;
+                }
+                // If successful:
+                closeModal(modalId, true);
+            }
+
+                 // Trigger logic on page load
+                function triggerAnalyticsPopup() {
+                    
+                    const role = window.currentUserRole;
+                    const userId = window.currentLoggedInUserId;
+                    let modalToDisplay = null;
+
+                    // --- Check for Cooldowns/Submissions ---
+                    const lastCollectedTimestamp = localStorage.getItem('analytics_collected_timestamp');
+                    const lastSubmittedTimestamp = localStorage.getItem('analytics_user_submitted');
+                    const currentTime = new Date().getTime();
+
+                    // Check if suppression stamp (from a skip action) is currently active
+                    const isSuppressed24h = lastCollectedTimestamp && currentTime < parseInt(lastCollectedTimestamp);
+
+                    // 1. Logged-in User Check (Role check is necessary, e.g., 'student', 'alumni', 'faculty')
+                    if (userId) {
+                        
+                        // Suppress if the user clicked SKIP within the last 24 hours
+                        if (isSuppressed24h) {
+                            return; 
+                        }
+
+                        // Suppress if they previously submitted within the last 6 months
+                        if (lastSubmittedTimestamp && currentTime < parseInt(lastSubmittedTimestamp)) {
+                            return; 
+                        }
+                        
+                        // If not suppressed, determine which modal to show
+                        if (role === 'student') {
+                            modalToDisplay = 'studentModal';
+                        } else if (role === 'alumni' || role === 'faculty') {
+                            modalToDisplay = 'externalModal';
+                        }
+                        
+                    }
+                    // 2. External/Logged-out User Check (24-hour cooldown)
+                    else {
+                        // If short-term cooldown is active, suppress
+                        if (isSuppressed24h) {
+                            return;
+                        }
+                        modalToDisplay = 'externalModal';
+                    }
+
+
+                    if (modalToDisplay) {
+                        const modalElement = document.getElementById(modalToDisplay);
+                        if (modalElement) {
+                            const modal = new bootstrap.Modal(modalElement, {
+                                backdrop: 'static',
+                                keyboard: false
+                            });
+                            modal.show();
+                        }
+                    }
+                }
+            
+            // --- DOMContentLoaded LOGIC ---
+            document.addEventListener('DOMContentLoaded', async () => {
+                // 1. Load header user profile immediately (MUST run first)
+                await window.loadUserProfileInHeader();
+                
+                // 2. Notification Check: Fetch count immediately after user profile is loaded
+                if (window.currentLoggedInUserId && typeof fetchNotifications === 'function') {
+                    await fetchNotifications(true); 
+                }
+                
+                // 3. Trigger the appropriate popup after the user role is loaded
+                triggerAnalyticsPopup();
+
+                // 4. Initialize notification dropdown and global functions
+                const notificationButton = document.getElementById('notificationButton');
+                const notificationDropdown = document.getElementById('notificationDropdown');
+                
+                if (notificationButton && notificationDropdown && typeof fetchNotifications === 'function') {
+                    notificationButton.addEventListener('shown.bs.dropdown', () => {
+                        fetchNotifications(false); // Fetch list content when dropdown opens
+                    });
+                } 
+
+                // 5. Existing search and filter logic
+                if (typeof window.loadDynamicFilterOptions === 'function') {
+                    window.loadDynamicFilterOptions();
+                }
+
+                const searchInput = document.getElementById('searchInput');
+                const autocompleteSuggestions = document.getElementById('autocompleteSuggestions');
+                
+                if (searchInput && autocompleteSuggestions) {
+                    // Search Debounce Logic
+                    searchInput.addEventListener('input', () => {
+                        clearTimeout(window.searchTimeout);
+                        window.searchTimeout = setTimeout(window.performGlobalSearch, window.DEBOUNCE_DELAY || 300);
+                    });
+                    
+                    // Autocomplete visibility logic
+                    searchInput.addEventListener('focus', () => {
+                        const query = searchInput.value.trim();
+                        if (query && autocompleteSuggestions.children.length > 0) {
+                            autocompleteSuggestions.style.display = 'block';
+                        }
+                    });
+                }
+
+                // Apply Filters Button Logic
+                const applyFiltersBtn = document.getElementById('applyFilters');
+                if (applyFiltersBtn) {
+                    applyFiltersBtn.addEventListener('click', () => {
+                        if (typeof window.performGlobalSearch === 'function') {
+                            window.performGlobalSearch();
+                            const filterModal = bootstrap.Modal.getInstance(document.getElementById('filterModal'));
+                            if (filterModal) filterModal.hide();
+                        }
+                    });
+                }
+
+                // Click-outside-dropdown logic
+                document.addEventListener('click', (event) => {
+                    if (autocompleteSuggestions && !autocompleteSuggestions.contains(event.target) && event.target !== searchInput) {
+                        autocompleteSuggestions.style.display = 'none';
                     }
                 });
-            }
 
-            // Apply Filters Button Logic
-            const applyFiltersBtn = document.getElementById('applyFilters');
-            if (applyFiltersBtn) {
-                applyFiltersBtn.addEventListener('click', () => {
+                // 6. INITIATE PROJECT LOAD (Runs directly on DOMContentLoaded)
+                const urlParams = new URLSearchParams(window.location.search);
+                const hasQueryParams = Array.from(urlParams.keys()).some(key => key !== 'q');
+                const initialQuery = urlParams.get('q');
+                
+                if (initialQuery || hasQueryParams) {
+                    const searchInput = document.getElementById('searchInput');
+                    if (searchInput) searchInput.value = initialQuery || '';
                     if (typeof window.performGlobalSearch === 'function') {
                         window.performGlobalSearch();
-                        const filterModal = bootstrap.Modal.getInstance(document.getElementById('filterModal'));
-                        if (filterModal) filterModal.hide();
                     }
-                });
-            }
-
-            // Click-outside-dropdown logic
-            document.addEventListener('click', (event) => {
-                if (autocompleteSuggestions && !autocompleteSuggestions.contains(event.target) && event.target !== searchInput) {
-                    autocompleteSuggestions.style.display = 'none';
+                } else if (typeof window.loadAllProjects === 'function') {
+                    // Call loadAllProjects directly on DOMContentLoaded
+                    window.loadAllProjects();
                 }
             });
-
-            // 6. INITIATE PROJECT LOAD (Runs directly on DOMContentLoaded)
-            const urlParams = new URLSearchParams(window.location.search);
-            const hasQueryParams = Array.from(urlParams.keys()).some(key => key !== 'q');
-            const initialQuery = urlParams.get('q');
-            
-            if (initialQuery || hasQueryParams) {
-                const searchInput = document.getElementById('searchInput');
-                if (searchInput) searchInput.value = initialQuery || '';
-                if (typeof window.performGlobalSearch === 'function') {
-                    window.performGlobalSearch();
-                }
-            } else if (typeof window.loadAllProjects === 'function') {
-                // Call loadAllProjects directly on DOMContentLoaded
-                window.loadAllProjects();
-            }
-        });
-    </script>
-</body>
+        </script>
+    </body>
 </html>

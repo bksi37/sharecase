@@ -278,7 +278,6 @@ router.get('/dynamic-filter-options', async (req, res) => {
         res.status(500).json({ success: false, error: 'Server error', details: error.message });
     }
 });
-
 // ---------------------------------------------------------------------
 // 5. Fetch Single Project (router.get /project/:id) - UPDATED FOR EXTERNAL VIEWS
 // ---------------------------------------------------------------------
@@ -305,57 +304,65 @@ router.get('/project/:id', async (req, res) => {
         
         let pointsToAdd = 0;
         let viewerPointsToAdd = 0;
+        let viewIncremented = false; // Flag to check if project.save() is needed
 
         if (userId) {
-            // --- LOGGED-IN USER VIEW LOGIC (Current Complex Logic) ---
+            // --- LOGGED-IN USER VIEW LOGIC (Point-Based Cooldown) ---
             const viewer = await User.findById(userId);
             
             // Check if user is the project owner; skip points for self-viewing
             const isOwner = userId === projectUserId;
             
-            // Increment views only if it's the first time OR if it's past the view points cooldown
-            if (viewer && !project.viewedBy.includes(userId)) {
+            // Check for Point Eligibility (Relies on Activity Log for 24hr cooldown)
+            const activityLog = viewer.activityLog || []; 
+            const lastViewLog = activityLog
+                .filter(log => log.action.includes(`Viewed project: ${project._id}`))
+                .sort((a, b) => b.timestamp - a.timestamp)[0];
+
+            if (!lastViewLog || pointsCalculator.canAwardViewPoints(lastViewLog.timestamp)) {
                 
-                // Note: The logic below is complex due to points/logging and should stay.
-                const activityLog = viewer.activityLog || []; 
-                const lastViewLog = activityLog
-                    .filter(log => log.action.includes(`Viewed project: ${project._id}`))
-                    .sort((a, b) => b.timestamp - a.timestamp)[0];
-
-                if (!lastViewLog || pointsCalculator.canAwardViewPoints(lastViewLog.timestamp)) {
-                    project.views = (project.views || 0) + 1;
-                    project.viewedBy.push(userId);
+                // 🛑 NEW/FIXED: Increment VIEWS counter on cooldown expiry for logged-in users 🛑
+                project.views = (project.views || 0) + 1;
+                viewIncremented = true;
+                
+                // 2. Point Calculation (Only if it's the first *unique* view for points AND not the owner)
+                if (!project.viewedBy.includes(userId) && !isOwner) {
                     
-                    if (!isOwner) { // Only award points if viewer is not the project owner
-                        const uniqueViewCount = project.viewedBy.length;
-                        pointsToAdd = pointsCalculator.calculateViewPoints(uniqueViewCount);
+                    project.viewedBy.push(userId); // Log user ID for permanent "unique view" check for points
 
-                        viewer.viewedProjects = viewer.viewedProjects || [];
-                        if (!viewer.viewedProjects.includes(project._id)) {
-                            viewer.viewedProjects.push(project._id);
-                            viewerPointsToAdd = pointsCalculator.calculateViewerPoints(viewer.viewedProjects.length);
-                        }
+                    // Point logic is complex and remains the same for integrity:
+                    const uniqueViewCount = project.viewedBy.length;
+                    pointsToAdd = pointsCalculator.calculateViewPoints(uniqueViewCount);
 
-                        await User.findByIdAndUpdate(
-                            userId,
-                            {
-                                $addToSet: { viewedProjects: project._id },
-                                $inc: { totalPoints: viewerPointsToAdd },
-                                $push: { activityLog: { action: `Viewed project: ${project._id} (+${viewerPointsToAdd} points)` } }
-                            }
-                        );
+                    viewer.viewedProjects = viewer.viewedProjects || [];
+                    if (!viewer.viewedProjects.includes(project._id)) {
+                        // viewer.viewedProjects.push(project._id); // Removed redundant push, $addToSet handles it below
+                        viewerPointsToAdd = pointsCalculator.calculateViewerPoints(viewer.viewedProjects.length + 1);
                     }
+
+                    // Update VIEWER points and log
+                    await User.findByIdAndUpdate(
+                        userId,
+                        {
+                            $addToSet: { viewedProjects: project._id },
+                            $inc: { totalPoints: viewerPointsToAdd },
+                            // Log the view action for the point cooldown timer
+                            $push: { activityLog: { action: `Viewed project: ${project._id} (+${viewerPointsToAdd} points)` } }
+                        }
+                    );
                 }
             }
         } else {
-            // --- EXTERNAL/UNAUTHENTICATED VIEW LOGIC (New Simple Logic) ---
-            // 🛑 Action: Increment views counter for every non-logged-in visitor.
+            // --- EXTERNAL/UNAUTHENTICATED VIEW LOGIC (Simple Inflation) ---
+            // 🛑 Action: Increment views counter for every external visit. 🛑
             project.views = (project.views || 0) + 1;
+            viewIncremented = true;
             console.log(`External view recorded for project: ${projectId}`);
             // No points, no activity log, and no addition to 'viewedBy' array.
+            // The logic from the old version using req.session[viewedProjectsKey] is removed.
         }
 
-        // Apply view points to the project owner
+        // Apply view points to the project owner (Only runs if pointsToAdd > 0 from Logged-in logic)
         if (pointsToAdd > 0 && project.points < pointsCalculator.MAX_VIEW_POINTS_PER_PROJECT) {
             project.points = Math.min((project.points || 0) + pointsToAdd, pointsCalculator.MAX_VIEW_POINTS_PER_PROJECT);
             await User.findByIdAndUpdate(
@@ -367,7 +374,10 @@ router.get('/project/:id', async (req, res) => {
             );
         }
 
-        await project.save();
+        // Only save project if a change occurred (view was incremented or points were updated)
+        if (viewIncremented || pointsToAdd > 0) {
+             await project.save();
+        }
 
         // --- Formatting response data (remains the same) ---
         const formattedComments = (project.comments || []).map(comment => ({
