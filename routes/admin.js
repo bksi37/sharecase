@@ -147,6 +147,74 @@ router.get('/dashboard-data', isAuthenticated, authorizeStaffAnalytics, async (r
     }
 });
 
+// 🛑 NEW ROUTE: Platform View Source Breakdown 🛑
+// Returns a doughnut chart distribution of site views by user/viewer group.
+router.get('/analytics/view-sources', isAuthenticated, authorizeStaffAnalytics, async (req, res) => {
+    try {
+        // 1. Calculate External (Survey) Views
+        // These are confirmed non-student/recruiter/faculty entries from the popup
+        const surveyResponses = await ViewerData.aggregate([
+            { $group: { 
+                _id: "$viewerType", 
+                count: { $sum: 1 } 
+            }},
+            { $sort: { count: -1 } }
+        ]);
+
+        // 2. Calculate Logged-In User Views (Logged-in students, faculty, etc., who DIDN'T take the pop-up poll)
+        // We need to know how many views come from authenticated users vs. anonymous external traffic.
+        // Since the ViewerData model captures all survey takers (including students), we need the count of logged-in users who were NOT counted in the survey.
+        
+        // This is complex, so for an initial, high-value ROI metric, we will focus on
+        // breaking down the total unique AUTHENTICATED users vs. ANONYMOUS survey takers.
+        
+        // Count total unique submitters who are not anonymous
+        const uniqueSurveySubmitters = await ViewerData.aggregate([
+            { $match: { submitterId: { $ne: null } } },
+            { $group: { _id: "$submitterId" } },
+            { $count: "count" }
+        ]);
+        const loggedInSurveyTakers = uniqueSurveySubmitters[0]?.count || 0;
+
+
+        // Get all views from the Projects collection to calculate the "Unknown" bucket.
+        // This is a proxy for all site engagement.
+        const totalProjectViewsResult = await Project.aggregate([
+            { $group: { _id: null, total: { $sum: '$views' } } }
+        ]);
+        const totalProjectViews = totalProjectViewsResult[0]?.total || 0;
+        
+        // Total count of all survey responses (anonymous + logged-in)
+        const totalSurveyResponses = surveyResponses.reduce((sum, item) => sum + item.count, 0);
+
+        // Calculate the large "Unknown" or "General Traffic" bucket
+        // This bucket accounts for: bots, non-survey-takers, and users who skipped the pop-up.
+        const totalKnownViews = totalSurveyResponses; // Use total survey responses as known minimum.
+        const unknownTraffic = Math.max(0, totalProjectViews - totalKnownViews); 
+
+        // Consolidate data for the chart
+        let chartData = surveyResponses.map(item => ({
+            label: item._id,
+            count: item.count
+        }));
+        
+        chartData.push({
+            label: "Anonymous/Unknown Traffic",
+            count: unknownTraffic
+        });
+
+        res.json({
+            totalProjectViews,
+            chartData,
+            loggedInSurveyTakers
+        });
+
+    } catch (error) {
+        console.error('Error fetching view source analytics:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 // =====================================================================
 // B. SHARECASE INTERNAL STAFF ACTIONS/DATA (Protected by authorizeAdmin)
 //    - Exclusive management actions and internal metrics.

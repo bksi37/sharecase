@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ShareCase - Internal Platform Management</title>
+    <link rel="icon" type="image/png" href="/favicon.png" sizes="32x32">
+    <link rel="shortcut icon" href="/favicon.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -149,7 +151,31 @@
             </div>
 
             <div class="row g-4 mb-5">
-                 <div class="col-lg-6">
+                <div class="col-lg-12">
+                    <div class="analytics-card analytics-warning">
+                        <div class="analytics-header">
+                            <i class="fas fa-eye me-2"></i> Overall Platform View Source Attribution (ROI Focus)
+                        </div>
+                        <div class="analytics-body">
+                            <div class="row">
+                                <div class="col-md-4 text-center">
+                                    <div class="chart-container" style="height: 300px;"><canvas id="viewSourceChart"></canvas></div>
+                                </div>
+                                <div class="col-md-8">
+                                    <h5 class="text-warning fw-bold">Understanding Traffic Sources:</h5>
+                                    <ul class="list-unstyled small mt-3">
+                                        <li><span class="fw-bold">External/Survey Traffic:</span> Views from users who clicked links (e.g., LinkedIn) and explicitly categorized themselves (Recruiter, Alumni, Faculty) via the popup.</li>
+                                        <li><span class="fw-bold">Anonymous/Unknown:</span> The majority of untracked page views. This includes bots, direct hits, and users who skipped the popup.</li>
+                                        <li><span class="fw-bold">Total Project Views:</span> <span id="totalProjectViewsCount">...</span></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row g-4 mb-5">
+                <div class="col-lg-6">
                     <div class="analytics-card analytics-secondary h-100">
                         <div class="analytics-header">
                             <i class="fas fa-trophy me-2"></i> Internal Metrics: Top Ranked Projects (Points)
@@ -245,7 +271,7 @@
         
         // Function to load admin-only internal metrics
         async function loadInternalMetrics() {
-             try {
+              try {
                 const response = await fetch('/admin/analytics/internal-metrics', { credentials: 'include' });
                 const data = await response.json();
 
@@ -263,10 +289,10 @@
                     list.innerHTML = '<li class="list-group-item text-muted bg-transparent border-0">No point data available.</li>';
                 }
 
-            } catch (error) {
+              } catch (error) {
                 console.error('Error loading internal metrics:', error);
                 document.getElementById('topPointsList').innerHTML = '<li class="list-group-item text-danger bg-transparent border-0">Error loading points data.</li>';
-            }
+              }
         }
 
         async function loadAnalytics() {
@@ -277,19 +303,24 @@
                 charts.forEach(chart => chart.destroy());
                 charts = [];
 
-                const [coreResponse, projectResponse, userResponse] = await Promise.all([
+                // 🛑 NEW: Added viewSourceResponse API call
+                const [coreResponse, projectResponse, userResponse, viewSourceResponse] = await Promise.all([
                     fetch('/admin/dashboard-data', { credentials: 'include' }), // Core Metrics (Users, Projects, Likes, Comments, External Viewers)
                     fetch('/admin/analytics/projects', { credentials: 'include' }), // Project Analytics (Type, Views, Tags)
-                    fetch('/admin/users-analytics', { credentials: 'include' }) // User/Viewer Analytics (Roles, Majors)
+                    fetch('/admin/users-analytics', { credentials: 'include' }), // User/Viewer Analytics (Roles, Majors)
+                    fetch('/admin/analytics/view-sources', { credentials: 'include' }) // 🛑 NEW API CALL
                 ]);
 
-                const [coreData, projectData, userData] = await Promise.all([
+                // 🛑 NEW: Added viewSourceData
+                const [coreData, projectData, userData, viewSourceData] = await Promise.all([
                     coreResponse.json(),
                     projectResponse.json(),
-                    userResponse.json()
+                    userResponse.json(),
+                    viewSourceResponse.json() // 🛑 PARSE DATA
                 ]);
 
-                if (!coreResponse.ok || !projectResponse.ok || !userResponse.ok) {
+                // 🛑 NEW: Added viewSourceResponse check
+                if (!coreResponse.ok || !projectResponse.ok || !userResponse.ok || !viewSourceResponse.ok) {
                     throw new Error('Failed to load analytics');
                 }
 
@@ -331,6 +362,9 @@
                         </div>
                     </div>
                 `;
+
+                // Update Total Project Views Display
+                document.getElementById('totalProjectViewsCount').textContent = viewSourceData.totalProjectViews.toLocaleString();
 
                 // Project Analytics
                 projectAnalytics.innerHTML = `
@@ -379,6 +413,19 @@
                         borderRadius: 8
                     }]
                 });
+
+                // 🛑 NEW: View Source Attribution Chart 🛑
+                renderChart('viewSourceChart', 'doughnut', {
+                    labels: viewSourceData.chartData.map(d => `${d.label} (${d.count.toLocaleString()})`),
+                    datasets: [{ 
+                        data: viewSourceData.chartData.map(d => d.count), 
+                        backgroundColor: ['#2196f3', '#4caf50', '#ffeb3b', '#ff9800', '#9e9e9e'], 
+                        borderWidth: 0 
+                    }]
+                }, {
+                    plugins: { legend: { position: 'right' } }
+                });
+
 
                 // Load internal metrics (Top points)
                 loadInternalMetrics();
