@@ -40,6 +40,13 @@
         .stat-card { background: #fff; border-radius: 12px; padding: 2rem; border: 1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.05); transition: all 0.3s ease; height: 100%; position: relative; overflow: hidden; }
         .stat-card:hover { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
         .stat-icon { width: 64px; height: 64px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 1rem; }
+        /* Career Center Card Colors */
+        .stat-info .stat-icon { background: rgba(0, 191, 255, 0.1); color: var(--primary); }
+        .stat-primary .stat-icon { background: rgba(0, 191, 255, 0.1); color: var(--primary); }
+        .stat-success .stat-icon { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+        .stat-warning .stat-icon { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+        .stat-danger .stat-icon { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+        
         .stat-number { font-size: 2.5rem; font-weight: 700; margin-bottom: 0.25rem; line-height: 1; }
         .stat-label { font-size: 0.95rem; color: #6b7280; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
         .analytics-card { background: #fff; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.05); overflow: hidden; height: 100%; }
@@ -84,7 +91,7 @@
     <main>
         <div class="dashboard-container">
             <div class="page-header">
-                <h1 class="page-title">Career Center Data Portal</h1>
+                <h1 class="page-title"><i class="fas fa-graduation-cap me-2 text-primary"></i> Career Center Data Portal</h1>
                 <p class="page-subtitle">Strategic Metrics for Student Career Readiness and Employer Engagement</p>
             </div>
 
@@ -96,8 +103,8 @@
                     <div class="card card-body bg-light small">
                         <p class="fw-bold mb-1 text-primary">Data Integrity Note:</p>
                         <ul class="list-unstyled mb-0">
-                            <li><span class="fw-bold">External Viewers:</span> Count of site visitors (Recruiters, Faculty, Alumni) who explicitly identified their role via a non-intrusive survey on the landing page. This demonstrates employer interest.</li>
-                            <li><span class="fw-bold">Internship Status:</span> Directly from a voluntary, anonymous poll for verified student users. High value for assessing immediate student needs.</li>
+                            <li><span class="fw-bold">External Viewers:</span> Count of site visitors (Recruiters, Faculty, Alumni) who explicitly identified their role via a non-intrusive survey on the landing page. This demonstrates **employer interest**.</li>
+                            <li><span class="fw-bold">Internship Status:</span> Directly from a voluntary, anonymous poll for verified student users. **High value for assessing immediate student needs.**</li>
                             <li><span class="fw-bold">Project & Engagement:</span> Standard metrics used to justify platform activity (ROI).</li>
                         </ul>
                     </div>
@@ -105,10 +112,15 @@
             </div>
 
             <div class="row row-cols-1 row-cols-md-2 row-cols-lg-5 g-4 stats-grid" id="summaryMetrics">
-                </div>
+                <div class="loading-skeleton col"></div>
+                <div class="loading-skeleton col"></div>
+                <div class="loading-skeleton col"></div>
+                <div class="loading-skeleton col"></div>
+                <div class="loading-skeleton col"></div>
+            </div>
 
             <div class="row g-4 mb-5">
-                 <div class="col-lg-6">
+                <div class="col-lg-6">
                     <div class="analytics-card analytics-secondary h-100">
                         <div class="analytics-header">
                             <i class="fas fa-chart-pie me-2"></i> Student Internship Status
@@ -126,10 +138,8 @@
                             <i class="fas fa-briefcase me-2"></i> External Viewer Interest Breakdown
                         </div>
                         <div class="analytics-body" id="externalViewerDataAnalytics">
-                            <div class="chart-container">
-                                <canvas id="externalViewerChart"></canvas> 
+                            <p class="text-center text-muted">Loading viewer breakdown data...</p>
                             </div>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -143,7 +153,7 @@
                         <div class="analytics-body">
                              <div class="chart-container"> <canvas id="userRoleChart"></canvas> </div>
                              <div class="mt-4">
-                                <h6 class="fw-semibold text-info mb-1">Top Majors</h6>
+                                <h6 class="fw-semibold text-info mb-1">Top Majors by User Count</h6>
                                 <ul class="list-group list-group-flush border-0 small" id="topMajorsList">
                                     <li class="list-group-item px-0 py-1 text-muted">Loading major data...</li>
                                 </ul>
@@ -157,7 +167,8 @@
                             <i class="fas fa-chart-bar me-2"></i> Project Content Summary
                         </div>
                         <div class="analytics-body" id="projectAnalytics">
-                            </div>
+                            <p class="text-center text-muted">Loading project data...</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -194,15 +205,17 @@
 
         async function loadAnalytics() {
             const summaryMetrics = document.getElementById('summaryMetrics');
+            const projectAnalytics = document.getElementById('projectAnalytics');
+            const externalViewerDataAnalytics = document.getElementById('externalViewerDataAnalytics');
 
             try {
                 charts.forEach(chart => chart.destroy());
                 charts = [];
 
                 const [coreResponse, projectResponse, userResponse] = await Promise.all([
-                    fetch('/admin/dashboard-data', { credentials: 'include' }), // Shared metrics
-                    fetch('/admin/analytics/projects', { credentials: 'include' }), // Shared analytics
-                    fetch('/admin/users-analytics', { credentials: 'include' }) // Shared user/viewer analytics
+                    fetch('/admin/dashboard-data', { credentials: 'include' }), 
+                    fetch('/admin/analytics/projects', { credentials: 'include' }), 
+                    fetch('/admin/users-analytics', { credentials: 'include' }) 
                 ]);
 
                 const [coreData, projectData, userData] = await Promise.all([
@@ -245,7 +258,7 @@
                             <div class="stat-label">Total Likes</div>
                         </div>
                     </div>
-                    <div class="col d-none d-lg-block">
+                    <div class="col">
                         <div class="stat-card stat-danger text-center">
                             <div class="stat-icon"><i class="fas fa-comment"></i></div>
                             <div class="stat-number">${coreData.totalComments.toLocaleString()}</div>
@@ -254,15 +267,14 @@
                     </div>
                 `;
 
-                // 2. Project Content Summary
-                const projectAnalytics = document.getElementById('projectAnalytics');
+                // 2. Project Content Summary (Type and Top Projects)
                 projectAnalytics.innerHTML = `
                     <div class="row g-3">
                         <div class="col-md-6">
                             <h6 class="fw-semibold text-warning mb-3">Projects by Type</h6>
                             <div class="list-group list-group-flush border-0">
                                 ${projectData.projectsByType.map(item => `
-                                    <div class="list-group-item px-0 py-2">
+                                    <div class="list-group-item px-0 py-2 bg-transparent border-0">
                                         <div class="d-flex justify-content-between">
                                             <span>${item._id || 'Other'}</span>
                                             <span class="badge bg-warning text-dark rounded-pill">${item.count}</span>
@@ -275,10 +287,10 @@
                             <h6 class="fw-semibold text-warning mb-3">Top Projects by Views (Industry Interest)</h6>
                             <ol class="list-group list-group-numbered list-group-flush border-0">
                                 ${projectData.topProjectsByViews.slice(0,5).map(project => `
-                                    <li class="list-group-item px-0 py-2">
+                                    <li class="list-group-item px-0 py-2 bg-transparent">
                                         <div class="d-flex justify-content-between">
-                                            <a href="/project.html?id=${project._id}" class="text-decoration-none fw-medium">${project.title}</a>
-                                            <span class="badge bg-secondary">${project.views} views</span>
+                                            <a href="/project-details.html?id=${project._id}" class="text-decoration-none fw-medium text-truncate" title="${project.title}">${project.title}</a>
+                                            <span class="badge bg-secondary ms-2">${project.views.toLocaleString()} views</span>
                                         </div>
                                     </li>
                                 `).join('')}
@@ -287,36 +299,45 @@
                     </div>
                 `;
 
-                // 3. User Distribution Chart 
+                // 3. User Distribution Chart (Role/Major)
                 renderChart('userRoleChart', 'doughnut', {
                     labels: userData.usersByRole.map(u => u._id),
-                    datasets: [{ data: userData.usersByRole.map(u => u.count), backgroundColor: ['#00bfff', '#10b981', '#f59e0b', '#ef4444', '#64748b'], borderWidth: 0 }]
+                    datasets: [{ 
+                        data: userData.usersByRole.map(u => u.count), 
+                        backgroundColor: ['#00bfff', '#10b981', '#f59e0b', '#ef4444', '#64748b'], 
+                        borderWidth: 0 
+                    }]
                 });
 
                 // Top Majors List 
                 document.getElementById('topMajorsList').innerHTML = userData.usersByMajor.slice(0, 5).map(m => `
-                    <li class="list-group-item px-0 py-1 d-flex justify-content-between">
+                    <li class="list-group-item px-0 py-1 d-flex justify-content-between bg-transparent border-0">
                         <span>${m._id}</span>
                         <span class="badge bg-info">${m.count}</span>
                     </li>
                 `).join('');
 
 
-                // 4. Viewer Data Charts 
-                const viewerLabels = userData.viewerDataByRole.map(v => v._id);
-                const viewerCounts = userData.viewerDataByRole.map(v => v.count);
+                // 4. External Viewer Breakdown (List View - replacing chart)
+                const totalExternalViewers = (coreData.totalExternalViewers || 0);
                 
-                renderChart('externalViewerChart', 'bar', {
-                    labels: viewerLabels,
-                    datasets: [{
-                        label: 'Viewer Type Counts',
-                        data: viewerCounts,
-                        backgroundColor: ['#0d6efd', '#20c997', '#ffc107', '#6c757d'],
-                        borderRadius: 8
-                    }]
-                }, { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } });
+                externalViewerDataAnalytics.innerHTML = `
+                    <div class="text-center mb-4">
+                        <h4 class="fw-bold text-primary">${totalExternalViewers.toLocaleString()}</h4>
+                        <p class="text-muted mb-0">Total Tracked External Views</p>
+                    </div>
+                    <h6 class="fw-semibold text-primary mb-3">Breakdown by Identified Role:</h6>
+                    <ul class="list-group list-group-flush border-0">
+                        ${userData.viewerDataByRole.map(v => `
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0 bg-transparent border-0">
+                                <span><i class="fas fa-angle-right me-2 text-primary"></i> ${v._id}</span>
+                                <span class="badge bg-primary rounded-pill">${v.count.toLocaleString()} Views</span>
+                            </li>
+                        `).join('')}
+                    </ul>
+                `;
 
-
+                // 5. Internship Status Chart (Pie Chart)
                 const internshipLabels = userData.studentInternshipStatus.map(s => s._id);
                 const internshipCounts = userData.studentInternshipStatus.map(s => s.count);
 
@@ -324,7 +345,7 @@
                     labels: internshipLabels,
                     datasets: [{
                         data: internshipCounts,
-                        backgroundColor: ['#198754', '#dc3545', '#adb5bd'], 
+                        backgroundColor: ['#198754', '#dc3545', '#adb5bd'], // Green, Red, Gray
                         borderWidth: 0
                     }]
                 });
@@ -342,7 +363,10 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            loadUserProfileInHeader();
+            // Placeholder function, assuming it exists in /js/scripts.js
+            if (typeof loadUserProfileInHeader === 'function') {
+                loadUserProfileInHeader();
+            }
             loadAnalytics();
         });
     </script>

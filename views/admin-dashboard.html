@@ -107,7 +107,7 @@
                     <div class="card card-body bg-light small">
                         <p class="fw-bold mb-1 text-dark">Data Definitions:</p>
                         <ul class="list-unstyled mb-2">
-                            <li><span class="fw-bold text-primary">Internal Metrics (Top Points):</span> A gamification score used for internal evaluation/rewards, not for external reporting.</li>
+                            <li><span class="fw-bold text-primary">Total Views:</span> Measures overall traffic and reach of all projects.</li>
                             <li><span class="fw-bold text-success">Total Comments/Likes:</span> Measures overall user engagement on content.</li>
                             <li><span class="fw-bold text-warning">Total Projects:</span> Count of all published projects on the platform.</li>
                         </ul>
@@ -174,25 +174,14 @@
                     </div>
                 </div>
             </div>
+
             <div class="row g-4 mb-5">
-                <div class="col-lg-6">
-                    <div class="analytics-card analytics-secondary h-100">
-                        <div class="analytics-header">
-                            <i class="fas fa-trophy me-2"></i> Internal Metrics: Top Ranked Projects (Points)
-                        </div>
-                        <div class="analytics-body">
-                            <ul class="list-group list-group-flush border-0" id="topPointsList">
-                                <li class="list-group-item">Loading internal ranking...</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-6">
+                <div class="col-lg-12">
                     <div class="analytics-card analytics-success h-100">
                         <div class="analytics-header">
-                            <i class="fas fa-tags me-2"></i> Top Content Tag Trends
+                            <i class="fas fa-tags me-2"></i> Content Tag Trends
                         </div>
-                        <div class="analytics-body">
+                        <div class="analytics-body" id="topTagsContainer">
                             <div class="chart-container"> <canvas id="topTagsChart"></canvas> </div>
                         </div>
                     </div>
@@ -241,18 +230,42 @@
         </div>
     </main>
 
+    <div class="modal fade" id="projectViewsModal" tabindex="-1" aria-labelledby="projectViewsModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title" id="projectViewsModalLabel"><i class="fas fa-chart-pie me-2"></i> View Source Breakdown for: <span id="modalProjectTitle"></span></h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p class="text-muted" id="modalProjectIDDisplay"></p>
+            <div id="modalBreakdownContent">
+                <p class="text-center text-secondary">Loading view attribution data...</p>
+                <div style="height: 300px;"><canvas id="modalProjectBreakdownChart"></canvas></div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="/js/scripts.js"></script>
 
     <script>
         let charts = [];
+        let projectViewsModal; // To store the Bootstrap Modal instance
 
         function renderChart(canvasId, type, data, options = {}) {
             const canvas = document.getElementById(canvasId);
             if (!canvas) return null;
             
+            // Destroy existing chart instance if present
             charts.forEach(chart => { if(chart.canvas.id === canvasId) chart.destroy(); });
+            charts = charts.filter(chart => chart.canvas.id !== canvasId);
 
             const ctx = canvas.getContext('2d');
             const chart = new Chart(ctx, {
@@ -269,30 +282,75 @@
             return chart;
         }
         
-        // Function to load admin-only internal metrics
-        async function loadInternalMetrics() {
-              try {
-                const response = await fetch('/admin/analytics/internal-metrics', { credentials: 'include' });
+        /**
+         * Loads a detailed view source breakdown for a single project from the API.
+         */
+        async function loadProjectViewsBreakdown(projectId, projectTitle) {
+            // Set modal header text and ID
+            document.getElementById('modalProjectTitle').textContent = projectTitle;
+            document.getElementById('modalProjectIDDisplay').textContent = `ID: ${projectId}`;
+            const contentContainer = document.getElementById('modalBreakdownContent');
+            contentContainer.innerHTML = '<p class="text-center text-secondary"><i class="fas fa-spinner fa-spin me-2"></i> Loading view attribution data...</p>';
+
+            try {
+                // Fetch data from the new API endpoint
+                const response = await fetch(`/admin/analytics/project-views-breakdown/${projectId}`, { credentials: 'include' });
                 const data = await response.json();
 
-                if (!response.ok) throw new Error(data.error || 'Failed to load internal metrics');
-                
-                const list = document.getElementById('topPointsList');
-                if (data.topProjectsByPoints && data.topProjectsByPoints.length > 0) {
-                    list.innerHTML = data.topProjectsByPoints.map(project => `
-                        <li class="list-group-item d-flex justify-content-between align-items-center bg-transparent border-0">
-                            <a href="/project.html?id=${project._id}" class="text-decoration-none fw-medium text-dark">${project.title}</a>
-                            <span class="badge bg-primary rounded-pill">${project.points} pts</span>
-                        </li>
-                    `).join('');
-                } else {
-                    list.innerHTML = '<li class="list-group-item text-muted bg-transparent border-0">No point data available.</li>';
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to fetch project breakdown.');
                 }
 
-              } catch (error) {
-                console.error('Error loading internal metrics:', error);
-                document.getElementById('topPointsList').innerHTML = '<li class="list-group-item text-danger bg-transparent border-0">Error loading points data.</li>';
-              }
+                const breakdownData = data.breakdown;
+                const totalViews = data.totalViews;
+                
+                // Helper function to assign colors consistently (similar to the main view source chart)
+                const getColor = (label) => {
+                    if (label.includes('Recruiter')) return '#10b981'; // Success/green
+                    if (label.includes('Alumni') || label.includes('Faculty')) return '#00bfff'; // Primary/blue
+                    if (label.includes('Student')) return '#f59e0b'; // Warning/yellow
+                    return '#64748b'; // Anonymous/gray
+                };
+                
+                contentContainer.innerHTML = `
+                    <div class="row">
+                        <div class="col-12">
+                            <h6 class="text-center text-primary mb-3">Total Views for this project: ${totalViews.toLocaleString()}</h6>
+                        </div>
+                        <div class="col-md-6">
+                            <div style="height: 300px;"><canvas id="modalProjectBreakdownChart"></canvas></div>
+                        </div>
+                        <div class="col-md-6">
+                            <ul class="list-group list-group-flush mt-4 mt-md-0">
+                                ${breakdownData.map(source => `
+                                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                        <span><i class="fas fa-circle me-2" style="color: ${getColor(source.label)}"></i> ${source.label.replace('Surveyed: ', '')}</span>
+                                        <span class="badge bg-light text-dark">${source.count.toLocaleString()} Views</span>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                `;
+
+                // Render the breakdown chart
+                renderChart('modalProjectBreakdownChart', 'doughnut', {
+                    labels: breakdownData.map(d => `${d.label.replace('Surveyed: ', '')} (${d.count.toLocaleString()})`),
+                    datasets: [{ 
+                        data: breakdownData.map(d => d.count), 
+                        backgroundColor: breakdownData.map(d => getColor(d.label)), 
+                        borderWidth: 0 
+                    }]
+                }, {
+                    plugins: { legend: { position: 'right' } }
+                });
+
+            } catch (error) {
+                console.error('Error loading project view breakdown:', error);
+                contentContainer.innerHTML = `<div class="alert alert-danger">Failed to load breakdown data: ${error.message}</div>`;
+            }
+
+            if (projectViewsModal) projectViewsModal.show();
         }
 
         async function loadAnalytics() {
@@ -300,31 +358,30 @@
             const projectAnalytics = document.getElementById('projectAnalytics');
 
             try {
+                // Clear all charts before loading new data
                 charts.forEach(chart => chart.destroy());
                 charts = [];
 
-                // 🛑 NEW: Added viewSourceResponse API call
+                // Fetch data from 4 endpoints
                 const [coreResponse, projectResponse, userResponse, viewSourceResponse] = await Promise.all([
-                    fetch('/admin/dashboard-data', { credentials: 'include' }), // Core Metrics (Users, Projects, Likes, Comments, External Viewers)
-                    fetch('/admin/analytics/projects', { credentials: 'include' }), // Project Analytics (Type, Views, Tags)
-                    fetch('/admin/users-analytics', { credentials: 'include' }), // User/Viewer Analytics (Roles, Majors)
-                    fetch('/admin/analytics/view-sources', { credentials: 'include' }) // 🛑 NEW API CALL
+                    fetch('/admin/dashboard-data', { credentials: 'include' }), 
+                    fetch('/admin/analytics/projects', { credentials: 'include' }), 
+                    fetch('/admin/users-analytics', { credentials: 'include' }), 
+                    fetch('/admin/analytics/view-sources', { credentials: 'include' }) 
                 ]);
 
-                // 🛑 NEW: Added viewSourceData
                 const [coreData, projectData, userData, viewSourceData] = await Promise.all([
                     coreResponse.json(),
                     projectResponse.json(),
                     userResponse.json(),
-                    viewSourceResponse.json() // 🛑 PARSE DATA
+                    viewSourceResponse.json()
                 ]);
 
-                // 🛑 NEW: Added viewSourceResponse check
                 if (!coreResponse.ok || !projectResponse.ok || !userResponse.ok || !viewSourceResponse.ok) {
                     throw new Error('Failed to load analytics');
                 }
 
-                // Stats Cards
+                // Stats Cards 
                 summaryMetrics.innerHTML = `
                     <div class="col">
                         <div class="stat-card stat-primary text-center">
@@ -363,10 +420,7 @@
                     </div>
                 `;
 
-                // Update Total Project Views Display
-                document.getElementById('totalProjectViewsCount').textContent = viewSourceData.totalProjectViews.toLocaleString();
-
-                // Project Analytics
+                // Project Analytics: This is where we show the top projects list
                 projectAnalytics.innerHTML = `
                     <div class="row g-3">
                         <div class="col-md-6">
@@ -383,13 +437,22 @@
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <h6 class="fw-semibold text-primary mb-3">Top Projects by Views</h6>
+                            <h6 class="fw-semibold text-primary mb-3">Top Projects by Views (Click for Breakdown)</h6>
                             <ol class="list-group list-group-numbered list-group-flush border-0">
                                 ${projectData.topProjectsByViews.slice(0,5).map(project => `
                                     <li class="list-group-item px-0 py-2 bg-transparent">
-                                        <div class="d-flex justify-content-between">
-                                            <a href="/project.html?id=${project._id}" class="text-decoration-none fw-medium">${project.title}</a>
-                                            <span class="badge bg-secondary">${project.views} views</span>
+                                        <div class="d-flex justify-content-between align-items-center w-100">
+                                            <span class="me-auto text-truncate" title="${project.title}">
+                                                <a href="#" onclick="event.preventDefault(); loadProjectViewsBreakdown('${project._id}', '${project.title.replace(/'/g, "\\'")}')">${project.title}</a>
+                                            </span>
+                                            
+                                            <div class="d-flex align-items-center">
+                                                <a href="/project-details.html?id=${project._id}" class="btn btn-sm btn-outline-primary me-2" title="View Project Page" target="_blank">
+                                                    <i class="fas fa-external-link-alt"></i>
+                                                </a>
+
+                                                <span class="badge bg-secondary rounded-pill ms-3">${project.views.toLocaleString()} Views</span>
+                                            </div>
                                         </div>
                                     </li>
                                 `).join('')}
@@ -398,108 +461,65 @@
                     </div>
                 `;
 
-                // Charts
-                renderChart('userRoleChart', 'doughnut', {
-                    labels: userData.usersByRole.map(u => u._id),
-                    datasets: [{ data: userData.usersByRole.map(u => u.count), backgroundColor: ['#00bfff', '#10b981', '#f59e0b', '#ef4444', '#64748b'], borderWidth: 0 }]
-                });
-
-                renderChart('topTagsChart', 'bar', {
-                    labels: projectData.projectsByTag.slice(0, 8).map(t => t._id),
+                // User Segmentation Chart 
+                renderChart('userRoleChart', 'pie', {
+                    labels: userData.usersByRole.map(d => d._id),
                     datasets: [{
-                        label: 'Projects',
-                        data: projectData.projectsByTag.slice(0, 8).map(t => t.count),
-                        backgroundColor: '#10b981',
-                        borderRadius: 8
+                        data: userData.usersByRole.map(d => d.count),
+                        backgroundColor: ['#00bfff', '#f59e0b', '#10b981', '#64748b'],
+                        borderWidth: 0
                     }]
                 });
 
-                // 🛑 NEW: View Source Attribution Chart 🛑
-                renderChart('viewSourceChart', 'doughnut', {
+                // Overall View Source Chart & Total Views Count 
+                document.getElementById('totalProjectViewsCount').textContent = viewSourceData.totalProjectViews.toLocaleString();
+                const viewSourceChartData = {
                     labels: viewSourceData.chartData.map(d => `${d.label} (${d.count.toLocaleString()})`),
-                    datasets: [{ 
-                        data: viewSourceData.chartData.map(d => d.count), 
-                        backgroundColor: ['#2196f3', '#4caf50', '#ffeb3b', '#ff9800', '#9e9e9e'], 
-                        borderWidth: 0 
+                    datasets: [{
+                        data: viewSourceData.chartData.map(d => d.count),
+                        backgroundColor: viewSourceData.chartData.map(d => d.color),
+                        borderWidth: 0
                     }]
-                }, {
-                    plugins: { legend: { position: 'right' } }
+                };
+
+                renderChart('viewSourceChart', 'doughnut', viewSourceChartData, {
+                    plugins: { legend: { position: 'top' } }
                 });
 
-
-                // Load internal metrics (Top points)
-                loadInternalMetrics();
-
-            } catch (error) {
-                console.error('Analytics error:', error);
-                summaryMetrics.innerHTML = `
-                    <div class="col-12">
-                        <div class="alert alert-warning text-center">
-                            <i class="fas fa-exclamation-triangle me-2"></i> Unable to load platform analytics data (Authentication failed or Server Error).
+                // Top Tags 
+                const topTagsContainer = document.getElementById('topTagsContainer');
+                topTagsContainer.innerHTML = `
+                    <div class="row">
+                        <div class="col-12">
+                            <h6 class="fw-semibold text-success mb-3">Top 5 Project Tags by Count</h6>
+                            <div class="list-group list-group-flush border-0">
+                                ${projectData.projectsByTag.slice(0, 5).map(tag => `
+                                    <div class="list-group-item px-0 py-2 bg-transparent border-0">
+                                        <div class="d-flex justify-content-between">
+                                            <span><i class="fas fa-hashtag me-2 text-success"></i> ${tag._id}</span>
+                                            <span class="badge bg-success rounded-pill">${tag.count} Projects</span>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
                         </div>
                     </div>
                 `;
+
+            } catch (error) {
+                console.error('Failed to load analytics data:', error);
+                summaryMetrics.innerHTML = `<div class="alert alert-danger w-100">Error loading metrics: ${error.message}</div>`;
+                projectAnalytics.innerHTML = `<div class="alert alert-danger w-100">Error loading project analytics.</div>`;
             }
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            loadUserProfileInHeader();
+            // Initialize the Bootstrap Modal instance
+            const modalElement = document.getElementById('projectViewsModal');
+            if (modalElement) {
+                projectViewsModal = new bootstrap.Modal(modalElement);
+            }
             
-            // Point Allocation Form
-            document.getElementById('pointAllocationForm').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target);
-                const userId = formData.get('userId');
-                const points = parseInt(formData.get('points'));
-
-                try {
-                    const response = await fetch('/admin/allocate-points', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include',
-                        body: JSON.stringify({ userId, points })
-                    });
-                    const data = await response.json();
-                    
-                    if (response.ok) {
-                        Toastify({ text: data.message || 'Points allocated!', duration: 4000, style: { background: '#10b981' } }).showToast();
-                        e.target.reset();
-                        loadAnalytics();
-                    } else {
-                        throw new Error(data.error || 'Failed');
-                    }
-                } catch (error) {
-                    Toastify({ text: error.message, duration: 4000, style: { background: '#ef4444' } }).showToast();
-                }
-            });
-
-            // Notification Form
-            document.getElementById('notificationForm').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target);
-                const userId = formData.get('targetUserId');
-                const message = formData.get('message');
-
-                try {
-                    const response = await fetch('/admin/send-notification', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include',
-                        body: JSON.stringify({ userId, message })
-                    });
-                    const data = await response.json();
-                    
-                    if (response.ok) {
-                        Toastify({ text: data.message || 'Notification sent!', duration: 4000, style: { background: '#f59e0b' } }).showToast();
-                        e.target.reset();
-                    } else {
-                        throw new Error(data.error || 'Failed');
-                    }
-                } catch (error) {
-                    Toastify({ text: error.message, duration: 4000, style: { background: '#ef4444' } }).showToast();
-                }
-            });
-
             loadAnalytics();
         });
     </script>

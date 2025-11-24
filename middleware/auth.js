@@ -32,50 +32,35 @@ const isProfileComplete = async (req, res, next) => {
 
     try {
         if (!req.session.userId) {
-            if (wantsJson) {
-                return res.status(401).json({
-                    success: false,
-                    error: 'Unauthorized. Please log in.',
-                    redirect: `/login.html?redirectedFrom=${encodeURIComponent(req.originalUrl)}`
-                });
-            } else {
-                return res.redirect(`/login.html?redirectedFrom=${encodeURIComponent(req.originalUrl)}`);
-            }
+            if (wantsJson) return res.status(401).json({ success: false, error: 'Unauthorized.', redirect: '/login.html' });
+            return res.redirect('/login.html');
         }
 
         const user = await User.findById(req.session.userId);
         if (!user) {
-            if (wantsJson) {
-                return res.status(401).json({
-                    success: false,
-                    error: 'User session invalid. Please log in.',
-                    redirect: `/login.html?redirectedFrom=${encodeURIComponent(req.originalUrl)}`
-                });
-            } else {
-                return res.redirect(`/login.html?redirectedFrom=${encodeURIComponent(req.originalUrl)}`);
-            }
+            if (wantsJson) return res.status(401).json({ success: false, error: 'User not found.', redirect: '/login.html' });
+            return res.redirect('/login.html');
         }
 
         if (user.isProfileComplete) {
-            return next();
-        } else {
-            if (wantsJson) {
-                return res.status(403).json({
-                    success: false,
-                    error: 'Profile not complete. Please complete your profile.',
-                    redirect: '/create-profile.html?redirected=true'
-                });
-            } else {
-                return res.redirect('/create-profile.html?redirected=true');
-            }
+            return next(); // ← Profile complete → continue
         }
+
+        // ← PROFILE NOT COMPLETE
+        if (wantsJson) {
+            return res.status(403).json({
+                success: false,
+                error: 'Please complete your profile before uploading projects.',
+                redirect: '/create-profile.html?redirected=true'
+            });
+        }
+
+        // ← THIS WAS MISSING: fallback for non-AJAX, non-JSON requests
+        return res.redirect('/create-profile.html?redirected=true');
+
     } catch (error) {
         console.error('Profile check error:', error);
-        if (wantsJson) {
-            return res.status(500).json({ error: 'Server error during profile check' });
-        } else {
-            res.status(500).send('<h1>500 - Internal Server Error</h1><p>Something went wrong!</p>');
-        }
+        return res.status(500).json({ error: 'Server error' });
     }
 };
 

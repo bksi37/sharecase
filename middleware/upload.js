@@ -1,94 +1,99 @@
+// middleware/upload.js
 const multer = require('multer');
-const cloudinary = require('cloudinary').v2;
-const CloudinaryStorage = require('multer-storage-cloudinary');
+const { v2: cloudinary } = require('cloudinary');
 require('dotenv').config();
 
-// Debug: Log the CloudinaryStorage import
-console.log('CloudinaryStorage:', CloudinaryStorage);
+// 🛑 FIX: Change the import to capture the default export of the module.
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
-// Configure Cloudinary
+// Debug
+console.log('CloudinaryStorage loaded:', !!CloudinaryStorage);
+
+// Cloudinary config
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET
+    api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Initialize Multer with CloudinaryStorage
 const storage = new CloudinaryStorage({
-    cloudinary: cloudinary,
-    folder: (req, file) => {
-        const userIdIdentifier = req.user ? req.user._id : req.session.userId || Date.now();
+    cloudinary,
+    params: async (req, file) => {
+        const userId = req.session.userId || req.user?._id || 'unknown';
+
+        // Dynamic folder
+        let folder = 'sharecase/unknown';
         switch (file.fieldname) {
-            case 'image':
-                return 'sharecase/projects';
-            case 'artworkImage':
-                return 'sharecase/artwork';
-            case 'CADFile':
-                return 'sharecase/cad';
-            case 'profilePic':
-                return 'sharecase/profiles';
-            default:
-                return 'sharecase/unknown';
+            case 'image':         folder = 'sharecase/projects'; break;
+            case 'artworkImage':  folder = 'sharecase/artwork'; break;
+            case 'CADFile':       folder = 'sharecase/cad'; break;
+            case 'profilePic':    folder = 'sharecase/profiles'; break;
         }
+
+        // --- Simplified and Safer Public ID Generation ---
+        // Take the first part of the original filename, sanitize it, and limit its length
+        const baseId = file.originalname.split('.')[0].replace(/[^a-z0-9]/gi, '_').toLowerCase().substring(0, 20); 
+        // Construct the public ID using field name, user ID, short base name, and a unique timestamp
+        const public_id = `${file.fieldname}-${userId}-${baseId}-${Date.now()}`;
+        // --- End simplification ---
+
+        // Dynamic file extension/format
+        const ext = file.originalname.includes('.') 
+            ? file.originalname.split('.').pop().toLowerCase() 
+            : 'file';
+        
+        // Resource type
+        const resource_type = file.fieldname === 'CADFile' ? 'raw' : 'image';
+
+        // Format & transformation
+        const format = resource_type === 'raw' ? null : ext;
+        const transformation = file.fieldname === 'profilePic'
+            ? [{ width: 500, height: 500, crop: 'fill', gravity: 'face' }]
+            : [];
+
+        // 🛑 CRITICAL DEBUG LOG
+        const uploadParams = {
+            folder,
+            public_id,
+            format,
+            resource_type,
+            transformation,
+        };
+        console.log('--- Cloudinary Params Generated ---', uploadParams);
+
+        return uploadParams;
     },
-    filename: (req, file, cb) => {
-        const userIdIdentifier = req.user ? req.user._id : req.session.userId || Date.now();
-        const fileNamePart = file.originalname.includes('.') ? file.originalname.split('.')[0] : file.originalname;
-        const basePublicId = file.fieldname === 'profilePic' ? `profile-${userIdIdentifier}` : `${file.fieldname}-${userIdIdentifier}-${fileNamePart}`;
-        cb(null, basePublicId);
-    },
-    allowedFormats: ['jpeg', 'png', 'gif', 'webp', 'gltf', 'glb'],
-    transformation: (req, file) => {
-        if (file.fieldname === 'profilePic') {
-            return [{ width: 500, height: 500, crop: 'fill' }];
-        }
-        return [];
-    },
-    resource_type: (req, file) => {
-        if (file.fieldname === 'CADFile') {
-            return 'raw';
-        }
-        return 'image';
-    }
 });
 
-const uploadFields = multer({
-    storage: storage,
-    limits: { fileSize: 10 * 1024 * 1024 }, // Global limit is 10MB
+const upload = multer({
+    storage,
+    limits: { fileSize: 15 * 1024 * 1024 }, // 15MB safe max
     fileFilter: (req, file, cb) => {
-        console.log(`Multer Received Field: ${file.fieldname} | Type: ${file.mimetype} | Size: ${file.size || 'unknown'} | Original Name: ${file.originalname}`);
-        const allowedImageFields = ['image', 'artworkImage', 'profilePic'];
-        const allowedCADFields = ['CADFile'];
+        console.log(`Multer Received Field: ${file.fieldname} | Type: ${file.mimetype} | Size: ${file.size || 'streaming'} | Name: ${file.originalname}`);
 
-        if (allowedImageFields.includes(file.fieldname)) {
-            const allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-            const maxSize = 2 * 1024 * 1024; // 2MB image limit
+        const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        const allowedCAD = /\.(glb|gltf|obj|stl|step)$/i;
 
+        if (['image', 'artworkImage', 'profilePic'].includes(file.fieldname)) {
             if (!allowedImageTypes.includes(file.mimetype)) {
-                return cb(new Error(`Invalid file type for ${file.fieldname}. Allowed: JPEG, PNG, GIF, WEBP.`), false);
+                return cb(new Error('Invalid image type. Only JPEG, PNG, GIF, WEBP allowed.'), false);
             }
-            if (file.size > maxSize) {
-                return cb(new Error(`File ${file.fieldname} too large. Max 2MB.`), false);
+            if (file.size > 3 * 1024 * 1024) {
+                return cb(new Error('Image too large. Max 3MB.'), false);
             }
-            cb(null, true);
-
-        } else if (allowedCADFields.includes(file.fieldname)) {
-            const allowedCADExtensions = /\.(gltf|glb)$/i;
-            const maxSize = 10 * 1024 * 1024; // 10MB CAD limit
-
-            if (!file.originalname.match(allowedCADExtensions)) {
-                return cb(new Error(`Invalid CAD file type for ${file.fieldname}. Only .GLB and .GLTF files are supported for browser viewing.`), false);
-            }
-            if (file.size > maxSize) {
-                return cb(new Error(`CAD file ${file.fieldname} too large. Max 10MB.`), false);
-            }
-            cb(null, true);
-
-        } else {
-            console.error('Multer Rejecting Unexpected Field:', file.fieldname);
-            cb(new Error(`The field '${file.fieldname}' is not permitted.`), false);
         }
+
+        if (file.fieldname === 'CADFile') {
+            if (!allowedCAD.test(file.originalname)) {
+                return cb(new Error('Only .glb, .gltf, .obj, .stl, .step allowed for CAD.'), false);
+            }
+            if (file.size > 12 * 1024 * 1024) {
+                return cb(new Error('CAD file too large. Max 12MB.'), false);
+            }
+        }
+
+        cb(null, true);
     }
 });
 
-module.exports = uploadFields;
+module.exports = upload;

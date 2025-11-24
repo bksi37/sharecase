@@ -149,13 +149,13 @@
     style="width: 100%; height: 300px;" 
     exposure="1.2"
     
-    color="#007bff"    
-    metallic="0.5"     
-    roughness="0.5"    
+    color="#007bff"    
+    metallic="0.5"     
+    roughness="0.5"    
     
     material-properties="apply-default-materials"
     
-    camera-inertia="1.5"             camera-orbit-sensitivity="1.2"   ></model-viewer>
+    camera-inertia="1.5"             camera-orbit-sensitivity="1.2"   ></model-viewer>
              </div>
                 
                 <div id="dynamic-fields-container" class="mb-3 p-3 border rounded bg-light">
@@ -235,9 +235,11 @@
     const imageDropzone = document.getElementById('imageDropzone');
     const imagePreview = document.getElementById('imagePreview');
     const tagsSelect = document.getElementById('tags'); 
-    const CADFilePreview = document.getElementById('CADFilePreview'); // Added DOM element
+    const CADFilePreview = document.getElementById('CADFilePreview');
+    const uploadProjectBtn = document.getElementById('uploadProjectBtn');
+    const saveDraftBtn = document.getElementById('saveDraftBtn');
 
-    // --- File Handling Functions (Updated previewCADFile) ---
+    // --- File Handling Functions ---
     
     function validateFileSize(input, maxSizeMB, fieldName) {
         if (input.files && input.files[0]) {
@@ -270,7 +272,6 @@
     }
 
     function previewCADFile(file) {
-        // Use the newly added CADFilePreview container
         if (!CADFilePreview) return;
         const modelViewer = CADFilePreview.querySelector('model-viewer');
 
@@ -315,7 +316,7 @@
         });
     }
     
-    // --- Core Dynamic Logic (Updated renderDynamicFields) ---
+    // --- Core Dynamic Logic ---
     
     async function loadProjectSchemas() {
         const endpoint = '/projects/dynamic-filter-options'; 
@@ -337,9 +338,8 @@
             // Fallback schemas (Using your hardcoded data for robustness)
             window.projectSchemas = { 
                 Default: [], 
-                // Updated Engineering schema to include CADFile
-                Engineering: [{ name: 'CADFile', label: 'CAD File', type: 'file', accept: '.gltf,.glb,.obj,.stl,.step', required: false, note: 'Upload STL, OBJ, GLTF, GLB, or STEP (max 10MB).' }, { name: 'technicalDescription', label: 'Technical Description', type: 'textarea', placeholder: 'Describe the technical aspects of your project.', required: true }, { name: 'toolsSoftware', label: 'Tools/Software Used', type: 'text', placeholder: 'e.g., SolidWorks, AutoCAD', required: true }, { name: 'functionalGoals', label: 'Functional Goals', type: 'textarea', placeholder: 'What are the functional objectives?', required: false }], 
-                Art: [{ name: 'artworkImage', label: 'Artwork Image', type: 'file', accept: 'image/jpeg,image/png,image/gif', required: true, note: 'Upload JPEG, PNG, or GIF (max 2MB)' }, { name: 'mediumTechnique', label: 'Medium/Technique', type: 'text', placeholder: 'e.g., Oil on Canvas', required: true }, { name: 'artistStatement', label: 'Artist Statement', type: 'textarea', placeholder: 'Describe the concept behind your artwork.', required: true }, { name: 'exhibitionHistory', label: 'Exhibition History', type: 'text', placeholder: 'e.g., Exhibited at Art Fair 2023', required: false }]
+                Engineering: [{ name: 'CADFile', label: 'CAD File', type: 'file', accept: '.gltf,.glb,.obj,.stl,.step', required: false, note: 'Upload STL, OBJ, GLTF, GLB, or STEP (max 10MB).' }, { name: 'technicalDescription', label: 'Technical Description', type: 'textarea', placeholder: 'Describe the technical aspects of your project.', required: true }, { name: 'toolsSoftware', label: 'Tools/Software Used', type: 'text', placeholder: 'e.g., SolidWorks, AutoCAD', required: false }, { name: 'functionalGoals', label: 'Functional Goals', type: 'textarea', placeholder: 'What are the functional objectives?', required: false }], 
+                Art: [{ name: 'artworkImage', label: 'Artwork Image', type: 'file', accept: 'image/jpeg,image/png,image/gif', required: true, note: 'Upload JPEG, PNG, or GIF (max 2MB)' }, { name: 'mediumTechnique', label: 'Medium/Technique', type: 'text', placeholder: 'e.g., Oil on Canvas', required: false}, { name: 'artistStatement', label: 'Artist Statement', type: 'textarea', placeholder: 'Describe the concept behind your artwork.', required: false }, { name: 'exhibitionHistory', label: 'Exhibition History', type: 'text', placeholder: 'e.g., Exhibited at Art Fair 2023', required: false }]
             };
             window.populateDropdown(projectTypeSelect, ['Engineering', 'Art', 'Other'], 'Select Project Type');
             window.populateDropdown(document.getElementById('year'), ['2020', '2021', '2022', '2023', '2024', '2025'], 'Select Year');
@@ -352,7 +352,6 @@
     // Renders dynamic fields (CRUCIAL FUNCTION)
     function renderDynamicFields() {
         dynamicFieldsContainer.innerHTML = '';
-        // Hide the main CAD preview area initially when dynamic fields change
         if (CADFilePreview) CADFilePreview.style.display = 'none'; 
         
         const selectedType = projectTypeSelect.value || 'Default';
@@ -427,9 +426,9 @@
         });
     }
     
-    // --- Collaboration and Tags Functions (Logic remains the same) ---
+    // --- Collaboration and Tags Functions ---
 
-    function updateCollaboratorIdsHiddenInput() { collaboratorIdsHiddenInput.value = selectedCollaboratorIds.join(','); }
+    function updateCollaboratorIdsHiddenInput() { document.getElementById('collaboratorIds').value = selectedCollaboratorIds.join(','); }
 
     function addCollaboratorChip(userId, userName, profilePic) {
         if (!selectedCollaboratorIds.includes(userId)) {
@@ -452,6 +451,21 @@
             collaboratorSearchResults.style.display = 'none';
         }
     }
+
+    // 🛑 NEW: Loading state utility function
+    function setButtonLoading(button, isLoading) {
+        if (isLoading) {
+            button.disabled = true;
+            const originalText = button.textContent;
+            button.setAttribute('data-original-text', originalText);
+            button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Loading...';
+        } else {
+            button.disabled = false;
+            const originalText = button.getAttribute('data-original-text');
+            if (originalText) button.textContent = originalText;
+        }
+    }
+    // 🛑 END NEW
 
     // --- Validation and Submission ---
     
@@ -502,6 +516,9 @@
     async function submitProject(isPublished) {
         if (!validateForm(isPublished)) return;
         
+        const submitButton = isPublished ? uploadProjectBtn : saveDraftBtn;
+        setButtonLoading(submitButton, true); // 🛑 Set loading state 🛑
+        
         const formData = new FormData(uploadForm);
         formData.append('isPublished', isPublished);
         
@@ -511,27 +528,37 @@
         formData.delete('tags'); 
         formData.append('tags', [...new Set([...selectedTags, ...coreTags])].join(','));
 
-
         try {
             const response = await fetch('/projects/add-project', { method: 'POST', body: formData, credentials: 'include' });
-            const data = await response.json();
             
             if (response.ok) {
+                const data = await response.json();
                 Toastify({ text: data.message, duration: 3000, style: { background: '#28a745' } }).showToast();
                 uploadForm.reset();
                 selectedCollaboratorIds = [];
                 // Reset UI
                 selectedCollaboratorsDisplay.innerHTML = '';
                 imagePreview.style.display = 'none';
+                if (CADFilePreview) CADFilePreview.style.display = 'none';
                 dynamicFieldsContainer.innerHTML = '<p class="text-muted mb-0">Specific fields (e.g., CAD File, Technical Description) will appear here after selecting a Project Type.</p>';
-                setTimeout(() => window.location.href = data.redirect, 3000);
+                setTimeout(() => window.location.href = data.redirect, 1500); // Shorter redirect time
             } else {
-                const errorMsg = data.error || data.details || 'Failed to process project.';
-                Toastify({ text: errorMsg, duration: 5000, style: { background: '#e74c3c' } }).showToast();
+                // If response is NOT ok (e.g., 400 or 500)
+                const data = await response.json();
+                console.error('Server error response:', data);
+                const errorMsg = data.error || data.details || `Server Error (Status: ${response.status}). Check server log.`;
+                Toastify({ text: errorMsg, duration: 8000, style: { background: '#e74c3c' } }).showToast();
             }
         } catch (error) {
-            console.error('Error submitting project:', error);
-            Toastify({ text: 'A network error occurred during upload.', duration: 5000, style: { background: '#e74c3c' } }).showToast();
+            // This 'catch' block handles network errors or connection resets
+            console.error('Error submitting project (Network/Connection Reset):', error);
+            Toastify({ 
+                text: 'Network connection reset or failed to reach server. Check server console for a crash error.', 
+                duration: 10000, 
+                style: { background: '#e74c3c' } 
+            }).showToast();
+        } finally {
+            setButtonLoading(submitButton, false); // 🛑 Turn off loading state 🛑
         }
     }
 
@@ -559,7 +586,7 @@
             setupDropzone(imageDropzone, imageInput);
 
             // Collaborator Search Listener (using external searchUsers)
-            collaboratorSearchInput.addEventListener('input', () => {
+            document.getElementById('collaboratorSearchInput').addEventListener('input', () => {
                 clearTimeout(debounceTimeout);
                 debounceTimeout = setTimeout(() => {
                     const query = collaboratorSearchInput.value.trim();
@@ -579,6 +606,7 @@
                 selectedCollaboratorIds = [];
                 selectedCollaboratorsDisplay.innerHTML = '';
                 imagePreview.style.display = 'none';
+                if (CADFilePreview) CADFilePreview.style.display = 'none';
                 dynamicFieldsContainer.innerHTML = '<p class="text-muted mb-0">Specific fields (e.g., CAD File, Technical Description) will appear here after selecting a Project Type.</p>';
                 Toastify({ text: 'Upload cancelled', duration: 2000, style: { background: '#6c757d' } }).showToast();
             });

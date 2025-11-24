@@ -4,7 +4,6 @@ const router = express.Router();
 const User = require('../models/User');
 const Project = require('../models/Project');
 // 🛑 ASSUMPTION: 'authorizeFaculty' grants access to Career Center/Staff role.
-// We will use a function 'authorizeStaffAnalytics' that allows access to both Admin and Faculty roles.
 const { isAuthenticated, authorizeAdmin, authorizeFaculty } = require('../middleware/auth'); 
 const Notification = require('../models/Notification');
 const ViewerData = require('../models/ViewerData'); // 🛑 New Model for the popups
@@ -12,12 +11,6 @@ const ViewerData = require('../models/ViewerData'); // 🛑 New Model for the po
 // --- Custom Middleware for Shared Analytics Access ---
 // Allows access if user is Admin OR Faculty (Career Center Staff)
 const authorizeStaffAnalytics = (req, res, next) => {
-    // If the user is authenticated and has either 'admin' or 'faculty' role, proceed.
-    // Assuming req.session.userRole or similar holds the role check.
-    // NOTE: This logic should ideally be consolidated in a separate utility function in auth.js.
-    // For now, we rely on the existing middlewares in series, or assume 'authorizeFaculty' allows Admins too.
-    // Since we cannot see auth.js, we will protect the routes with the LEAST restrictive required.
-    
     // We will use authorizeFaculty for the shared analytics routes, 
     // assuming it allows both Faculty and Admins to pass.
     authorizeFaculty(req, res, next);
@@ -25,7 +18,7 @@ const authorizeStaffAnalytics = (req, res, next) => {
 
 // =====================================================================
 // A. SHARECASE & CAREER CENTER ANALYTICS (Protected by authorizeFaculty)
-//    - Data critical for ROI, student trends, and external reporting.
+//    - Data critical for ROI, student trends, and external reporting.
 // =====================================================================
 
 // Route for project analytics (Charts/Lists) - SHARED
@@ -44,16 +37,15 @@ router.get('/analytics/projects', isAuthenticated, authorizeStaffAnalytics, asyn
             { $match: { isPublished: true } },
             { $unwind: "$tags" },
             { $group: { _id: "$tags", count: { $sum: 1 } } },
-            // 🛑 FIX: Use standard sorting by count (-1 for descending)
             { $sort: { count: -1 } }, 
-            { $limit: 10 } 
+            { $limit: 10 }
         ]);
         
         // Top projects by views (High-value metric for Career Center)
         const topProjectsByViews = await Project.find({ isPublished: true })
             .sort({ views: -1 })
             .limit(5)
-            .select('title views userId userName');
+            .select('title views _id'); // Ensure _id is selected
         
         // --- NOTE: Top projects by points is removed from shared analytics (See section B) ---
 
@@ -81,20 +73,20 @@ router.get('/users-analytics', isAuthenticated, authorizeStaffAnalytics, async (
         
         // Users by Major (Bar Chart - High Career Center Value)
         const usersByMajor = await User.aggregate([
-            { $match: { major: { $ne: null, $exists: true, $ne: '' } } }, 
+            { $match: { major: { $ne: null, $exists: true, $ne: '', $ne: 'N/A' } } }, 
             { $group: { _id: "$major", count: { $sum: 1 } } },
             { $sort: { count: -1 } }
         ]);
 
         // NEW: Get Viewer Data Analytics (Data from the index.html popups)
         const viewerDataByRole = await ViewerData.aggregate([
-             { $group: { _id: "$viewerType", count: { $sum: 1 } } }
+            { $group: { _id: "$viewerType", count: { $sum: 1 } } }
         ]);
 
         // NEW: Get Student Internship Status (High Career Center Value)
         const studentInternshipStatus = await ViewerData.aggregate([
-             { $match: { viewerType: "Student", hasInternship: { $ne: null } } },
-             { $group: { _id: "$hasInternship", count: { $sum: 1 } } }
+            { $match: { viewerType: "Student", hasInternship: { $ne: null } } },
+            { $group: { _id: "$hasInternship", count: { $sum: 1 } } }
         ]);
 
 
@@ -147,66 +139,71 @@ router.get('/dashboard-data', isAuthenticated, authorizeStaffAnalytics, async (r
     }
 });
 
-// 🛑 NEW ROUTE: Platform View Source Breakdown 🛑
-// Returns a doughnut chart distribution of site views by user/viewer group.
 router.get('/analytics/view-sources', isAuthenticated, authorizeStaffAnalytics, async (req, res) => {
     try {
-        // 1. Calculate External (Survey) Views
-        // These are confirmed non-student/recruiter/faculty entries from the popup
-        const surveyResponses = await ViewerData.aggregate([
-            { $group: { 
-                _id: "$viewerType", 
-                count: { $sum: 1 } 
-            }},
-            { $sort: { count: -1 } }
-        ]);
-
-        // 2. Calculate Logged-In User Views (Logged-in students, faculty, etc., who DIDN'T take the pop-up poll)
-        // We need to know how many views come from authenticated users vs. anonymous external traffic.
-        // Since the ViewerData model captures all survey takers (including students), we need the count of logged-in users who were NOT counted in the survey.
-        
-        // This is complex, so for an initial, high-value ROI metric, we will focus on
-        // breaking down the total unique AUTHENTICATED users vs. ANONYMOUS survey takers.
-        
-        // Count total unique submitters who are not anonymous
-        const uniqueSurveySubmitters = await ViewerData.aggregate([
-            { $match: { submitterId: { $ne: null } } },
-            { $group: { _id: "$submitterId" } },
-            { $count: "count" }
-        ]);
-        const loggedInSurveyTakers = uniqueSurveySubmitters[0]?.count || 0;
-
-
-        // Get all views from the Projects collection to calculate the "Unknown" bucket.
-        // This is a proxy for all site engagement.
+        // 1. Get total views (The denominator for all traffic)
         const totalProjectViewsResult = await Project.aggregate([
             { $group: { _id: null, total: { $sum: '$views' } } }
         ]);
         const totalProjectViews = totalProjectViewsResult[0]?.total || 0;
-        
-        // Total count of all survey responses (anonymous + logged-in)
-        const totalSurveyResponses = surveyResponses.reduce((sum, item) => sum + item.count, 0);
 
-        // Calculate the large "Unknown" or "General Traffic" bucket
-        // This bucket accounts for: bots, non-survey-takers, and users who skipped the pop-up.
-        const totalKnownViews = totalSurveyResponses; // Use total survey responses as known minimum.
-        const unknownTraffic = Math.max(0, totalProjectViews - totalKnownViews); 
+        // 2. Get survey responses (External traffic that self-categorized)
+        // These are distinct submissions, NOT raw views, but they provide a source breakdown.
+        const surveyResponses = await ViewerData.aggregate([
+            { $group: { _id: "$viewerType", count: { $sum: 1 } } },
+            { $sort: { count: -1 } }
+        ]);
 
-        // Consolidate data for the chart
-        let chartData = surveyResponses.map(item => ({
-            label: item._id,
-            count: item.count
-        }));
+        // 3. Get total logged-in users (Proxy for the "Internal Users" bucket)
+        // This includes all roles (Student, Faculty, Admin)
+        const allUsersByRole = await User.aggregate([
+            { $group: { _id: "$role", count: { $sum: 1 } } }
+        ]);
         
-        chartData.push({
-            label: "Anonymous/Unknown Traffic",
-            count: unknownTraffic
+        // --- DATA CONSOLIDATION AND CLEANUP ---
+        
+        let chartDataMap = new Map();
+
+        // Add survey data (Recruiter, Alumni, Other, Student)
+        surveyResponses.forEach(item => {
+            chartDataMap.set(item._id, item.count);
         });
 
+        const recruiterViews = chartDataMap.get('Recruiter') || 0;
+        const facultyViews = chartDataMap.get('Faculty') || 0;
+        const alumniViews = chartDataMap.get('Alumni') || 0;
+        
+        
+        // Calculate the "Internal Logged-In Users" bucket (This is the best proxy without a new view log)
+        const totalAuthenticatedUsers = allUsersByRole.reduce((sum, item) => sum + item.count, 0);
+        
+        // For the Chart: Grouping the view sources cleanly
+        let chartData = [
+            { label: "Confirmed Recruiter Traffic", count: recruiterViews, color: '#10b981' },
+            { label: "Confirmed Faculty/Alumni Traffic", count: facultyViews + alumniViews, color: '#00bfff' },
+        ];
+        
+        // Calculate the total confirmed survey views
+        const totalConfirmedSurvey = recruiterViews + facultyViews + alumniViews + (chartDataMap.get('Student') || 0) + (chartDataMap.get('Other') || 0);
+        
+        // Calculate the remaining traffic bucket (The bulk of the project views)
+        const unknownTraffic = Math.max(0, totalProjectViews - totalConfirmedSurvey);
+        
+        chartData.push({
+             label: "Logged-In Users (Student/Admin)", 
+             count: totalAuthenticatedUsers, // Use total user count as a static reference for internal scale
+             color: '#f59e0b' 
+        });
+
+        chartData.push({
+             label: "Anonymous/Unknown Traffic", 
+             count: unknownTraffic, 
+             color: '#64748b' 
+        });
+        
         res.json({
             totalProjectViews,
-            chartData,
-            loggedInSurveyTakers
+            chartData: chartData.filter(d => d.count > 0) // Filter out zeros
         });
 
     } catch (error) {
@@ -215,9 +212,72 @@ router.get('/analytics/view-sources', isAuthenticated, authorizeStaffAnalytics, 
     }
 });
 
+// NEW ROUTE: Detailed Project View Source Breakdown - SHARED
+router.get('/analytics/project-views-breakdown/:projectId', isAuthenticated, authorizeStaffAnalytics, async (req, res) => {
+    try {
+        const { projectId } = req.params;
+
+        // 1. Get total views for the project AND the list of logged-in viewers
+        const project = await Project.findById(projectId).select('views title viewedBy'); // <-- Select 'viewedBy'
+        if (!project) {
+            return res.status(404).json({ error: 'Project not found' });
+        }
+        const totalProjectViews = project.views || 0;
+        // NEW: Count of unique logged-in users who viewed the project
+        const loggedInViewCount = (project.viewedBy || []).length; 
+
+        // 2. Aggregate ViewerData submissions (External survey data)
+        const breakdownData = await ViewerData.aggregate([
+            // Match submissions for this project that have a viewerType
+            { $match: { projectId: projectId, viewerType: { $ne: null } } },
+            // Group by viewerType and count them
+            { $group: { _id: "$viewerType", count: { $sum: 1 } } },
+            // Sort by count descending
+            { $sort: { count: -1 } }
+        ]);
+
+        // 3. Calculate "Anonymous/External" (Unlogged, Unsurveyed) traffic
+        const knownSurveyViews = breakdownData.reduce((sum, item) => sum + item.count, 0);
+
+        // 🛑 NEW CALCULATION: Subtract both Survey views AND Logged-In views (viewedBy array)
+        // We assume 'viewedBy' tracks logged-in users, and 'ViewerData' tracks guests/external that filled the popup.
+        const unknownViews = Math.max(0, totalProjectViews - knownSurveyViews - loggedInViewCount); 
+        
+        // 4. Structure the final response data
+        const chartData = breakdownData.map(item => ({
+            label: `Surveyed: ${item._id}`, // Recruiter, Alumni, Student, etc.
+            count: item.count,
+        }));
+        
+        // 🛑 NEW BUCKET: Views from registered users (including Admin/Faculty)
+        if (loggedInViewCount > 0) {
+            chartData.push({
+                label: "Logged-In User Views", // This includes Admins, Students, Faculty, etc. from 'viewedBy'
+                count: loggedInViewCount,
+            });
+        }
+        
+        // Add the calculated anonymous bucket (The true unknown remainder)
+        chartData.push({
+            label: "Anonymous/External Traffic", // The true remainder (bots, non-surveyed guests, uncounted traffic)
+            count: unknownViews,
+        });
+
+        res.json({
+            totalViews: totalProjectViews,
+            projectTitle: project.title,
+            breakdown: chartData.filter(d => d.count > 0)
+        });
+
+    } catch (error) {
+        console.error(`Error fetching project view breakdown for ${req.params.projectId}:`, error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 // =====================================================================
 // B. SHARECASE INTERNAL STAFF ACTIONS/DATA (Protected by authorizeAdmin)
-//    - Exclusive management actions and internal metrics.
+//    - Exclusive management actions and internal metrics.
 // =====================================================================
 
 // Route for project analytics (Internal Metrics Only) - ADMIN ONLY
@@ -248,7 +308,7 @@ router.post('/allocate-points', isAuthenticated, authorizeAdmin, async (req, res
         // ... (validation and update logic) ...
         const user = await User.findById(userId);
         if (!user) {
-             return res.status(404).json({ success: false, error: 'User not found.' });
+            return res.status(404).json({ success: false, error: 'User not found.' });
         }
         // ... (rest of the logic) ...
          user.totalPoints += points;
@@ -278,9 +338,9 @@ router.post('/send-notification', isAuthenticated, authorizeAdmin, async (req, r
              message: message,
              type: 'mention',
              read: false,
-         });
-         await newNotification.save();
-         res.json({ success: true, message: `Notification sent successfully to ${user.name}.` });
+           });
+           await newNotification.save();
+           res.json({ success: true, message: `Notification sent successfully to ${user.name}.` });
     } catch (error) {
         console.error('Error sending notification:', error);
         res.status(500).json({ success: false, error: 'Server error during notification send.' });

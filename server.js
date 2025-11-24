@@ -21,6 +21,12 @@ const app = express();
 app.set('trust proxy', 1);
 mongoose.set('strictQuery', true);
 
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('🛑 Unhandled Rejection at:', promise, 'reason:', reason);
+    // Application-specific logging, cleanup, or exit code
+    // For now, just log and DO NOT crash (though Cloudinary might still force it)
+});
+
 // Session store
 const sessionStore = MongoStore.create({
     mongoUrl: process.env.MONGO_URL,
@@ -57,6 +63,19 @@ cloudinary.config({
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET,
 });
+
+cloudinary.api.ping()
+    .then(result => {
+        if (result.status === 'ok') {
+            console.log('Cloudinary credentials verified successfully.');
+        } else {
+            console.error('Cloudinary ping failed: Status not "ok". Check API Key/Secret.');
+        }
+    })
+    .catch(error => {
+        console.error('Cloudinary API initialization ERROR:', error.message);
+        // If this fails, the process is likely crashing later.
+    });
 
 // Request logging
 app.use((req, res, next) => {

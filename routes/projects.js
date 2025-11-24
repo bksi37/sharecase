@@ -1,6 +1,6 @@
 // routes/projects.js
 const express = require('express');
-const cloudinary = require('cloudinary').v2;
+const { v2: cloudinary } = require('cloudinary');
 const Project = require('../models/Project');
 const { isAuthenticated, isProfileComplete } = require('../middleware/auth');
 const User = require('../models/User');
@@ -35,87 +35,115 @@ async function handleFileUpdate(req, fieldName, currentUrl, deleteFlag, defaultU
 }
 
 // ---------------------------------------------------------------------
-// 1. Add Project (router.post /add-project)
+// 1. Add Project (router.post /add-project) - With Robust Error Logging
 // ---------------------------------------------------------------------
-router.post('/add-project', isAuthenticated, isProfileComplete, upload.fields([
-    { name: 'image', maxCount: 1 },
-    { name: 'CADFile', maxCount: 1 },
-    { name: 'artworkImage', maxCount: 1 }
-]), async (req, res) => {
-    try {
-        const {
-            title, projectType, description, problemStatement, tags, year, department, category,
-            collaboratorIds, otherContributors, resources, isPublished,
-            technicalDescription, toolsSoftware, functionalGoals,
-            mediumTechnique, artistStatement, exhibitionHistory
-        } = req.body;
-
-        if (!title || title.trim() === '') {
-            return res.status(400).json({ error: 'Project Title is required.' });
-        }
-        
-        if (isPublished === 'true') {
-            // ... (Publishing validation logic) ...
-        }
-        
-        // --- DATA PARSING ---
-        const parsedTags = Array.isArray(tags) ? tags.filter(t => t) : tags ? tags.split(',').map(t => t.trim()).filter(t => t) : [];
-        const parsedCollaborators = collaboratorIds
-            ? collaboratorIds.split(',').map(id => id.trim()).filter(id => id && ObjectId.isValid(id)).map(id => new ObjectId(id))
-            : [];
-        const parsedOtherContributors = Array.isArray(otherContributors) ? otherContributors.join(', ') : (otherContributors || ''); 
-        const parsedResources = resources
-            ? resources.split(',').map(r => r.trim()).filter(r => r)
-            : [];
-
-        const toolsSoftwareString = typeof toolsSoftware === 'string' ? toolsSoftware : ''; 
-        const parsedToolsSoftware = toolsSoftwareString
-            .split(',')
-            .map(t => t.trim())
-            .filter(t => t);
-            
-        // FIX: Ensure single-string fields are handled correctly on ADD, taking the first element if array is present
-        const cleanTechnicalDescription = Array.isArray(technicalDescription) ? technicalDescription[0] : (technicalDescription || '');
-        const cleanFunctionalGoals = Array.isArray(functionalGoals) ? functionalGoals[0] : (functionalGoals || '');
-        const cleanMediumTechnique = Array.isArray(mediumTechnique) ? mediumTechnique[0] : (mediumTechnique || '');
-        const cleanArtistStatement = Array.isArray(artistStatement) ? artistStatement[0] : (artistStatement || '');
-        const cleanExhibitionHistory = Array.isArray(exhibitionHistory) ? exhibitionHistory[0] : (exhibitionHistory || '');
-
-
-        let imageUrl = req.files && req.files['image'] && req.files['image'][0] ? req.files['image'][0].path : 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg';
-        let cadFileUrl = req.files && req.files['CADFile'] && req.files['CADFile'][0] ? req.files['CADFile'][0].path : '';
-        let artworkImageUrl = req.files && req.files['artworkImage'] && req.files['artworkImage'][0] ? req.files['artworkImage'][0].path : '';
-
-        // ... (Point calculation logic) ...
-
-        const project = new Project({
-            title: title.trim(), projectType: projectType || 'Other', description: description || '',
-            image: imageUrl, year, department, category, problemStatement: problemStatement || '',
-            tags: [...new Set([...parsedTags, year, department, category].filter(t => t))],
-            collaborators: parsedCollaborators, otherContributors: parsedOtherContributors, resources: parsedResources,
-            userId: req.session.userId, userName: req.session.userName || 'Anonymous',
-            userProfilePic: req.session.userProfilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg',
-            isPublished: isPublished === 'true',
-            projectDetails: {
-                CADFileLink: cadFileUrl, technicalDescription: cleanTechnicalDescription,
-                toolsSoftware: parsedToolsSoftware, functionalGoals: cleanFunctionalGoals,
-                artworkImage: artworkImageUrl, mediumTechnique: cleanMediumTechnique,
-                artistStatement: cleanArtistStatement, exhibitionHistory: cleanExhibitionHistory
+router.post('/add-project', isAuthenticated, isProfileComplete, (req, res) => {
+    // Wrap the Multer middleware in a promise/callback pattern to catch errors explicitly
+    upload.fields([
+        { name: 'image', maxCount: 1 },
+        { name: 'CADFile', maxCount: 1 },
+        { name: 'artworkImage', maxCount: 1 }
+    ])(req, res, async (uploadError) => {
+        try {
+            // --- FILE UPLOAD ERROR CHECK ---
+            if (uploadError) {
+                if (uploadError instanceof multer.MulterError) {
+                    // Multer errors (e.g., file size limit, wrong field name)
+                    console.error('🛑 Multer File Error (Client/Validation):', uploadError.message);
+                    return res.status(400).json({ error: 'File Upload Validation Failed', details: uploadError.message });
+                } else {
+                    // Critical Upload/Cloudinary/Stream errors
+                    console.error('🛑 Critical Upload Error (Cloudinary/Stream Hang):', uploadError.message, uploadError.stack);
+                    return res.status(500).json({ error: 'Server Upload Error', details: 'A critical file upload error occurred on the server.' });
+                }
             }
-        });
 
-        await project.save();
+            // --- DESTRUCTURING & INITIAL VALIDATION ---
+            const {
+                title, projectType, description, problemStatement, tags, year, department, category,
+                collaboratorIds, otherContributors, resources, isPublished,
+                technicalDescription, toolsSoftware, functionalGoals,
+                mediumTechnique, artistStatement, exhibitionHistory
+            } = req.body;
 
-        // ... (User and collaborator update logic) ...
+            if (!title || title.trim() === '') {
+                console.error('Validation Error: Project Title is missing or empty.');
+                return res.status(400).json({ error: 'Project Title is required.' });
+            }
 
-        const message = isPublished === 'true' ? 'Project published successfully!' : 'Project saved as draft!';
-        const redirectPath = isPublished === 'true' ? `/project.html?id=${project._id}` : '/profile.html?tab=drafts';
-        res.status(200).json({ success: true, message, projectId: project._id, redirect: redirectPath });
-    } catch (error) {
-        console.error('Add project error:', error, error.stack);
-        const errorMessage = error.message || (error.storageErrors ? error.storageErrors.join(', ') : 'Unknown file upload error');
-        res.status(500).json({ error: 'Server error', details: errorMessage });
-    }
+            if (isPublished === 'true') {
+                // TODO: Add Publishing validation logic here if required before data parsing
+                // Example: if (!description) { return res.status(400).json({ error: 'Description is required to publish.' }); }
+            }
+            
+            // --- DATA PARSING ---
+            const parsedTags = Array.isArray(tags) ? tags.filter(t => t) : tags ? tags.split(',').map(t => t.trim()).filter(t => t) : [];
+            const parsedCollaborators = collaboratorIds
+                ? collaboratorIds.split(',').map(id => id.trim()).filter(id => id && ObjectId.isValid(id)).map(id => new ObjectId(id))
+                : [];
+            const parsedOtherContributors = Array.isArray(otherContributors) ? otherContributors.join(', ') : (otherContributors || ''); 
+            const parsedResources = resources
+                ? resources.split(',').map(r => r.trim()).filter(r => r)
+                : [];
+
+            const toolsSoftwareString = typeof toolsSoftware === 'string' ? toolsSoftware : ''; 
+            const parsedToolsSoftware = toolsSoftwareString
+                .split(',')
+                .map(t => t.trim())
+                .filter(t => t);
+            
+            // FIX: Ensure single-string fields are handled correctly on ADD, taking the first element if array is present
+            const cleanTechnicalDescription = Array.isArray(technicalDescription) ? technicalDescription[0] : (technicalDescription || '');
+            const cleanFunctionalGoals = Array.isArray(functionalGoals) ? functionalGoals[0] : (functionalGoals || '');
+            const cleanMediumTechnique = Array.isArray(mediumTechnique) ? mediumTechnique[0] : (mediumTechnique || '');
+            const cleanArtistStatement = Array.isArray(artistStatement) ? artistStatement[0] : (artistStatement || '');
+            const cleanExhibitionHistory = Array.isArray(exhibitionHistory) ? exhibitionHistory[0] : (exhibitionHistory || '');
+
+            // --- FILE PATHS ---
+            let imageUrl = req.files && req.files['image'] && req.files['image'][0] ? req.files['image'][0].path : 'https://res.cloudinary.com/dphfedhek/image/upload/default-project.jpg';
+            let cadFileUrl = req.files && req.files['CADFile'] && req.files['CADFile'][0] ? req.files['CADFile'][0].path : '';
+            let artworkImageUrl = req.files && req.files['artworkImage'] && req.files['artworkImage'][0] ? req.files['artworkImage'][0].path : '';
+
+            // --- POINT CALCULATION ---
+                const pointsEarned = pointsCalculator.calculateUploadPoints();
+
+            // --- CREATE PROJECT ---
+            const project = new Project({
+                title: title.trim(), projectType: projectType || 'Other', description: description || '',
+                image: imageUrl, year, department, category, problemStatement: problemStatement || '',
+                tags: [...new Set([...parsedTags, year, department, category].filter(t => t))],
+                collaborators: parsedCollaborators, otherContributors: parsedOtherContributors, resources: parsedResources,
+                userId: req.session.userId, userName: req.session.userName || 'Anonymous',
+                userProfilePic: req.session.userProfilePic || 'https://res.cloudinary.com/dphfedhek/image/upload/default-profile.jpg',
+                isPublished: isPublished === 'true',
+                points: pointsEarned, // Set calculated points
+                projectDetails: {
+                    CADFileLink: cadFileUrl, technicalDescription: cleanTechnicalDescription,
+                    toolsSoftware: parsedToolsSoftware, functionalGoals: cleanFunctionalGoals,
+                    artworkImage: artworkImageUrl, mediumTechnique: cleanMediumTechnique,
+                    artistStatement: cleanArtistStatement, exhibitionHistory: cleanExhibitionHistory
+                }
+            });
+
+            await project.save();
+
+            // --- USER AND COLLABORATOR UPDATE ---
+            // TODO: Add User and collaborator update logic here
+            // Example: await User.findByIdAndUpdate(req.session.userId, { $push: { projects: project._id }, $inc: { points: pointsEarned } });
+            // Example: for (const collabId of parsedCollaborators) { await User.findByIdAndUpdate(collabId, { $push: { collaboratedProjects: project._id } }); }
+
+            // --- SUCCESS RESPONSE ---
+            const message = isPublished === 'true' ? 'Project published successfully!' : 'Project saved as draft!';
+            const redirectPath = isPublished === 'true' ? `/project.html?id=${project._id}` : '/profile.html?tab=drafts';
+            res.status(200).json({ success: true, message, projectId: project._id, redirect: redirectPath });
+
+        } catch (error) {
+            // This catch block handles DB/Logic errors (e.g., MongoDB validation, save failure, update failure)
+            console.error('❌ Add project DB/Logic Error:', error.message, error.stack);
+            const errorMessage = error.message || 'Unknown database/logic error';
+            res.status(500).json({ error: 'Server error', details: errorMessage });
+        }
+    });
 });
 
 // ---------------------------------------------------------------------
@@ -252,7 +280,7 @@ router.get('/dynamic-filter-options', async (req, res) => {
         res.json({
             success: true,
             courses: tagsConfig.courses,
-            categories: tagsConfig.courses,
+            categories: tagsConfig.categories,
             years: tagsConfig.years,
             types: tagsConfig.types,
             departments: tagsConfig.departments,
@@ -261,14 +289,14 @@ router.get('/dynamic-filter-options', async (req, res) => {
                 Default: [],
                 Engineering: [
                     { name: 'CADFile', label: 'CAD File', type: 'file', accept: '.gltf,.glb', required: false, note: 'Upload GLTF, GLB (max 10MB)' },
-                    { name: 'technicalDescription', label: 'Technical Description', type: 'textarea', placeholder: 'Describe the technical aspects of your project.', required: true },
-                    { name: 'toolsSoftware', label: 'Tools/Software Used', type: 'text', placeholder: 'e.g., SolidWorks, AutoCAD', required: true },
+                    { name: 'technicalDescription', label: 'Technical Description', type: 'textarea', placeholder: 'Describe the technical aspects of your project.', required: false },
+                    { name: 'toolsSoftware', label: 'Tools/Software Used', type: 'text', placeholder: 'e.g., SolidWorks, AutoCAD', required: false },
                     { name: 'functionalGoals', label: 'Functional Goals', type: 'textarea', placeholder: 'What are the functional objectives?', required: false }
                 ],
                 Art: [
                     { name: 'artworkImage', label: 'Artwork Image', type: 'file', accept: 'image/jpeg,image/png,image/gif', required: true, note: 'Upload JPEG, PNG, or GIF (max 2MB)' },
-                    { name: 'mediumTechnique', label: 'Medium/Technique', type: 'text', placeholder: 'e.g., Oil on Canvas', required: true },
-                    { name: 'artistStatement', label: 'Artist Statement', type: 'textarea', placeholder: 'Describe the concept behind your artwork.', required: true },
+                    { name: 'mediumTechnique', label: 'Medium/Technique', type: 'text', placeholder: 'e.g., Oil on Canvas', required: false },
+                    { name: 'artistStatement', label: 'Artist Statement', type: 'textarea', placeholder: 'Describe the concept behind your artwork.', required: false },
                     { name: 'exhibitionHistory', label: 'Exhibition History', type: 'text', placeholder: 'e.g., Exhibited at Art Fair 2023', required: false }
                 ]
             }
