@@ -84,9 +84,9 @@ app.use((req, res, next) => {
 });
 
 // MongoDB connection and routes
-mongoose.connect(process.env.MONGO_URL, { useNewUrlParser: true, useUnifiedTopology: true })
-    .then(() => {
-        console.log('MongoDB connected successfully');
+mongoose.connect(process.env.MONGO_URL)
+.then(() => {
+    console.log('MongoDB connected successfully');
 
         // Route imports
         const authRoutes = require('./routes/auth');

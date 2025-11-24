@@ -8,7 +8,7 @@ const crypto = require('crypto');
 const { Resend } = require('resend');
 const resend = new Resend(process.env.RESEND_API_KEY);
 const { isAuthenticated, isProfileComplete } = require('../middleware/auth');
-const uploadFields = require('../middleware/upload');
+const { upload } = require('../middleware/upload');
 const Notification = require('../models/Notification');
 
 
@@ -173,7 +173,7 @@ router.post('/login', async (req, res) => {
 });
 
 // Complete Profile
-router.post('/complete-profile', isAuthenticated, uploadFields.single('profilePic'), async (req, res) => {
+router.post('/complete-profile', isAuthenticated, upload.single('profilePic'), async (req, res) => {
     try {
         const userId = req.session.userId;
         const { name, major, department, schoolEmail, graduationYear, linkedin, github, personalWebsite, isStudent, isAlumni } = req.body;

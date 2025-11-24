@@ -7,7 +7,7 @@ const User = require('../models/User');
 const Project = require('../models/Project');
 const { isAuthenticated } = require('../middleware/auth');
 const bcrypt = require('bcryptjs');
-const upload = require('../middleware/upload'); 
+const { upload } = require('../middleware/upload');
 
 // Update Profile (General user profile update after initial completion)
 router.post('/update-profile', isAuthenticated, upload.single('profilePic'), async (req, res) => {

@@ -7,7 +7,7 @@ const User = require('../models/User');
 const mongoose = require('mongoose');
 const ObjectId = mongoose.Types.ObjectId;
 const tagsConfig = require('../config/tags');
-const upload = require('../middleware/upload');
+const { upload } = require('../middleware/upload');
 const pointsCalculator = require('../utils/pointsCalculator');
 const Notification = require('../models/Notification');
 
